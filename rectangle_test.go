@@ -401,82 +401,82 @@ func TestRectangle_RelationshipToLineSegment(t *testing.T) {
 	tests := map[string]struct {
 		rect     Rectangle[int]
 		segment  LineSegment[int]
-		expected RectangleSegmentRelationship
+		expected RectangleLineSegmentRelationship
 	}{
 		"segment completely outside": {
 			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(6, 6), NewPoint(7, 7)),
-			expected: RSROutside,
+			expected: RLROutside,
 		},
 		"segment outside with one end touching edge": {
 			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(0, 3), NewPoint(1, 3)),
-			expected: RSROutsideEndTouchesEdge,
+			expected: RLROutsideEndTouchesEdge,
 		},
 		"segment outside with one end touching vertex": {
 			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(0, 0), NewPoint(1, 1)),
-			expected: RSROutsideEndTouchesVertex,
+			expected: RLROutsideEndTouchesVertex,
 		},
 		"segment completely inside": {
 			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(2, 2), NewPoint(3, 3)),
-			expected: RSRInside,
+			expected: RLRInside,
 		},
 		"segment inside with one end touching edge": {
 			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(2, 2), NewPoint(1, 3)),
-			expected: RSRInsideEndTouchesEdge,
+			expected: RLRInsideEndTouchesEdge,
 		},
 		"segment inside with one end touching vertex": {
 			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(3, 3), NewPoint(1, 1)),
-			expected: RSRInsideEndTouchesVertex,
+			expected: RLRInsideEndTouchesVertex,
 		},
 		"segment lying on edge": {
 			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(2, 1), NewPoint(4, 1)),
-			expected: RSROnEdge,
+			expected: RLROnEdge,
 		},
 		"segment on edge with end touching vertex": {
 			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(1, 1), NewPoint(1, 5)),
-			expected: RSROnEdgeEndTouchesVertex,
+			expected: RLROnEdgeEndTouchesVertex,
 		},
 		"segment intersecting through one edge diagonally": {
 			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(0, 0), NewPoint(3, 3)),
-			expected: RSRIntersects,
+			expected: RLRIntersects,
 		},
 		"segment entering through edge": {
 			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(0, 3), NewPoint(3, 3)),
-			expected: RSRIntersects,
+			expected: RLRIntersects,
 		},
 		"segment intersecting through two edges diagonally": {
 			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(0, 0), NewPoint(6, 6)),
-			expected: RSREntersAndExits,
+			expected: RLREntersAndExits,
 		},
 		"segment entering and exiting through different edges": {
 			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(0, 3), NewPoint(6, 3)),
-			expected: RSREntersAndExits,
+			expected: RLREntersAndExits,
 		},
 		"degenerate segment on vertex": {
 			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(1, 1), NewPoint(1, 1)),
-			expected: RSROutsideEndTouchesVertex,
+			expected: RLROutsideEndTouchesVertex,
 		},
 		"segment through opposite vertices": {
 			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(1, 1), NewPoint(5, 5)),
-			expected: RSRInsideEndTouchesVertex,
+			expected: RLRInsideEndTouchesVertex,
 		},
 		"partially collinear segment on one edge": {
 			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(1, 2), NewPoint(1, 0)),
-			expected: RSROutsideEndTouchesEdge,
+			expected: RLROutsideEndTouchesEdge,
 		},
 	}
 

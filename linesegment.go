@@ -11,6 +11,57 @@ import (
 	"math"
 )
 
+// LineSegmentsRelationship (LSR) defines the possible spatial relationships between two line segments, AB and CD.
+//
+// Where:
+//   - LineSegment AB starts at Point A and ends at Point End
+//   - LineSegment CD starts at Point C and ends at Point D
+//
+// This type is used by functions that analyze the geometric relationship between two line segments
+// to provide precise information about their interaction, such as intersection, overlap, or disjointedness.
+type LineSegmentsRelationship int8
+
+// Valid values for LineSegmentsRelationship:
+//
+// LineSegmentsRelationship represents possible spatial relationships between two line segments, AB and CD.
+//
+// # LSR stands for Line Segment Relationship
+//
+// A positive value indicates that the segments have some form of relationship (e.g., intersection,
+// overlap, or containment). A non-positive value (either 0 or -1) indicates no interaction between
+// the segments.
+//
+// Note: `LSRCollinearDisjoint` is intentionally assigned a value of -1. This allows for a simple check
+// to determine whether the segments have any interaction by evaluating if `LineSegmentsRelationship > 0`.
+// `LSRCollinearDisjoint` specifically represents the case where the segments are collinear but
+// do not overlap or touch at any point, making it distinct from `LSRMiss`, which represents disjoint,
+// non-collinear segments.
+const (
+	LSRCollinearDisjoint LineSegmentsRelationship = iota - 1 // Segments are collinear and do not intersect, overlap, or touch at any point.
+	LSRMiss                                                  // The segments are not collinear, disjoint and do not intersect, overlap, or touch at any point.
+	LSRIntersects                                            // The segments intersect at a unique point that is not an endpoint.
+	LSRAeqC                                                  // Point A of segment AB coincides with Point C of segment CD
+	LSRAeqD                                                  // Point A of segment AB coincides with Point D of segment CD
+	LSRBeqC                                                  // Point End of segment AB coincides with Point C of segment CD
+	LSRBeqD                                                  // Point End of segment AB coincides with Point D of segment CD
+	LSRAonCD                                                 // Point A lies on LineSegment CD
+	LSRBonCD                                                 // Point End lies on LineSegment CD
+	LSRConAB                                                 // Point C lies on LineSegment AB
+	LSRDonAB                                                 // Point D lies on LineSegment AB
+	LSRCollinearAonCD                                        // Point A lies on LineSegment CD (partial overlap), and line segments are collinear
+	LSRCollinearBonCD                                        // Point End lies on LineSegment CD (partial overlap), and line segments are collinear
+	LSRCollinearABinCD                                       // Segment AB is fully contained within segment CD
+	LSRCollinearCDinAB                                       // Segment CD is fully contained within segment AB
+	LSRCollinearEqual                                        // The segments AB and CD are exactly equal, sharing both endpoints in the same locations.
+)
+
+// ScaleOrigin specifies the origin point from which a line segment should be scaled.
+//
+// The origin can be set to either the start point, the end point, or the midpoint
+// of the line segment. This allows for flexible scaling behavior depending on
+// the desired point of reference.
+type ScaleOrigin uint8
+
 const (
 	// ScaleFromStart scales the line segment from its start point.
 	// The start point remains fixed, while the end point is adjusted based on the scaling factor.
@@ -37,13 +88,6 @@ type LineSegment[T SignedNumber] struct {
 	start Point[T]
 	end   Point[T]
 }
-
-// ScaleOrigin specifies the origin point from which a line segment should be scaled.
-//
-// The origin can be set to either the start point, the end point, or the midpoint
-// of the line segment. This allows for flexible scaling behavior depending on
-// the desired point of reference.
-type ScaleOrigin uint8
 
 // AddLineSegment adds the start and end points of another line segment to this one.
 //
@@ -363,8 +407,8 @@ func (AB LineSegment[T]) Points() []Point[T] {
 // Reflect reflects the line segment across the specified axis or custom line.
 //
 // Parameters:
-//   - axis: ReflectionAxis - The axis or line to reflect across (XAxis, YAxis, or CustomLine).
-//   - line: Optional LineSegment[float64] - The line segment for CustomLine reflection.
+//   - axis: ReflectionAxis - The axis or line to reflect across (ReflectAcrossXAxis, ReflectAcrossYAxis, or ReflectAcrossCustomLine).
+//   - line: Optional LineSegment[float64] - The line segment for ReflectAcrossCustomLine reflection.
 //
 // Returns:
 //   - LineSegment[float64] - A new line segment where both endpoints are reflected accordingly.
@@ -372,23 +416,23 @@ func (AB LineSegment[T]) Points() []Point[T] {
 // Example usage:
 //
 //	segment := NewLineSegment[float64](NewPoint[float64](2, 3), NewPoint[float64](4, 5))
-//	reflected := segment.Reflect(XAxis) // Reflects both points across the x-axis.
+//	reflected := segment.Reflect(ReflectAcrossXAxis) // Reflects both points across the x-axis.
 func (AB LineSegment[float64]) Reflect(axis ReflectionAxis, line ...LineSegment[float64]) LineSegment[float64] {
 	var startReflected, endReflected Point[float64]
 	switch axis {
-	case XAxis:
+	case ReflectAcrossXAxis:
 		// Reflect across the x-axis
-		startReflected = AB.start.Reflect(XAxis)
-		endReflected = AB.end.Reflect(XAxis)
-	case YAxis:
+		startReflected = AB.start.Reflect(ReflectAcrossXAxis)
+		endReflected = AB.end.Reflect(ReflectAcrossXAxis)
+	case ReflectAcrossYAxis:
 		// Reflect across the y-axis
-		startReflected = AB.start.Reflect(YAxis)
-		endReflected = AB.end.Reflect(YAxis)
-	case CustomLine:
+		startReflected = AB.start.Reflect(ReflectAcrossYAxis)
+		endReflected = AB.end.Reflect(ReflectAcrossYAxis)
+	case ReflectAcrossCustomLine:
 		// Reflect across a custom line if provided
 		if len(line) > 0 {
-			startReflected = AB.start.Reflect(CustomLine, line[0])
-			endReflected = AB.end.Reflect(CustomLine, line[0])
+			startReflected = AB.start.Reflect(ReflectAcrossCustomLine, line[0])
+			endReflected = AB.end.Reflect(ReflectAcrossCustomLine, line[0])
 		} else {
 			// No custom line provided; return the original line segment unchanged
 			return AB
@@ -406,14 +450,14 @@ func (AB LineSegment[float64]) Reflect(axis ReflectionAxis, line ...LineSegment[
 //
 // This function evaluates the relationship between two line segments, `AB` and `CD`, by checking for
 // endpoint coincidences, intersections, collinear relationships, and containment. It returns a
-// `TwoLinesRelationship` constant that describes the exact relationship between the segments, such
+// `LineSegmentsRelationship` constant that describes the exact relationship between the segments, such
 // as intersection, partial overlap, or full containment.
 //
 // Parameters:
 //   - CD: LineSegment[T] - The line segment to compare with `AB`.
 //
 // Returns:
-//   - TwoLinesRelationship - A constant that describes the relationship between segments `AB` and `CD`.
+//   - LineSegmentsRelationship - A constant that describes the relationship between segments `AB` and `CD`.
 //
 // Possible return values:
 //   - LSRCollinearDisjoint: The segments are collinear but do not overlap or touch at any point.
@@ -440,7 +484,7 @@ func (AB LineSegment[float64]) Reflect(axis ReflectionAxis, line ...LineSegment[
 //   - `AB` and `CD` are Collinear
 //   - `A` lies on `CD`
 //   - `AB` and `CD` don't fully overlap.
-func (AB LineSegment[T]) RelationshipToLineSegment(CD LineSegment[T]) TwoLinesRelationship {
+func (AB LineSegment[T]) RelationshipToLineSegment(CD LineSegment[T]) LineSegmentsRelationship {
 
 	// Check if segments are exactly equal
 	if (AB.start.Eq(CD.start) && AB.end.Eq(CD.end)) || (AB.start.Eq(CD.end) && AB.end.Eq(CD.start)) {
@@ -500,7 +544,7 @@ func (AB LineSegment[T]) RelationshipToLineSegment(CD LineSegment[T]) TwoLinesRe
 		}
 	}
 
-	// Collinear cases: All orientations are zero
+	// PointsCollinear cases: All orientations are zero
 	if o1 == 0 && o2 == 0 && o3 == 0 && o4 == 0 {
 		// Check if segments are collinear and disjoint
 		if !AB.start.IsOnLineSegment(CD) && !AB.end.IsOnLineSegment(CD) &&

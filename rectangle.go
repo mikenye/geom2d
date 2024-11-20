@@ -1,3 +1,16 @@
+// File rectangle.go defines the Rectangle type and implements methods for operations on axis-aligned rectangles in 2D space.
+//
+// This file includes the definition of the Rectangle type, which represents a rectangular region aligned with the
+// coordinate axes. It provides methods for common operations such as calculating area and perimeter,
+// determining if a point lies within the rectangle, and testing intersections with other geometric shapes.
+//
+// Functions and methods in this file support:
+// - Calculating properties of rectangles, such as area, perimeter, and corners.
+// - Testing spatial relationships, such as containment and intersection, with points and other rectangles.
+// - Performing geometric transformations, such as translation and scaling, on rectangles.
+//
+// The Rectangle type is a key geometric primitive in the geom2d package, optimized for axis-aligned operations.
+
 package geom2d
 
 import (
@@ -169,7 +182,7 @@ func (r Rectangle[T]) LineSegmentEntersAndExits(segment LineSegment[T]) bool {
 		NewLineSegment(NewPoint(r.topLeft.x, r.bottomRight.y), r.topLeft),     // Left edge
 	}
 
-	var rel TwoLinesRelationship
+	var rel LineSegmentsRelationship
 	for _, edge := range edges {
 
 		// Check for intersections or an endpoint lying on an edge without full overlap.
@@ -200,7 +213,7 @@ func (r Rectangle[T]) LineSegmentIntersectsEdges(segment LineSegment[T]) bool {
 		NewLineSegment(NewPoint(r.topLeft.x, r.bottomRight.y), r.topLeft),     // Left edge
 	}
 
-	var rel TwoLinesRelationship
+	var rel LineSegmentsRelationship
 	for _, edge := range edges {
 		rel = segment.RelationshipToLineSegment(edge)
 		switch rel {
@@ -239,8 +252,8 @@ func (r Rectangle[T]) Points() []Point[T] {
 // touches vertices or edges, or intersects the rectangle in different ways.
 //
 // Returns:
-//   - RectangleSegmentRelationship: Enum value describing the relationship of the segment to the rectangle.
-func (r Rectangle[T]) RelationshipToLineSegment(segment LineSegment[T]) RectangleSegmentRelationship {
+//   - RectangleLineSegmentRelationship: Enum value describing the relationship of the segment to the rectangle.
+func (r Rectangle[T]) RelationshipToLineSegment(segment LineSegment[T]) RectangleLineSegmentRelationship {
 	// Determine relationships of each endpoint of the segment to the rectangle
 	startRelationship := r.RelationshipToPoint(segment.start)
 	endRelationship := r.RelationshipToPoint(segment.end)
@@ -249,13 +262,13 @@ func (r Rectangle[T]) RelationshipToLineSegment(segment LineSegment[T]) Rectangl
 	if segment.start == segment.end {
 		switch startRelationship {
 		case PRRInside:
-			return RSRInside
+			return RLRInside
 		case PRROnVertex:
-			return RSROutsideEndTouchesVertex
+			return RLROutsideEndTouchesVertex
 		case PRROnEdge:
-			return RSROutsideEndTouchesEdge
+			return RLROutsideEndTouchesEdge
 		default:
-			return RSROutside
+			return RLROutside
 		}
 	}
 
@@ -268,102 +281,102 @@ func (r Rectangle[T]) RelationshipToLineSegment(segment LineSegment[T]) Rectangl
 	}
 
 	// Identify relationships with each edge
-	edgeRelationships := make([]TwoLinesRelationship, len(edges))
+	edgeRelationships := make([]LineSegmentsRelationship, len(edges))
 	for i, edge := range edges {
 		edgeRelationships[i] = edge.RelationshipToLineSegment(segment)
 	}
 
 	// Check if segment enters and exists
-	if countOccurrences(edgeRelationships, LSRAonCD) >= 1 &&
-		countOccurrences(edgeRelationships, LSRBonCD) >= 1 &&
+	if countOccurrencesInSlice(edgeRelationships, LSRAonCD) >= 1 &&
+		countOccurrencesInSlice(edgeRelationships, LSRBonCD) >= 1 &&
 		startRelationship == PRROutside && endRelationship == PRROutside {
-		return RSREntersAndExits
+		return RLREntersAndExits
 	}
 
 	// Check if segment fully inside
-	if adjoiningEdges(edgeRelationships, LSRAeqC, LSRBeqD) &&
-		adjoiningEdges(edgeRelationships, LSRAeqD, LSRBeqC) &&
+	if adjacentInSlice(edgeRelationships, LSRAeqC, LSRBeqD) &&
+		adjacentInSlice(edgeRelationships, LSRAeqD, LSRBeqC) &&
 		startRelationship == PRROnVertex && endRelationship == PRROnVertex {
-		return RSRInsideEndTouchesVertex
+		return RLRInsideEndTouchesVertex
 	}
 
 	// Check if segment is inside, with one end on an edge
-	if countOccurrences(edgeRelationships, LSRMiss) == 3 &&
-		(countOccurrences(edgeRelationships, LSRDonAB) == 1 ||
-			countOccurrences(edgeRelationships, LSRConAB) == 1) &&
+	if countOccurrencesInSlice(edgeRelationships, LSRMiss) == 3 &&
+		(countOccurrencesInSlice(edgeRelationships, LSRDonAB) == 1 ||
+			countOccurrencesInSlice(edgeRelationships, LSRConAB) == 1) &&
 		((startRelationship == PRROnEdge && endRelationship == PRRInside) ||
 			(startRelationship == PRRInside && endRelationship == PRROnEdge)) {
-		return RSRInsideEndTouchesEdge
+		return RLRInsideEndTouchesEdge
 	}
 
 	// Check if segment is fully outside
-	if countOccurrences(edgeRelationships, LSRMiss) == len(edges) &&
+	if countOccurrencesInSlice(edgeRelationships, LSRMiss) == len(edges) &&
 		startRelationship == PRROutside && endRelationship == PRROutside {
-		return RSROutside
+		return RLROutside
 	}
 
 	// Check if the segment lies entirely on an edge
-	if countOccurrences(edgeRelationships, LSRCollinearEqual) == 1 {
+	if countOccurrencesInSlice(edgeRelationships, LSRCollinearEqual) == 1 {
 		if r.IsLineSegmentOnEdgeWithEndTouchingVertex(segment) {
-			return RSROnEdgeEndTouchesVertex
+			return RLROnEdgeEndTouchesVertex
 		}
-		return RSROnEdge
+		return RLROnEdge
 	}
-	if countOccurrences(edgeRelationships, LSRCollinearCDinAB) == 1 &&
-		countOccurrences(edgeRelationships, LSRMiss) == 3 &&
+	if countOccurrencesInSlice(edgeRelationships, LSRCollinearCDinAB) == 1 &&
+		countOccurrencesInSlice(edgeRelationships, LSRMiss) == 3 &&
 		startRelationship == PRROnEdge && endRelationship == PRROnEdge {
-		return RSROnEdge
+		return RLROnEdge
 	}
 
 	// Check if the segment intersects the rectangle through one or more edges
-	intersectionCount := countOccurrences(edgeRelationships, LSRIntersects)
+	intersectionCount := countOccurrencesInSlice(edgeRelationships, LSRIntersects)
 	if intersectionCount == 1 {
-		return RSRIntersects
+		return RLRIntersects
 	} else if intersectionCount > 1 {
-		return RSREntersAndExits
+		return RLREntersAndExits
 	}
 
 	// Check if one endpoint is on an edge and the other is outside
-	if countOccurrences(edgeRelationships, LSRConAB) == 1 && endRelationship == PRROutside {
-		return RSROutsideEndTouchesEdge
-	} else if countOccurrences(edgeRelationships, LSRDonAB) == 1 && startRelationship == PRROutside {
-		return RSROutsideEndTouchesEdge
+	if countOccurrencesInSlice(edgeRelationships, LSRConAB) == 1 && endRelationship == PRROutside {
+		return RLROutsideEndTouchesEdge
+	} else if countOccurrencesInSlice(edgeRelationships, LSRDonAB) == 1 && startRelationship == PRROutside {
+		return RLROutsideEndTouchesEdge
 	}
 
 	// Check if one endpoint is on a vertex and the other is inside or outside
-	if countOccurrences(edgeRelationships, LSRAeqC) == 1 && adjoiningEdges(edgeRelationships, LSRAeqC, LSRBeqC) {
+	if countOccurrencesInSlice(edgeRelationships, LSRAeqC) == 1 && adjacentInSlice(edgeRelationships, LSRAeqC, LSRBeqC) {
 		if endRelationship == PRRInside {
-			return RSRInsideEndTouchesVertex
+			return RLRInsideEndTouchesVertex
 		}
-		return RSROutsideEndTouchesVertex
-	} else if countOccurrences(edgeRelationships, LSRAeqD) == 1 && adjoiningEdges(edgeRelationships, LSRAeqD, LSRBeqD) {
+		return RLROutsideEndTouchesVertex
+	} else if countOccurrencesInSlice(edgeRelationships, LSRAeqD) == 1 && adjacentInSlice(edgeRelationships, LSRAeqD, LSRBeqD) {
 		if startRelationship == PRRInside {
-			return RSRInsideEndTouchesVertex
+			return RLRInsideEndTouchesVertex
 		}
-		return RSROutsideEndTouchesVertex
+		return RLROutsideEndTouchesVertex
 	}
-	if countOccurrences(edgeRelationships, LSRMiss) == 2 &&
-		adjoiningEdges(edgeRelationships, LSRAonCD, LSRBonCD) &&
+	if countOccurrencesInSlice(edgeRelationships, LSRMiss) == 2 &&
+		adjacentInSlice(edgeRelationships, LSRAonCD, LSRBonCD) &&
 		((startRelationship == PRROutside && endRelationship == PRRInside) ||
 			(startRelationship == PRRInside && endRelationship == PRROutside)) {
-		return RSRIntersects
+		return RLRIntersects
 	}
 
-	if countOccurrences(edgeRelationships, LSRMiss) == 2 &&
-		(adjoiningEdges(edgeRelationships, LSRAonCD, LSRCollinearBonCD) ||
-			adjoiningEdges(edgeRelationships, LSRBonCD, LSRCollinearAonCD)) &&
+	if countOccurrencesInSlice(edgeRelationships, LSRMiss) == 2 &&
+		(adjacentInSlice(edgeRelationships, LSRAonCD, LSRCollinearBonCD) ||
+			adjacentInSlice(edgeRelationships, LSRBonCD, LSRCollinearAonCD)) &&
 		((startRelationship == PRROnEdge && endRelationship == PRROutside) ||
 			(startRelationship == PRROutside && endRelationship == PRROnEdge)) {
-		return RSROutsideEndTouchesEdge
+		return RLROutsideEndTouchesEdge
 	}
 
 	// If both endpoints are inside
 	if startRelationship == PRRInside && endRelationship == PRRInside &&
-		countOccurrences(edgeRelationships, LSRMiss) == len(edges) {
-		return RSRInside
+		countOccurrencesInSlice(edgeRelationships, LSRMiss) == len(edges) {
+		return RLRInside
 	}
 
-	return RSROutside
+	return RLROutside
 }
 
 // RelationshipToPoint determines the relationship of a point to the rectangle.

@@ -703,34 +703,34 @@ func TestPoint_Reflect(t *testing.T) {
 	tests := map[string]struct {
 		point    Point[float64]       // The point to reflect
 		axis     ReflectionAxis       // The axis or line type for reflection
-		line     LineSegment[float64] // Custom line segment for CustomLine reflection
+		line     LineSegment[float64] // Custom line segment for ReflectAcrossCustomLine reflection
 		expected Point[float64]       // Expected reflected point
 	}{
 		"reflect across x-axis": {
 			point:    NewPoint[float64](3, 4),
-			axis:     XAxis,
+			axis:     ReflectAcrossXAxis,
 			expected: NewPoint[float64](3, -4),
 		},
 		"reflect across y-axis": {
 			point:    NewPoint[float64](3, 4),
-			axis:     YAxis,
+			axis:     ReflectAcrossYAxis,
 			expected: NewPoint[float64](-3, 4),
 		},
-		"reflect across y = x line (CustomLine)": {
+		"reflect across y = x line (ReflectAcrossCustomLine)": {
 			point:    NewPoint[float64](3, 4),
-			axis:     CustomLine,
+			axis:     ReflectAcrossCustomLine,
 			line:     NewLineSegment[float64](NewPoint[float64](0, 0), NewPoint[float64](1, 1)),
 			expected: NewPoint[float64](4, 3),
 		},
-		"reflect across y = -x line (CustomLine)": {
+		"reflect across y = -x line (ReflectAcrossCustomLine)": {
 			point:    NewPoint[float64](3, 4),
-			axis:     CustomLine,
+			axis:     ReflectAcrossCustomLine,
 			line:     NewLineSegment[float64](NewPoint[float64](0, 0), NewPoint[float64](-1, 1)),
 			expected: NewPoint[float64](-4, -3),
 		},
 		"reflect across degenerate line segment": {
 			point:    NewPoint[float64](3, 4),
-			axis:     CustomLine,
+			axis:     ReflectAcrossCustomLine,
 			line:     NewLineSegment[float64](NewPoint[float64](1, 1), NewPoint[float64](1, 1)), // Degenerate line
 			expected: NewPoint[float64](3, 4),                                                   // Expect the point to remain unchanged
 		},
@@ -739,8 +739,8 @@ func TestPoint_Reflect(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			var result Point[float64]
-			if tt.axis == CustomLine {
-				result = tt.point.Reflect(CustomLine, tt.line)
+			if tt.axis == ReflectAcrossCustomLine {
+				result = tt.point.Reflect(ReflectAcrossCustomLine, tt.line)
 			} else {
 				result = tt.point.Reflect(tt.axis)
 			}
@@ -750,9 +750,9 @@ func TestPoint_Reflect(t *testing.T) {
 		})
 	}
 
-	t.Run("CustomLine with no given line segment", func(t *testing.T) {
+	t.Run("ReflectAcrossCustomLine with no given line segment", func(t *testing.T) {
 		point := NewPoint[float64](3, 4)
-		result := point.Reflect(CustomLine)
+		result := point.Reflect(ReflectAcrossCustomLine)
 		assert.Equal(t, point, result, 0.001)
 	})
 
@@ -1495,37 +1495,37 @@ func TestOrientation(t *testing.T) {
 			p0:       NewPoint[int](0, 0),
 			p1:       NewPoint[int](10, 10),
 			p2:       NewPoint[int](10, 0),
-			expected: Clockwise,
+			expected: PointsClockwise,
 		},
 		"int: (0,0), (10,0), (10,10)": {
 			p0:       NewPoint[int](0, 0),
 			p1:       NewPoint[int](10, 0),
 			p2:       NewPoint[int](10, 10),
-			expected: CounterClockwise,
+			expected: PointsCounterClockwise,
 		},
 		"int: (0,0), (10,0), (20,0)": {
 			p0:       NewPoint[int](0, 0),
 			p1:       NewPoint[int](10, 0),
 			p2:       NewPoint[int](20, 0),
-			expected: Collinear,
+			expected: PointsCollinear,
 		},
 		"float64: (0,0), (10,10), (10,0)": {
 			p0:       NewPoint[float64](0, 0),
 			p1:       NewPoint[float64](10, 10),
 			p2:       NewPoint[float64](10, 0),
-			expected: Clockwise,
+			expected: PointsClockwise,
 		},
 		"float64: (0,0), (10,0), (10,10)": {
 			p0:       NewPoint[float64](0, 0),
 			p1:       NewPoint[float64](10, 0),
 			p2:       NewPoint[float64](10, 10),
-			expected: CounterClockwise,
+			expected: PointsCounterClockwise,
 		},
 		"float64: (0,0), (10,0), (20,0)": {
 			p0:       NewPoint[float64](0, 0),
 			p1:       NewPoint[float64](10, 0),
 			p2:       NewPoint[float64](20, 0),
-			expected: Collinear,
+			expected: PointsCollinear,
 		},
 	}
 	for name, tt := range tests {
