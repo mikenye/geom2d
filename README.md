@@ -21,6 +21,7 @@ Geom2D aims to provide a robust, flexible, and efficient implementation of 2D ge
 Detailed installation instructions, usage examples, and API documentation will be provided as the library approaches stability. For now, explore the codebase and experiment with the provided types and methods.
 
 ### **Example: Working with Generics**
+
 ```go
 package main
 

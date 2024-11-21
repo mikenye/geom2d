@@ -591,35 +591,35 @@ func TestLineSegment_Reflect(t *testing.T) {
 	}{
 		"reflect across x-axis": {
 			segment:  NewLineSegment(NewPoint[float64](2, 3), NewPoint[float64](4, 5)),
-			axis:     XAxis,
+			axis:     ReflectAcrossXAxis,
 			expected: NewLineSegment(NewPoint[float64](2, -3), NewPoint[float64](4, -5)),
 		},
 		"reflect across y-axis": {
 			segment:  NewLineSegment(NewPoint[float64](2, 3), NewPoint[float64](4, 5)),
-			axis:     YAxis,
+			axis:     ReflectAcrossYAxis,
 			expected: NewLineSegment(NewPoint[float64](-2, 3), NewPoint[float64](-4, 5)),
 		},
-		"reflect across y = x line (CustomLine)": {
+		"reflect across y = x line (ReflectAcrossCustomLine)": {
 			segment:  NewLineSegment(NewPoint[float64](3, 4), NewPoint[float64](6, 7)),
-			axis:     CustomLine,
+			axis:     ReflectAcrossCustomLine,
 			line:     []LineSegment[float64]{NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](1, 1))},
 			expected: NewLineSegment(NewPoint[float64](4, 3), NewPoint[float64](7, 6)),
 		},
-		"reflect across y = -x line (CustomLine)": {
+		"reflect across y = -x line (ReflectAcrossCustomLine)": {
 			segment:  NewLineSegment(NewPoint[float64](3, 4), NewPoint[float64](6, 7)),
-			axis:     CustomLine,
+			axis:     ReflectAcrossCustomLine,
 			line:     []LineSegment[float64]{NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](-1, 1))},
 			expected: NewLineSegment(NewPoint[float64](-4, -3), NewPoint[float64](-7, -6)),
 		},
-		"reflect across degenerate line (CustomLine)": {
+		"reflect across degenerate line (ReflectAcrossCustomLine)": {
 			segment:  NewLineSegment(NewPoint[float64](3, 4), NewPoint[float64](6, 7)),
-			axis:     CustomLine,
+			axis:     ReflectAcrossCustomLine,
 			line:     []LineSegment[float64]{NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](1, 1))}, // Degenerate line
 			expected: NewLineSegment(NewPoint[float64](3, 4), NewPoint[float64](6, 7)),                         // Expect unchanged segment
 		},
-		"no custom line provided (CustomLine)": {
+		"no custom line provided (ReflectAcrossCustomLine)": {
 			segment:  NewLineSegment(NewPoint[float64](3, 4), NewPoint[float64](6, 7)),
-			axis:     CustomLine,
+			axis:     ReflectAcrossCustomLine,
 			line:     nil,                                                              // No custom line provided
 			expected: NewLineSegment(NewPoint[float64](3, 4), NewPoint[float64](6, 7)), // Expect unchanged segment
 		},
@@ -633,10 +633,10 @@ func TestLineSegment_Reflect(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			var result LineSegment[float64]
-			if tt.axis == CustomLine && len(tt.line) > 0 {
-				result = tt.segment.Reflect(CustomLine, tt.line[0])
-			} else if tt.axis == CustomLine {
-				result = tt.segment.Reflect(CustomLine)
+			if tt.axis == ReflectAcrossCustomLine && len(tt.line) > 0 {
+				result = tt.segment.Reflect(ReflectAcrossCustomLine, tt.line[0])
+			} else if tt.axis == ReflectAcrossCustomLine {
+				result = tt.segment.Reflect(ReflectAcrossCustomLine)
 			} else {
 				result = tt.segment.Reflect(tt.axis)
 			}
@@ -651,8 +651,8 @@ func TestLineSegment_Reflect(t *testing.T) {
 
 func TestLineSegment_RelationshipToLineSegment(t *testing.T) {
 	tests := map[string]struct {
-		AB, CD   any                  // Supports both LineSegment[int] and LineSegment[float64]
-		expected TwoLinesRelationship // Expected result
+		AB, CD   any                      // Supports both LineSegment[int] and LineSegment[float64]
+		expected LineSegmentsRelationship // Expected result
 	}{
 		// Disjoint cases
 		"Disjoint non-collinear (int)": {

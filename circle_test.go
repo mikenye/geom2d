@@ -305,62 +305,62 @@ func TestCircle_RelationshipToLineSegment(t *testing.T) {
 	tests := map[string]struct {
 		segment  LineSegment[float64]
 		circle   Circle[float64]
-		expected CircleSegmentRelationship
+		expected CircleLineSegmentRelationship
 	}{
 		"segment completely inside circle": {
 			segment:  NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](2, 2)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			expected: CSRInside,
+			expected: CLRInside,
 		},
 		"segment completely outside circle": {
 			segment:  NewLineSegment(NewPoint[float64](10, 10), NewPoint[float64](15, 15)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			expected: CSROutside,
+			expected: CLROutside,
 		},
 		"segment intersects circle at two points": {
 			segment:  NewLineSegment(NewPoint[float64](-6, 0), NewPoint[float64](6, 0)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			expected: CSRIntersecting,
+			expected: CLRIntersecting,
 		},
 		"segment is tangent to circle": {
 			segment:  NewLineSegment(NewPoint[float64](5, -5), NewPoint[float64](5, 5)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			expected: CSRTangent,
+			expected: CLRTangent,
 		},
 		"segment partially inside circle": {
 			segment:  NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](10, 10)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			expected: CSRIntersecting,
+			expected: CLRIntersecting,
 		},
 		"segment with one endpoint on circumference and other outside": {
 			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](10, 10)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			expected: CSROneEndOnCircumferenceOutside,
+			expected: CLROneEndOnCircumferenceOutside,
 		},
 		"segment with one endpoint on circumference and other inside": {
 			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](2, 2)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			expected: CSROneEndOnCircumferenceInside,
+			expected: CLROneEndOnCircumferenceInside,
 		},
 		"segment with both endpoints on circumference": {
 			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](-5, 0)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			expected: CSRBothEndsOnCircumference,
+			expected: CLRBothEndsOnCircumference,
 		},
 		"degenerate segment inside circle": {
 			segment:  NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](1, 1)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			expected: CSRInside,
+			expected: CLRInside,
 		},
 		"degenerate segment on circle boundary": {
 			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](5, 0)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			expected: CSRBothEndsOnCircumference,
+			expected: CLRBothEndsOnCircumference,
 		},
 		"degenerate segment outside circle": {
 			segment:  NewLineSegment(NewPoint[float64](10, 10), NewPoint[float64](10, 10)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			expected: CSROutside,
+			expected: CLROutside,
 		},
 	}
 
@@ -381,22 +381,22 @@ func TestCircle_RelationshipToPoint(t *testing.T) {
 		"point inside circle": {
 			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
 			point:    NewPoint[float64](-3.0, -2.0),
-			expected: Inside,
+			expected: PCRInside,
 		},
 		"point on circle boundary": {
 			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
 			point:    NewPoint[float64](3.0, 4.0),
-			expected: OnCircumference,
+			expected: PCROnCircumference,
 		},
 		"point outside circle": {
 			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
 			point:    NewPoint[float64](6.0, 8.0),
-			expected: Outside,
+			expected: PCROutside,
 		},
 		"point at center of circle": {
 			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
 			point:    NewPoint[float64](0.0, 0.0),
-			expected: Inside,
+			expected: PCRInside,
 		},
 	}
 

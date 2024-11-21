@@ -13,16 +13,22 @@ import (
 	"slices"
 )
 
+// PointOrientation represents the relative orientation of three points in a two-dimensional plane.
+// It describes whether the points are collinear, form a clockwise turn, or form a counterclockwise turn.
+// This type is commonly used in computational geometry algorithms to determine the spatial relationship
+// between points in relation to each other.
+type PointOrientation uint8
+
 // Valid values for PointOrientation.
 const (
-	// Collinear indicates that the points are collinear, meaning they lie on a single straight line.
-	Collinear = PointOrientation(iota)
+	// PointsCollinear indicates that the points are collinear, meaning they lie on a single straight line.
+	PointsCollinear = PointOrientation(iota)
 
-	// Clockwise indicates that the points are arranged in a clockwise orientation.
-	Clockwise
+	// PointsClockwise indicates that the points are arranged in a clockwise orientation.
+	PointsClockwise
 
-	// CounterClockwise indicates that the points are arranged in a counterclockwise orientation.
-	CounterClockwise
+	// PointsCounterClockwise indicates that the points are arranged in a counterclockwise orientation.
+	PointsCounterClockwise
 )
 
 // Point represents a point in two-dimensional space with x and y coordinates of a generic numeric type T.
@@ -43,12 +49,6 @@ type Point[T SignedNumber] struct {
 	x T
 	y T
 }
-
-// PointOrientation represents the relative orientation of three points in a two-dimensional plane.
-// It describes whether the points are collinear, form a clockwise turn, or form a counterclockwise turn.
-// This type is commonly used in computational geometry algorithms to determine the spatial relationship
-// between points in relation to each other.
-type PointOrientation uint8
 
 // Add returns a new Point that represents the sum of the calling Point p and another Point q.
 // Each coordinate of the result is the sum of the corresponding coordinates of p and q.
@@ -279,7 +279,7 @@ func (p Point[T]) Eq(q Point[T]) bool {
 func (p Point[T]) IsOnLineSegment(l LineSegment[T]) bool {
 
 	// Check collinearity first; if not collinear, point is not on the line segment
-	if Orientation(p, l.start, l.end) != Collinear {
+	if Orientation(p, l.start, l.end) != PointsCollinear {
 		return false
 	}
 
@@ -339,8 +339,8 @@ func (p Point[T]) ProjectOntoLineSegment(l LineSegment[T]) Point[float64] {
 // Reflect reflects the point across the specified axis or custom line.
 //
 // Parameters:
-//   - axis: Axis - The axis of reflection (XAxis, YAxis, or CustomLine).
-//   - line: Optional LineSegment[T] - The line for CustomLine reflection.
+//   - axis: Axis - The axis of reflection (ReflectAcrossXAxis, ReflectAcrossYAxis, or ReflectAcrossCustomLine).
+//   - line: Optional LineSegment[T] - The line for ReflectAcrossCustomLine reflection.
 //
 // Returns:
 //   - Point[float64] - A new point representing the reflection of the original point.
@@ -348,16 +348,16 @@ func (p Point[T]) ProjectOntoLineSegment(l LineSegment[T]) Point[float64] {
 // Example usage:
 //
 //	p := NewPoint(3, 4)
-//	reflectedX := p.Reflect(XAxis)               // Reflect across x-axis: (3, -4)
+//	reflectedX := p.Reflect(ReflectAcrossXAxis)               // Reflect across x-axis: (3, -4)
 //	customLine := NewLineSegment(NewPoint(0, 0), NewPoint(1, 1))
-//	reflectedLine := p.Reflect(CustomLine, customLine) // Reflect across y = x
+//	reflectedLine := p.Reflect(ReflectAcrossCustomLine, customLine) // Reflect across y = x
 func (p Point[float64]) Reflect(axis ReflectionAxis, line ...LineSegment[float64]) Point[float64] {
 	switch axis {
-	case XAxis:
+	case ReflectAcrossXAxis:
 		return NewPoint(p.x, -p.y)
-	case YAxis:
+	case ReflectAcrossYAxis:
 		return NewPoint(-p.x, p.y)
-	case CustomLine:
+	case ReflectAcrossCustomLine:
 		if len(line) == 0 {
 			// If no line is provided, return the point unchanged or handle the error
 			return p
@@ -685,7 +685,7 @@ func ConvexHull[T SignedNumber](points ...Point[T]) []Point[T] {
 		pt1 = points[pt1Index]
 		pt2 = points[pt2Index]
 		o := Orientation(pt0, pt1, pt2)
-		if o == Clockwise {
+		if o == PointsClockwise {
 			points = slices.Delete(points, pt1Index, pt1Index+1)
 			pt0Index -= 3
 			if pt0Index < 0 {
@@ -756,25 +756,25 @@ func NewPointFromImagePoint(q image.Point) Point[int] {
 // Returns:
 //
 // PointOrientation: A constant indicating the relative orientation of the points:
-//   - CounterClockwise if the points form a counterclockwise turn,
-//   - Clockwise if the points form a clockwise turn,
-//   - Collinear if the points are collinear (lie on a single line).
+//   - PointsCounterClockwise if the points form a counterclockwise turn,
+//   - PointsClockwise if the points form a clockwise turn,
+//   - PointsCollinear if the points are collinear (lie on a single line).
 //
 // Example Usage:
 //
 //	p0 := NewPoint(0, 0)
 //	p1 := NewPoint(1, 1)
 //	p2 := NewPoint(2, 0)
-//	orientation := Orientation(p0, p1, p2) // orientation will be Clockwise in this case
+//	orientation := Orientation(p0, p1, p2) // orientation will be PointsClockwise in this case
 func Orientation[T SignedNumber](p0, p1, p2 Point[T]) PointOrientation {
 	area2x := triangleAreaX2Signed(p0, p1, p2)
 	switch {
 	case area2x < 0:
-		return Clockwise
+		return PointsClockwise
 	case area2x > 0:
-		return CounterClockwise
+		return PointsCounterClockwise
 	default: // area2x == 0
-		return Collinear
+		return PointsCollinear
 	}
 }
 

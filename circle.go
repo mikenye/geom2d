@@ -152,17 +152,17 @@ func (c Circle[T]) Radius() T {
 //   - AB: The line segment to analyze.
 //
 // Returns:
-//   - CircleSegmentRelationship: An enum value indicating the relationship.
+//   - CircleLineSegmentRelationship: An enum value indicating the relationship.
 //
 // Possible Relationships:
-//   - CSROutside: The segment lies entirely outside the circle.
-//   - CSRInside: The segment lies entirely within the circle.
-//   - CSRIntersecting: The segment intersects the circle at two points.
-//   - CSRTangent: The segment is tangent to the circle, touching it at exactly one point.
-//   - CSROneEndOnCircumferenceOutside: One endpoint is on the circle's boundary, and the other is outside.
-//   - CSROneEndOnCircumferenceInside: One endpoint is on the circle's boundary, and the other is inside.
-//   - CSRBothEndsOnCircumference: Both endpoints lie on the circle's boundary.
-func (c Circle[T]) RelationshipToLineSegment(AB LineSegment[T]) CircleSegmentRelationship {
+//   - CLROutside: The segment lies entirely outside the circle.
+//   - CLRInside: The segment lies entirely within the circle.
+//   - CLRIntersecting: The segment intersects the circle at two points.
+//   - CLRTangent: The segment is tangent to the circle, touching it at exactly one point.
+//   - CLROneEndOnCircumferenceOutside: One endpoint is on the circle's boundary, and the other is outside.
+//   - CLROneEndOnCircumferenceInside: One endpoint is on the circle's boundary, and the other is inside.
+//   - CLRBothEndsOnCircumference: Both endpoints lie on the circle's boundary.
+func (c Circle[T]) RelationshipToLineSegment(AB LineSegment[T]) CircleLineSegmentRelationship {
 	const epsilon = 1e-9 // Tolerance for floating-point comparisons
 
 	// Calculate distances from the circle's center to the line segment's endpoints
@@ -171,22 +171,22 @@ func (c Circle[T]) RelationshipToLineSegment(AB LineSegment[T]) CircleSegmentRel
 
 	// Check if both endpoints are within the circle's radius
 	if distStart < float64(c.radius) && distEnd < float64(c.radius) {
-		return CSRInside
+		return CLRInside
 	}
 
 	// Check if both endpoints are exactly on the boundary
 	if math.Abs(distStart-float64(c.radius)) < epsilon && math.Abs(distEnd-float64(c.radius)) < epsilon {
-		return CSRBothEndsOnCircumference
+		return CLRBothEndsOnCircumference
 	}
 
 	// Check if one endpoint is on the boundary
 	if math.Abs(distStart-float64(c.radius)) < epsilon || math.Abs(distEnd-float64(c.radius)) < epsilon {
 		if distStart < float64(c.radius) || distEnd < float64(c.radius) {
 			// One endpoint is on the circumference, and the other is inside
-			return CSROneEndOnCircumferenceInside
+			return CLROneEndOnCircumferenceInside
 		} else {
 			// One endpoint is on the circumference, and the other is outside
-			return CSROneEndOnCircumferenceOutside
+			return CLROneEndOnCircumferenceOutside
 		}
 	}
 
@@ -207,15 +207,15 @@ func (c Circle[T]) RelationshipToLineSegment(AB LineSegment[T]) CircleSegmentRel
 		isPerpendicular := math.Abs(segmentDirection.AsFloat().DotProduct(radiusVector)) < epsilon
 
 		if math.Abs(closestDistance-float64(c.radius)) < epsilon && isPerpendicular {
-			return CSRTangent
+			return CLRTangent
 		}
 
 		// Otherwise, it's intersecting
-		return CSRIntersecting
+		return CLRIntersecting
 	}
 
 	// If none of the conditions are met, the segment is outside the circle
-	return CSROutside
+	return CLROutside
 }
 
 // RelationshipToPoint determines the relationship of a given point to the circle.
@@ -232,16 +232,16 @@ func (c Circle[T]) RelationshipToLineSegment(AB LineSegment[T]) CircleSegmentRel
 //
 //	c := NewCircle(NewPoint(0.0, 0.0), 5.0)
 //	point := NewPoint(3.0, 4.0)
-//	relationship := c.RelationshipToPoint(point) // Returns Inside since (3, 4) is within radius 5
+//	relationship := c.RelationshipToPoint(point) // Returns PCRInside since (3, 4) is within radius 5
 func (c Circle[T]) RelationshipToPoint(p Point[T]) PointCircleRelationship {
 	distance := c.center.DistanceToPoint(p)
 	switch {
 	case distance < float64(c.radius):
-		return Inside
+		return PCRInside
 	case distance == float64(c.radius):
-		return OnCircumference
+		return PCROnCircumference
 	default:
-		return Outside
+		return PCROutside
 	}
 }
 
