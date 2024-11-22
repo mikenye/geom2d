@@ -1218,8 +1218,8 @@ func TestEnsureClockwise(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			result := EnsureClockwise(tt.points)
-			assert.Equal(t, tt.expected, result)
+			EnsureClockwise(tt.points)
+			assert.Equal(t, tt.expected, tt.points)
 		})
 	}
 }
@@ -1241,8 +1241,8 @@ func TestEnsureCounterClockwise(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			result := EnsureCounterClockwise(tt.points)
-			assert.Equal(t, tt.expected, result)
+			EnsureCounterClockwise(tt.points)
+			assert.Equal(t, tt.expected, tt.points)
 		})
 	}
 }

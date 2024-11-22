@@ -697,20 +697,83 @@ func ConvexHull[T SignedNumber](points ...Point[T]) []Point[T] {
 	return points
 }
 
-func EnsureClockwise[T SignedNumber](points []Point[T]) []Point[T] {
+// EnsureClockwise ensures that a slice of points representing a polygon is ordered in a clockwise direction.
+//
+// This function checks the orientation of the points based on the signed area of the polygon.
+// If the signed area is positive, indicating a counterclockwise orientation, the function reverses
+// the order of the points (in-place) to make them clockwise. If the points are already clockwise, no changes are made.
+//
+// Parameters:
+//   - points []Point[T]: A slice of points representing the vertices of a polygon. The points are assumed
+//     to form a closed loop or define a valid polygon.
+//
+// Behavior:
+//   - Calculates the signed area of the polygon using SignedArea2X.
+//   - If the signed area is positive (counterclockwise orientation), reverses the order of the points.
+//   - If the signed area is negative or zero (already clockwise or degenerate polygon), does nothing.
+//
+// Notes:
+//   - This function modifies the input slice of points in place.
+//   - A zero area polygon is considered already clockwise and is left unchanged.
+//
+// Example:
+//
+//	points := []Point[float64]{
+//	    {X: 0, Y: 0},
+//	    {X: 4, Y: 0},
+//	    {X: 4, Y: 4},
+//	}
+//	EnsureClockwise(points)
+//	// points is now ordered in a clockwise direction.
+//
+// Dependencies:
+//   - This function uses SignedArea2X to compute the signed area of the polygon.
+//   - The slices.Reverse function is used to reverse the order of the points.
+func EnsureClockwise[T SignedNumber](points []Point[T]) {
 	if SignedArea2X(points) < 0 {
-		return points // Already clockwise
+		return // Already clockwise
 	}
 	slices.Reverse(points)
-	return points
 }
 
-func EnsureCounterClockwise[T SignedNumber](points []Point[T]) []Point[T] {
+// EnsureCounterClockwise ensures that a slice of points representing a polygon is ordered in a counterclockwise direction.
+//
+// This function checks the orientation of the points based on the signed area of the polygon.
+// If the signed area is negative, indicating a clockwise orientation, the function reverses
+// the order of the points (in-place) to make them counterclockwise. If the points are already counterclockwise,
+// no changes are made.
+//
+// Parameters:
+//   - points []Point[T]: A slice of points representing the vertices of a polygon. The points are assumed
+//     to form a closed loop or define a valid polygon.
+//
+// Behavior:
+//   - Calculates the signed area of the polygon using SignedArea2X.
+//   - If the signed area is negative (clockwise orientation), reverses the order of the points.
+//   - If the signed area is positive or zero (already counterclockwise or degenerate polygon), does nothing.
+//
+// Notes:
+//   - This function modifies the input slice of points in place.
+//   - A zero area polygon is considered already counterclockwise and is left unchanged.
+//
+// Example:
+//
+//	points := []Point[float64]{
+//	    {X: 0, Y: 0},
+//	    {X: 4, Y: 4},
+//	    {X: 4, Y: 0},
+//	}
+//	EnsureCounterClockwise(points)
+//	// points is now ordered in a counterclockwise direction.
+//
+// Dependencies:
+//   - This function uses SignedArea2X to compute the signed area of the polygon.
+//   - The slices.Reverse function is used to reverse the order of the points.
+func EnsureCounterClockwise[T SignedNumber](points []Point[T]) {
 	if SignedArea2X(points) > 0 {
-		return points // Already counterclockwise
+		return // Already counterclockwise
 	}
 	slices.Reverse(points)
-	return points
 }
 
 // NewPoint creates and returns a new Point with the specified x and y coordinates.
