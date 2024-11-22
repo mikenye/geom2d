@@ -72,9 +72,9 @@ type polyPoint[T SignedNumber] struct {
 	// This helps prevent redundant processing during operations such as polygon traversal.
 	visited bool
 
-	// otherPolyIndex stores the index of the corresponding point in another polygon when this point is an intersection.
+	// otherPolyPointIndex stores the index of the corresponding point in another polygon when this point is an intersection.
 	// This is useful for linking intersection points between polygons.
-	otherPolyIndex int
+	otherPolyPointIndex int
 }
 
 // polyPointType defines the type of point in a polygon, used to distinguish between
@@ -226,7 +226,7 @@ type Polygon[T SignedNumber] struct {
 	// hull optionally stores the convex hull of the polygon, represented as a simpleConvexPolygon.
 	// This can be used to optimize certain operations, such as point-in-polygon checks, by
 	// quickly ruling out points that lie outside the convex hull.
-	hull *simpleConvexPolygon[T]
+	hull simpleConvexPolygon[T]
 
 	// maxX stores the maximum X-coordinate value among the polygon's vertices. This is used
 	// for ray-casting operations to determine point-in-polygon relationships.
@@ -292,7 +292,7 @@ func (p Polygon[T]) Points() []Point[T] {
 //	fmt.Println(relationship) // Outputs the spatial relationship of the point to the polygon.
 func (p Polygon[T]) RelationshipToPoint(point Point[T]) PointPolygonRelationship {
 	// Use the convex hull as a preliminary check for outside points.
-	if p.hull != nil && !p.hull.ContainsPoint(point) {
+	if !p.hull.ContainsPoint(point) {
 		return PPRPointOutside
 	}
 
@@ -879,7 +879,7 @@ func isPointInPolyPoints[T SignedNumber](point Point[T], poly []polyPoint[T]) bo
 //     the other polygon by checking if the midpoint of the edge following the intersection is inside the other polygon.
 //   - Based on the Boolean operation, it marks the entryExit field of the corresponding intersection points
 //     in both polygons.
-//   - It also updates the otherPolyIndex field to link corresponding intersection points in poly1 and poly2.
+//   - It also updates the otherPolyPointIndex field to link corresponding intersection points in poly1 and poly2.
 //
 // Notes:
 //   - This function assumes that all original polyPoint coordinates are doubled during the construction
@@ -955,8 +955,8 @@ func markEntryExitPoints[T SignedNumber](poly1, poly2 []polyPoint[T], operation 
 						}
 
 					}
-					poly1[poly1Point1Index].otherPolyIndex = poly2PointIndex
-					poly2[poly2PointIndex].otherPolyIndex = poly1Point1Index
+					poly1[poly1Point1Index].otherPolyPointIndex = poly2PointIndex
+					poly2[poly2PointIndex].otherPolyPointIndex = poly1Point1Index
 				}
 			}
 		}
@@ -994,9 +994,9 @@ func markEntryExitPoints[T SignedNumber](poly1, poly2 []polyPoint[T], operation 
 //	}
 //	scp := newSimpleConvexPolygon(points)
 //	// scp represents a convex polygon with the given points.
-func newSimpleConvexPolygon[T SignedNumber](points []Point[T]) *simpleConvexPolygon[T] {
+func newSimpleConvexPolygon[T SignedNumber](points []Point[T]) simpleConvexPolygon[T] {
 	// Assume `points` is already ordered to form a convex polygon
-	return &simpleConvexPolygon[T]{Points: points}
+	return simpleConvexPolygon[T]{Points: points}
 }
 
 // togglePolyTraversalDirection toggles the traversal direction of a polygon between clockwise
@@ -1195,7 +1195,7 @@ func traverse[T SignedNumber](poly1, poly2 []polyPoint[T], operation BooleanOper
 			if polys[polyIndex][pointIndex].entryExit == intersectionTypeExit {
 
 				// swap poly
-				pointIndex = polys[polyIndex][pointIndex].otherPolyIndex
+				pointIndex = polys[polyIndex][pointIndex].otherPolyPointIndex
 				polyIndex = (polyIndex + 1) % 2
 
 				// swap direction if operation is subtraction
@@ -1293,9 +1293,9 @@ func NewPolygon[T SignedNumber](points []Point[T], polygonType PolygonType, chil
 
 	// Ensure the points are in the correct orientation.
 	if polygonType == PTSolid {
-		points = EnsureCounterClockwise(points)
+		EnsureCounterClockwise(points)
 	} else if polygonType == PTHole {
-		points = EnsureClockwise(points)
+		EnsureClockwise(points)
 	}
 
 	// Create new polygon.
@@ -1312,8 +1312,8 @@ func NewPolygon[T SignedNumber](points []Point[T], polygonType PolygonType, chil
 				x: point.x * 2,
 				y: point.y * 2,
 			},
-			pointType:      pointTypeOriginal,
-			otherPolyIndex: -1,
+			pointType:           pointTypeOriginal,
+			otherPolyPointIndex: -1,
 		}
 		if point.x > p.maxX {
 			p.maxX = point.x
@@ -1322,7 +1322,7 @@ func NewPolygon[T SignedNumber](points []Point[T], polygonType PolygonType, chil
 
 	// Create convex hull
 	hull := ConvexHull(points...)
-	hull = EnsureCounterClockwise(hull)
+	EnsureCounterClockwise(hull)
 	p.hull = newSimpleConvexPolygon(hull)
 
 	// Add any self-intersection
