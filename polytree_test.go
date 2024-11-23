@@ -170,7 +170,307 @@ func TestContour_contains(t *testing.T) {
 	}
 }
 
-func TestNewBetterPolygon_findIntersectionsBetweenBetterPolys(t *testing.T) {
+func TestNewBetterPolygon_booleanOperationTraversal_Union(t *testing.T) {
+	poly1HolePoints := []Point[int]{
+		{5, 5},
+		{15, 5},
+		{15, 15},
+		{5, 15},
+	}
+	poly1Hole, err := NewPolyTree(poly1HolePoints, PTHole)
+	require.NoError(t, err, "expected no error when creating poly1Hole")
+	expectedPoly1Hole := &PolyTree[int]{
+		contour: contour[int]{
+			polyTreePoint[int]{
+				point:                         Point[int]{10, 30},
+				pointType:                     pointTypeOriginal,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{
+				point:                         Point[int]{30, 30},
+				pointType:                     pointTypeOriginal,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{
+				point:                         Point[int]{30, 10},
+				pointType:                     pointTypeOriginal,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{
+				point:                         Point[int]{10, 10},
+				pointType:                     pointTypeOriginal,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+		},
+		pointIndex:         0,
+		traversalDirection: polyTraversalDirectionClockwise,
+		polygonType:        PTHole,
+		children:           nil,
+		parent:             nil,
+		hull: simpleConvexPolygon[int]{
+			Points: []Point[int]{
+				{5, 5},
+				{15, 5},
+				{15, 15},
+				{5, 15},
+			},
+		},
+		maxX: 31,
+	}
+	assert.Equal(t, expectedPoly1Hole, poly1Hole, "unexpected output of NewPolyTree for poly1Hole")
+
+	poly1Points := []Point[int]{
+		{0, 0},
+		{20, 0},
+		{20, 20},
+		{0, 20},
+	}
+	polyTree1, err := NewPolyTree(poly1Points, PTSolid, WithChildren(poly1Hole))
+	require.NoError(t, err, "expected no error when creating polyTree1")
+
+	poly2HolePoints := []Point[int]{
+		{12, 12},
+		{22, 12},
+		{22, 22},
+		{12, 22},
+	}
+	poly2Hole, err := NewPolyTree(poly2HolePoints, PTHole)
+	require.NoError(t, err, "expected no error when creating poly2Hole")
+
+	poly2Points := []Point[int]{
+		{7, 7},
+		{27, 7},
+		{27, 27},
+		{7, 27},
+	}
+	polyTree2, err := NewPolyTree(poly2Points, PTSolid, WithChildren(poly2Hole))
+	require.NoError(t, err, "expected no error when creating polyTree2")
+
+	// find intersection points between all polys
+	polyTree1.findIntersections(polyTree2)
+	expectedPoly1Hole = &PolyTree[int]{
+		contour: contour[int]{
+			polyTreePoint[int]{ // 0
+				point:                         Point[int]{10, 30},
+				pointType:                     pointTypeOriginal,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{ // 1
+				point:                         Point[int]{14, 30},
+				pointType:                     pointTypeAddedIntersection,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{ // 2
+				point:                         Point[int]{24, 30},
+				pointType:                     pointTypeAddedIntersection,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{ // 3
+				point:                         Point[int]{30, 30},
+				pointType:                     pointTypeOriginal,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{ // 4
+				point:                         Point[int]{30, 24},
+				pointType:                     pointTypeAddedIntersection,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{ // 5
+				point:                         Point[int]{30, 14},
+				pointType:                     pointTypeAddedIntersection,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{ // 6
+				point:                         Point[int]{30, 10},
+				pointType:                     pointTypeOriginal,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{ // 7
+				point:                         Point[int]{10, 10},
+				pointType:                     pointTypeOriginal,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+		},
+		pointIndex:         0,
+		traversalDirection: polyTraversalDirectionClockwise,
+		polygonType:        PTHole,
+		children:           nil,
+		parent:             nil,
+		hull: simpleConvexPolygon[int]{
+			Points: []Point[int]{
+				{5, 5},
+				{15, 5},
+				{15, 15},
+				{5, 15},
+			},
+		},
+		maxX: 31,
+	}
+	expectedPolyTree1 := &PolyTree[int]{
+		contour: contour[int]{
+			polyTreePoint[int]{ // 0
+				point:                         Point[int]{0, 0},
+				pointType:                     pointTypeOriginal,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{ // 1
+				point:                         Point[int]{40, 0},
+				pointType:                     pointTypeOriginal,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{ // 2
+				point:                         Point[int]{40, 14},
+				pointType:                     pointTypeAddedIntersection,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{ // 3
+				point:                         Point[int]{40, 24},
+				pointType:                     pointTypeAddedIntersection,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{ // 4
+				point:                         Point[int]{40, 40},
+				pointType:                     pointTypeOriginal,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{ // 5
+				point:                         Point[int]{24, 40},
+				pointType:                     pointTypeAddedIntersection,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{ // 6
+				point:                         Point[int]{14, 40},
+				pointType:                     pointTypeAddedIntersection,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+			polyTreePoint[int]{ // 7
+				point:                         Point[int]{0, 40},
+				pointType:                     pointTypeOriginal,
+				entryExit:                     intersectionTypeNotSet,
+				visited:                       false,
+				intersectionPartner:           nil,
+				intersectionPartnerPointIndex: -1,
+			},
+		},
+		pointIndex:         0,
+		traversalDirection: polyTraversalDirectionCounterClockwise,
+		polygonType:        PTSolid,
+		children:           nil,
+		parent:             nil,
+		hull: simpleConvexPolygon[int]{
+			Points: []Point[int]{
+				{0, 0},
+				{20, 0},
+				{20, 20},
+				{0, 20},
+			},
+		},
+		maxX: 41,
+	}
+	expectedPoly1Hole.parent = expectedPolyTree1
+	expectedPolyTree1.children = append(expectedPolyTree1.children, expectedPoly1Hole)
+	assert.Equal(t, expectedPolyTree1, polyTree1, "unexpected output of findIntersections for polyTree1")
+
+	// mark points for Union
+	polyTree1.markEntryExitPoints(polyTree2, BooleanUnion)
+
+	// traverse for union
+	expectedPointsUnion := [][]Point[int]{
+		{
+			{40, 24},
+			{40, 40},
+			{24, 40},
+			{24, 44},
+			{44, 44},
+			{44, 24},
+		},
+		{
+			{14, 40},
+			{0, 40},
+			{0, 0},
+			{40, 0},
+			{40, 14},
+			{54, 14},
+			{54, 54},
+			{14, 54},
+		},
+		{
+			{14, 30},
+			{10, 30},
+			{10, 10},
+			{30, 10},
+			{30, 14},
+			{14, 14},
+		},
+		{
+			{30, 24},
+			{30, 30},
+			{24, 30},
+			{24, 24},
+		},
+	}
+	resultingPointsUnion := polyTree1.booleanOperationTraversal(polyTree2, BooleanUnion)
+	assert.Equal(t, expectedPointsUnion, resultingPointsUnion)
+}
+
+func TestNewBetterPolygon_booleanOperationTraversal_Intersection(t *testing.T) {
 	poly1HolePoints := []Point[int]{
 		{5, 5},
 		{15, 5},
@@ -210,12 +510,45 @@ func TestNewBetterPolygon_findIntersectionsBetweenBetterPolys(t *testing.T) {
 	// find intersection points between all polys
 	polyTree1.findIntersections(polyTree2)
 
-	// mark points for Union
-	polyTree1.markEntryExitPoints(polyTree2, BooleanUnion)
+	// mark points for Intersection
+	polyTree1.markEntryExitPoints(polyTree2, BooleanIntersection)
 
-	// traverse for union
-	_ = polyTree1.traverse(polyTree2, BooleanUnion)
-
-	fmt.Println("not yet finished!")
-
+	//// traverse for union
+	//expectedPointsUnion := [][]Point[int]{
+	//	{
+	//		{40, 24},
+	//		{40, 40},
+	//		{24, 40},
+	//		{24, 44},
+	//		{44, 44},
+	//		{44, 24},
+	//	},
+	//	{
+	//		{14, 40},
+	//		{0, 40},
+	//		{0, 0},
+	//		{40, 0},
+	//		{40, 14},
+	//		{54, 14},
+	//		{54, 54},
+	//		{14, 54},
+	//	},
+	//	{
+	//		{14, 30},
+	//		{10, 30},
+	//		{10, 10},
+	//		{30, 10},
+	//		{30, 14},
+	//		{14, 14},
+	//	},
+	//	{
+	//		{30, 24},
+	//		{30, 30},
+	//		{24, 30},
+	//		{24, 24},
+	//	},
+	//}
+	_ = polyTree1.booleanOperationTraversal(polyTree2, BooleanIntersection)
+	//assert.Equal(t, expectedPointsUnion, resultingPointsUnion)
+	fmt.Println("unfinished")
 }

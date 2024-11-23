@@ -393,6 +393,14 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 							midT := NewPoint[T](T(mid.x), T(mid.y))
 							poly1EnteringPoly2 := poly2.contour.isPointInside(midT)
 
+							// Adjust entry/exit based on polygon types
+							if poly1.polygonType == PTHole { //|| poly2.polygonType == PTHole {
+								poly1EnteringPoly2 = !poly1EnteringPoly2
+							}
+							if poly2.polygonType == PTHole {
+								poly1EnteringPoly2 = !poly1EnteringPoly2
+							}
+
 							switch operation {
 							case BooleanUnion:
 
@@ -439,13 +447,13 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 	}
 }
 
-func (p *PolyTree[T]) traverse(other *PolyTree[T], operation BooleanOperation) [][]polyTreePoint[T] {
+func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation BooleanOperation) [][]Point[T] {
+	var direction polyTraversalDirection
 
 	// todo: Step 1: handle edge cases like polygons not intersecting etc.
 
 	// Step 2: Normal traversal logic
-	direction := polyTraversalDirectionCounterClockwise
-	results := make([][]polyTreePoint[T], 0)
+	results := make([][]Point[T], 0)
 
 	for {
 		// Find the starting point for traversal
@@ -454,10 +462,10 @@ func (p *PolyTree[T]) traverse(other *PolyTree[T], operation BooleanOperation) [
 			fmt.Println("no unvisited entry points")
 			break // No unvisited entry points
 		}
-		fmt.Println("starting with:", currentPoly, currentPointIndex)
+		fmt.Println("starting with:", currentPointIndex, currentPoly)
 
 		// Initialize result path
-		result := make([]polyTreePoint[T], 0, len(p.contour)+len(other.contour))
+		result := make([]Point[T], 0, len(p.contour)+len(other.contour))
 
 		// loop (combined):
 		//   - add current point to result & mark as visited
@@ -467,9 +475,18 @@ func (p *PolyTree[T]) traverse(other *PolyTree[T], operation BooleanOperation) [
 		//       - if operation is subtraction, reverse direction
 		//   - if point matches start point, loop completed
 
+		// set initial traversal direction
+		//switch currentPoly.polygonType {
+		//case PTSolid:
+		//	direction = polyTraversalDirectionCounterClockwise
+		//case PTHole:
+		//	direction = polyTraversalDirectionClockwise
+		//}
+		direction = currentPoly.traversalDirection
+
 		for {
 			// Append current point to result path
-			result = append(result, currentPoly.contour[currentPointIndex])
+			result = append(result, NewPoint(currentPoly.contour[currentPointIndex].point.x, currentPoly.contour[currentPointIndex].point.y))
 			fmt.Println("added point:", currentPoly.contour[currentPointIndex])
 
 			// Mark the current point as visited
@@ -477,32 +494,49 @@ func (p *PolyTree[T]) traverse(other *PolyTree[T], operation BooleanOperation) [
 
 			// Move to the next point in the current polygon, depending on direction
 			if direction == polyTraversalDirectionCounterClockwise {
-
 				currentPointIndex = (currentPointIndex + 1) % len(currentPoly.contour)
+				fmt.Println("incrementing current point index to:", currentPointIndex)
 			} else {
 				currentPointIndex = currentPointIndex - 1
 				if currentPointIndex == -1 {
 					currentPointIndex = len(currentPoly.contour) - 1
 				}
+				fmt.Println("decrementing current point index to:", currentPointIndex)
 			}
 
 			// if we've come to an exit point, swap polys & maybe change direction
 			if currentPoly.contour[currentPointIndex].entryExit == intersectionTypeExit {
+				fmt.Println("point type exit found")
 
 				// swap poly
-				currentPointIndex = currentPoly.contour[currentPointIndex].intersectionPartnerPointIndex
+				prevPolyType := currentPoly.polygonType
+				newCurrentPointIndex := currentPoly.contour[currentPointIndex].intersectionPartnerPointIndex
 				currentPoly = currentPoly.contour[currentPointIndex].intersectionPartner
+				currentPointIndex = newCurrentPointIndex
+				direction = currentPoly.traversalDirection
 
-				fmt.Println("swapped polys")
+				fmt.Println("swapped polys, and changed point index to:", currentPointIndex)
 
 				// swap direction if operation is subtraction
 				if operation == BooleanSubtraction {
 					direction = togglePolyTraversalDirection(direction)
+					fmt.Println("reversed traversal direction due to subtraction")
 				}
+
+				if currentPoly.polygonType != prevPolyType {
+					direction = togglePolyTraversalDirection(direction)
+					fmt.Println("reversed traversal direction due to polygon switching polygon types")
+				}
+
+				//// swap direction if intersecting a hole
+				//if currentPoly.polygonType == PTHole {
+				//	direction = togglePolyTraversalDirection(direction)
+				//	fmt.Println("reversed traversal direction due to polygon being a hole")
+				//}
 			}
 
 			// Stop if we loop back to the starting point in the same polygon
-			if currentPoly.contour[currentPointIndex].point.Eq(result[0].point) {
+			if currentPoly.contour[currentPointIndex].point.x == result[0].x && currentPoly.contour[currentPointIndex].point.y == result[0].y {
 				fmt.Println("finished loop")
 				break
 			}
