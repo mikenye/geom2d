@@ -1,7 +1,6 @@
 package geom2d
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -881,23 +880,59 @@ func TestNewBetterPolygon_booleanOperationTraversal_Subtraction(t *testing.T) {
 	// mark points for Intersection
 	polyTree1.markEntryExitPoints(polyTree2, BooleanSubtraction)
 
-	//// traverse for union
-	//expectedPointsIntersection := [][]Point[int]{
-	//	{
-	//		{40, 14},
-	//		{40, 24},
-	//		{30, 24},
-	//		{30, 14},
-	//	},
-	//	{
-	//		{24, 40},
-	//		{14, 40},
-	//		{14, 30},
-	//		{24, 30},
-	//	},
-	//}
-	//resultingPointsIntersection :=
-	_ = polyTree1.booleanOperationTraversal(polyTree2, BooleanSubtraction)
-	//assert.Equal(t, expectedPointsIntersection, resultingPointsIntersection)
-	fmt.Println("unfinished")
+	expectedPointsSubtraction := [][]Point[int]{
+		{
+			{40, 24},
+			{40, 40},
+			{24, 40},
+			{24, 30},
+			{30, 30},
+			{30, 24},
+		},
+		{
+			{14, 40},
+			{0, 40},
+			{0, 0},
+			{40, 0},
+			{40, 14},
+			{30, 14},
+			{30, 10},
+			{10, 10},
+			{10, 30},
+			{14, 30},
+		},
+	}
+	resultingPointsSubtraction := polyTree1.booleanOperationTraversal(polyTree2, BooleanSubtraction)
+	assert.Equal(t, expectedPointsSubtraction, resultingPointsSubtraction)
+
+	// find intersection points between all polys
+	polyTree2.findIntersections(polyTree1)
+
+	// mark points for Intersection
+	polyTree2.markEntryExitPoints(polyTree1, BooleanSubtraction)
+
+	expectedPointsSubtraction = [][]Point[int]{
+		{
+			{14, 30},
+			{14, 14},
+			{30, 14},
+			{30, 24},
+			{24, 24},
+			{24, 30},
+		},
+		{
+			{40, 14},
+			{54, 14},
+			{54, 54},
+			{14, 54},
+			{14, 40},
+			{24, 40},
+			{24, 44},
+			{44, 44},
+			{44, 24},
+			{40, 24},
+		},
+	}
+	resultingPointsSubtraction = polyTree2.booleanOperationTraversal(polyTree1, BooleanSubtraction)
+	assert.Equal(t, expectedPointsSubtraction, resultingPointsSubtraction)
 }

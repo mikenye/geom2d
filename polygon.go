@@ -131,6 +131,18 @@ const (
 // to identify transitions at intersection points between polygons.
 type polyIntersectionType int
 
+func (p *polyIntersectionType) String() string {
+	switch *p {
+	case intersectionTypeNotSet:
+		return "not set"
+	case intersectionTypeEntry:
+		return "entry"
+	case intersectionTypeExit:
+		return "exit"
+	}
+	return ""
+}
+
 const (
 	// intersectionTypeNotSet indicates that the intersection type has not been set.
 	// This is the default value for uninitialized points or non-intersection points.

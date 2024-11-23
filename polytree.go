@@ -177,6 +177,7 @@ func (p *PolyTree[T]) resetIntersectionMetadata() {
 			if poly.contour[i].pointType == pointTypeAddedIntersection {
 				poly.contour = slices.Delete(poly.contour, i, i+1)
 				i--
+				continue
 			}
 			poly.contour[i].pointType = pointTypeOriginal
 			poly.contour[i].entryExit = intersectionTypeNotSet
@@ -368,9 +369,14 @@ func (p *PolyTree[T]) findTraversalStartingPoint(other *PolyTree[T]) (*PolyTree[
 
 // PolyTree.findIntersections must be run prior!
 func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanOperation) {
-	// iterate through all combinations of polys:
+	// Iterate through all combinations of polygons:
+	poly1i := 0
 	for poly1 := range p.iterPolys {
+
+		poly2i := 0
+
 		for poly2 := range other.iterPolys {
+
 			for poly1Point1Index, poly1Point1 := range poly1.contour {
 				poly1Point2Index := (poly1Point1Index + 1) % len(poly1.contour)
 
@@ -382,16 +388,30 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 								panic(fmt.Errorf("found intersection metadata when none was expected"))
 							}
 
-							// determine if poly1 traversal is poly1EnteringPoly2 or existing poly2
+							// Determine if poly1 traversal is poly1EnteringPoly2 or exiting poly2
 							mid := NewLineSegment(
 								poly1Point1.point,
 								poly1.contour[poly1Point2Index].point).Midpoint()
 							midT := NewPoint[T](T(mid.x), T(mid.y))
 							poly1EnteringPoly2 := poly2.contour.isPointInside(midT)
 
+							// Debug Logging: Midpoint Information
+							if poly1i == 0 {
+								fmt.Println("poly1 outer contour")
+							} else {
+								fmt.Println("poly1 hole contour")
+							}
+							if poly2i == 0 {
+								fmt.Println("poly2 outer contour")
+							} else {
+								fmt.Println("poly2 hole contour")
+							}
+							fmt.Printf("Poly1 [%d]: %v -> Poly2 [%d]: %v\n",
+								poly1Point1Index, poly1Point1.point, poly2PointIndex, poly2Point.point)
+							fmt.Printf("Midpoint: %v, Inside Poly2: %t\n", midT, poly1EnteringPoly2)
+
 							switch operation {
 							case BooleanUnion:
-
 								// Adjust entry/exit based on polygon types
 								if poly1.polygonType == PTHole {
 									poly1EnteringPoly2 = !poly1EnteringPoly2
@@ -409,7 +429,6 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 								}
 
 							case BooleanIntersection:
-
 								// Adjust entry/exit based on polygon types
 								if poly2.polygonType == PTHole {
 									poly1EnteringPoly2 = !poly1EnteringPoly2
@@ -424,11 +443,10 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 								}
 
 							case BooleanSubtraction:
-
 								// Adjust entry/exit based on polygon types
-								if poly1.polygonType == PTHole {
-									poly1EnteringPoly2 = !poly1EnteringPoly2
-								}
+								//if poly1.polygonType == PTHole {
+								//	poly1EnteringPoly2 = !poly1EnteringPoly2
+								//}
 								if poly2.polygonType == PTHole {
 									poly1EnteringPoly2 = !poly1EnteringPoly2
 								}
@@ -443,6 +461,11 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 
 							}
 
+							// Debug Logging: Marked Entry/Exit
+							fmt.Printf("Poly1 EntryExit: %s, Poly2 EntryExit: %s\n",
+								poly1.contour[poly1Point1Index].entryExit.String(),
+								poly2.contour[poly2PointIndex].entryExit.String())
+
 							poly1.contour[poly1Point1Index].intersectionPartner = poly2
 							poly1.contour[poly1Point1Index].intersectionPartnerPointIndex = poly2PointIndex
 
@@ -452,7 +475,10 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 					}
 				}
 			}
+			poly2i++
+
 		}
+		poly1i++
 	}
 }
 
@@ -510,6 +536,13 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 			// Mark the current point as visited
 			currentPoly.contour[currentPointIndex].visited = true
 
+			// Also mark the partner point as visited during polygon switches
+			if currentPoly.contour[currentPointIndex].intersectionPartner != nil {
+				partnerPoly := currentPoly.contour[currentPointIndex].intersectionPartner
+				partnerPointIndex := currentPoly.contour[currentPointIndex].intersectionPartnerPointIndex
+				partnerPoly.contour[partnerPointIndex].visited = true
+			}
+
 			// Move to the next point in the current polygon, depending on direction
 			if direction == polyTraversalForward {
 				currentPointIndex = (currentPointIndex + 1) % len(currentPoly.contour)
@@ -523,21 +556,21 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 			}
 
 			// if we've come to an exit point, swap polys & maybe change direction
-			if currentPoly.contour[currentPointIndex].entryExit == intersectionTypeExit {
-				fmt.Println("point type exit found")
+			if currentPoly.contour[currentPointIndex].entryExit == intersectionTypeExit ||
+				(operation == BooleanSubtraction && currentPoly.polygonType == PTHole && currentPoly.contour[currentPointIndex].entryExit == intersectionTypeEntry) ||
+				(operation == BooleanSubtraction && currentPoly.polygonType == PTSolid && currentPoly.contour[currentPointIndex].entryExit == intersectionTypeEntry && direction == polyTraversalReverse) {
 
-				// swap poly
+				fmt.Println("point type exit or entry for hole in subtraction found")
+
+				// Swap polygons
 				newCurrentPointIndex := currentPoly.contour[currentPointIndex].intersectionPartnerPointIndex
 				currentPoly = currentPoly.contour[currentPointIndex].intersectionPartner
 				currentPointIndex = newCurrentPointIndex
-				//direction = currentPoly.traversalDirection
 
 				fmt.Println("swapped polys, and changed point index to:", currentPointIndex)
 
-				switch operation {
-
-				// swap direction if operation is subtraction
-				case BooleanSubtraction:
+				// Adjust direction if needed
+				if operation == BooleanSubtraction {
 					direction = togglePolyTraversalDirection(direction)
 					fmt.Println("reversed traversal direction due to subtraction")
 				}
@@ -548,16 +581,6 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 				if direction == polyTraversalReverse {
 					fmt.Println("direction is reverse")
 				}
-
-				//if operation == BooleanIntersection {
-				//	direction = currentPoly.traversalDirection
-				//}
-
-				//// swap direction if intersecting a hole
-				//if currentPoly.polygonType == PTHole {
-				//	direction = togglePolyTraversalDirection(direction)
-				//	fmt.Println("reversed traversal direction due to polygon being a hole")
-				//}
 			}
 
 			// Stop if we loop back to the starting point in the same polygon
