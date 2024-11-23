@@ -24,13 +24,13 @@ import (
 type polyTraversalDirection int
 
 const (
-	// polyTraversalDirectionCounterClockwise specifies that the traversal proceeds
+	// polyTraversalForward specifies that the traversal proceeds
 	// in a counterclockwise direction through the polygon's vertices or edges.
-	polyTraversalDirectionCounterClockwise = polyTraversalDirection(iota)
+	polyTraversalForward = polyTraversalDirection(iota)
 
-	// polyTraversalDirectionClockwise specifies that the traversal proceeds
+	// polyTraversalReverse specifies that the traversal proceeds
 	// in a clockwise direction through the polygon's vertices or edges.
-	polyTraversalDirectionClockwise
+	polyTraversalReverse
 )
 
 // polyEdge represents an edge of a polygon, storing the geometric line segment
@@ -1012,16 +1012,16 @@ func newSimpleConvexPolygon[T SignedNumber](points []Point[T]) simpleConvexPolyg
 //
 // Returns polyTraversalDirection: The opposite traversal direction.
 
-//   - If the input is polyTraversalDirectionClockwise, the output
-//     will be polyTraversalDirectionCounterClockwise.
-//   - If the input is polyTraversalDirectionCounterClockwise, the output
-//     will be polyTraversalDirectionClockwise.
+//   - If the input is polyTraversalReverse, the output
+//     will be polyTraversalForward.
+//   - If the input is polyTraversalForward, the output
+//     will be polyTraversalReverse.
 //
 // Example:
 //
-//	currentDirection := polyTraversalDirectionClockwise
+//	currentDirection := polyTraversalReverse
 //	newDirection := togglePolyTraversalDirection(currentDirection)
-//	// newDirection == polyTraversalDirectionCounterClockwise
+//	// newDirection == polyTraversalForward
 //
 // Notes:
 //   - This function assumes that the input is a valid polyTraversalDirection value.
@@ -1030,10 +1030,10 @@ func newSimpleConvexPolygon[T SignedNumber](points []Point[T]) simpleConvexPolyg
 // Dependencies:
 //   - Relies on the polyTraversalDirection type and its constants for traversal direction.
 func togglePolyTraversalDirection(direction polyTraversalDirection) polyTraversalDirection {
-	if direction == polyTraversalDirectionClockwise {
-		return polyTraversalDirectionCounterClockwise
+	if direction == polyTraversalReverse {
+		return polyTraversalForward
 	}
-	return polyTraversalDirectionClockwise
+	return polyTraversalReverse
 }
 
 // traverse performs a traversal of two polygons (`poly1` and `poly2`) to generate the resulting
@@ -1152,7 +1152,7 @@ func traverse[T SignedNumber](poly1, poly2 []polyPoint[T], operation BooleanOper
 	}
 
 	// Step 2: Normal traversal logic
-	direction := polyTraversalDirectionCounterClockwise
+	direction := polyTraversalForward
 	polys := [][]polyPoint[T]{poly1, poly2}
 	results := make([][]polyPoint[T], 0)
 
@@ -1182,7 +1182,7 @@ func traverse[T SignedNumber](poly1, poly2 []polyPoint[T], operation BooleanOper
 			polys[polyIndex][pointIndex].visited = true
 
 			// Move to the next point in the current polygon, depending on direction
-			if direction == polyTraversalDirectionCounterClockwise {
+			if direction == polyTraversalForward {
 				pointIndex = (pointIndex + 1) % len(polys[polyIndex])
 			} else {
 				pointIndex = pointIndex - 1

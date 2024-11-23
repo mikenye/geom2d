@@ -110,8 +110,6 @@ type PolyTree[T SignedNumber] struct {
 
 	pointIndex int
 
-	traversalDirection polyTraversalDirection
-
 	// polygonType indicates whether the polygon is a solid region (PTSolid) or a hole (PTHole).
 	// This classification is essential for distinguishing between filled and void areas of the polygon.
 	polygonType PolygonType
@@ -241,11 +239,9 @@ func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPo
 	copy(orderedPoints, points)
 	switch p.polygonType {
 	case PTSolid:
-		p.traversalDirection = polyTraversalDirectionCounterClockwise
 		EnsureCounterClockwise(orderedPoints)
 
 	case PTHole:
-		p.traversalDirection = polyTraversalDirectionClockwise
 		EnsureClockwise(orderedPoints)
 	}
 
@@ -393,16 +389,16 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 							midT := NewPoint[T](T(mid.x), T(mid.y))
 							poly1EnteringPoly2 := poly2.contour.isPointInside(midT)
 
-							// Adjust entry/exit based on polygon types
-							if poly1.polygonType == PTHole { //|| poly2.polygonType == PTHole {
-								poly1EnteringPoly2 = !poly1EnteringPoly2
-							}
-							if poly2.polygonType == PTHole {
-								poly1EnteringPoly2 = !poly1EnteringPoly2
-							}
-
 							switch operation {
 							case BooleanUnion:
+
+								// Adjust entry/exit based on polygon types
+								if poly1.polygonType == PTHole {
+									poly1EnteringPoly2 = !poly1EnteringPoly2
+								}
+								if poly2.polygonType == PTHole {
+									poly1EnteringPoly2 = !poly1EnteringPoly2
+								}
 
 								if poly1EnteringPoly2 {
 									poly1.contour[poly1Point1Index].entryExit = intersectionTypeExit
@@ -414,6 +410,11 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 
 							case BooleanIntersection:
 
+								// Adjust entry/exit based on polygon types
+								if poly2.polygonType == PTHole {
+									poly1EnteringPoly2 = !poly1EnteringPoly2
+								}
+
 								if poly1EnteringPoly2 {
 									poly1.contour[poly1Point1Index].entryExit = intersectionTypeEntry
 									poly2.contour[poly2PointIndex].entryExit = intersectionTypeExit
@@ -423,6 +424,14 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 								}
 
 							case BooleanSubtraction:
+
+								// Adjust entry/exit based on polygon types
+								if poly1.polygonType == PTHole {
+									poly1EnteringPoly2 = !poly1EnteringPoly2
+								}
+								if poly2.polygonType == PTHole {
+									poly1EnteringPoly2 = !poly1EnteringPoly2
+								}
 
 								if poly1EnteringPoly2 {
 									poly1.contour[poly1Point1Index].entryExit = intersectionTypeExit
@@ -449,6 +458,7 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 
 func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation BooleanOperation) [][]Point[T] {
 	var direction polyTraversalDirection
+	var currentPoint polyTreePoint[T]
 
 	// todo: Step 1: handle edge cases like polygons not intersecting etc.
 
@@ -476,24 +486,32 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 		//   - if point matches start point, loop completed
 
 		// set initial traversal direction
-		//switch currentPoly.polygonType {
-		//case PTSolid:
-		//	direction = polyTraversalDirectionCounterClockwise
-		//case PTHole:
-		//	direction = polyTraversalDirectionClockwise
-		//}
-		direction = currentPoly.traversalDirection
+		if currentPoly.polygonType == PTSolid {
+			direction = polyTraversalForward
+		} else {
+			direction = polyTraversalReverse
+		}
 
 		for {
+
+			currentPoint = currentPoly.contour[currentPointIndex]
+
 			// Append current point to result path
 			result = append(result, NewPoint(currentPoly.contour[currentPointIndex].point.x, currentPoly.contour[currentPointIndex].point.y))
-			fmt.Println("added point:", currentPoly.contour[currentPointIndex])
+			fmt.Println("added point:", currentPoint)
+
+			if currentPoly.contour[currentPointIndex].entryExit == intersectionTypeEntry {
+				fmt.Println("point is entry")
+			}
+			if currentPoly.contour[currentPointIndex].entryExit == intersectionTypeExit {
+				fmt.Println("point is exit")
+			}
 
 			// Mark the current point as visited
 			currentPoly.contour[currentPointIndex].visited = true
 
 			// Move to the next point in the current polygon, depending on direction
-			if direction == polyTraversalDirectionCounterClockwise {
+			if direction == polyTraversalForward {
 				currentPointIndex = (currentPointIndex + 1) % len(currentPoly.contour)
 				fmt.Println("incrementing current point index to:", currentPointIndex)
 			} else {
@@ -509,24 +527,31 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 				fmt.Println("point type exit found")
 
 				// swap poly
-				prevPolyType := currentPoly.polygonType
 				newCurrentPointIndex := currentPoly.contour[currentPointIndex].intersectionPartnerPointIndex
 				currentPoly = currentPoly.contour[currentPointIndex].intersectionPartner
 				currentPointIndex = newCurrentPointIndex
-				direction = currentPoly.traversalDirection
+				//direction = currentPoly.traversalDirection
 
 				fmt.Println("swapped polys, and changed point index to:", currentPointIndex)
 
+				switch operation {
+
 				// swap direction if operation is subtraction
-				if operation == BooleanSubtraction {
+				case BooleanSubtraction:
 					direction = togglePolyTraversalDirection(direction)
 					fmt.Println("reversed traversal direction due to subtraction")
 				}
 
-				if currentPoly.polygonType != prevPolyType {
-					direction = togglePolyTraversalDirection(direction)
-					fmt.Println("reversed traversal direction due to polygon switching polygon types")
+				if direction == polyTraversalForward {
+					fmt.Println("direction is forward")
 				}
+				if direction == polyTraversalReverse {
+					fmt.Println("direction is reverse")
+				}
+
+				//if operation == BooleanIntersection {
+				//	direction = currentPoly.traversalDirection
+				//}
 
 				//// swap direction if intersecting a hole
 				//if currentPoly.polygonType == PTHole {
