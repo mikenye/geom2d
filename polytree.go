@@ -5,6 +5,58 @@ import (
 	"slices"
 )
 
+var entryExitPointLookUpTable = map[BooleanOperation]map[PolygonType]map[PolygonType]map[bool]struct {
+	poly1PointType polyIntersectionType
+	poly2PointType polyIntersectionType
+}{
+	BooleanUnion: {
+		PTSolid: {
+			PTSolid: {
+				true: {
+					poly1PointType: intersectionTypeExit,
+					poly2PointType: intersectionTypeEntry,
+				},
+				false: {
+					poly1PointType: intersectionTypeEntry,
+					poly2PointType: intersectionTypeExit,
+				},
+			},
+			PTHole: {
+				true: {
+					poly1PointType: intersectionTypeEntry,
+					poly2PointType: intersectionTypeExit,
+				},
+				false: {
+					poly1PointType: intersectionTypeExit,
+					poly2PointType: intersectionTypeEntry,
+				},
+			},
+		},
+		PTHole: {
+			PTSolid: {
+				true: {
+					poly1PointType: intersectionTypeExit,
+					poly2PointType: intersectionTypeEntry,
+				},
+				false: {
+					poly1PointType: intersectionTypeEntry,
+					poly2PointType: intersectionTypeExit,
+				},
+			},
+			PTHole: {
+				true: {
+					poly1PointType: intersectionTypeEntry,
+					poly2PointType: intersectionTypeExit,
+				},
+				false: {
+					poly1PointType: intersectionTypeExit,
+					poly2PointType: intersectionTypeEntry,
+				},
+			},
+		},
+	},
+}
+
 type contour[T SignedNumber] []polyTreePoint[T]
 
 func (c *contour[T]) contains(point Point[T]) bool {
@@ -74,6 +126,15 @@ func (c *contour[T]) isPointInside(point Point[T]) bool {
 	return crosses%2 == 1 // Odd crossings mean the point is inside
 }
 
+func (c *contour[T]) isContourInside(c2 contour[T]) bool {
+	for _, p := range c2 {
+		if !c.isPointInside(p.point) {
+			return false
+		}
+	}
+	return true
+}
+
 func (c *contour[T]) insertPoint(start, end int, intersection polyTreePoint[T]) {
 	segment := NewLineSegment((*c)[start].point, (*c)[end].point)
 
@@ -108,11 +169,13 @@ type PolyTree[T SignedNumber] struct {
 	// or a midpoint between intersections.
 	contour contour[T]
 
-	pointIndex int
-
 	// polygonType indicates whether the polygon is a solid region (PTSolid) or a hole (PTHole).
 	// This classification is essential for distinguishing between filled and void areas of the polygon.
 	polygonType PolygonType
+
+	// siblings contains references to sibling polygons, which must not overlap this polygon, and this are the samw
+	// polygonType as this polygon.
+	siblings []*PolyTree[T]
 
 	// children contains references to nested polygons, which may represent holes (if this polygon
 	// is a solid region) or solid islands (if this polygon is a hole). These hierarchical relationships
@@ -133,18 +196,23 @@ type PolyTree[T SignedNumber] struct {
 	maxX T
 }
 
-func (p *PolyTree[T]) currentPolyPoint() polyTreePoint[T] {
-	return p.contour[p.pointIndex]
-}
-
 // returns this poly and all children (including nested children of children etc)
 func (p *PolyTree[T]) iterPolys(yield func(*PolyTree[T]) bool) {
-	// return the first polygon p
+	// yield self
 	if !yield(p) {
 		return
 	}
 
-	// return the children
+	// yield siblings
+	for _, sibling := range p.siblings {
+		for s := range sibling.iterPolys {
+			if !yield(s) {
+				return
+			}
+		}
+	}
+
+	// yield children
 	for _, child := range p.children {
 		for c := range child.iterPolys {
 			if !yield(c) {
@@ -154,23 +222,7 @@ func (p *PolyTree[T]) iterPolys(yield func(*PolyTree[T]) bool) {
 	}
 }
 
-func (p *PolyTree[T]) nextPolyPoint() polyTreePoint[T] {
-	p.pointIndex = (p.pointIndex + 1) % len(p.contour)
-	return p.currentPolyPoint()
-}
-
-func (p *PolyTree[T]) prevPolyPoint() polyTreePoint[T] {
-	p.pointIndex--
-	if p.pointIndex < 0 {
-		p.pointIndex = len(p.contour) - 1
-	}
-	return p.currentPolyPoint()
-}
-
 func (p *PolyTree[T]) resetIntersectionMetadata() {
-	// reset pointIndex so no invalid references
-	p.pointIndex = 0
-
 	// remove intersection data
 	for poly := range p.iterPolys {
 		for i := 0; i < len(poly.contour); i++ {
@@ -188,11 +240,14 @@ func (p *PolyTree[T]) resetIntersectionMetadata() {
 	}
 }
 
-func (p *PolyTree[T]) setPointIndex(i int) {
-	if i < 0 || i > (len((*p).contour)-1) {
-		panic(fmt.Errorf("invalid point index"))
-	}
-	p.pointIndex = i
+func (p *PolyTree[T]) addChild(child *PolyTree[T]) {
+	child.parent = p
+	p.children = append(p.children, child)
+}
+
+func (p *PolyTree[T]) addSibling(sibling *PolyTree[T]) {
+	sibling.siblings = append(sibling.siblings, p)
+	p.siblings = append(p.siblings, sibling)
 }
 
 type polyTreePoint[T SignedNumber] struct {
@@ -257,7 +312,6 @@ func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPo
 	}
 	p.resetIntersectionMetadata()
 	p.maxX++
-	p.pointIndex = 0
 
 	// Create convex hull
 	hull := ConvexHull(points...) // todo: just use the slice?
@@ -412,21 +466,10 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 
 							switch operation {
 							case BooleanUnion:
-								// Adjust entry/exit based on polygon types
-								if poly1.polygonType == PTHole {
-									poly1EnteringPoly2 = !poly1EnteringPoly2
-								}
-								if poly2.polygonType == PTHole {
-									poly1EnteringPoly2 = !poly1EnteringPoly2
-								}
 
-								if poly1EnteringPoly2 {
-									poly1.contour[poly1Point1Index].entryExit = intersectionTypeExit
-									poly2.contour[poly2PointIndex].entryExit = intersectionTypeEntry
-								} else {
-									poly1.contour[poly1Point1Index].entryExit = intersectionTypeEntry
-									poly2.contour[poly2PointIndex].entryExit = intersectionTypeExit
-								}
+								// todo: use lookup table for other boolean ops
+								poly1.contour[poly1Point1Index].entryExit = entryExitPointLookUpTable[operation][poly1.polygonType][poly2.polygonType][poly1EnteringPoly2].poly1PointType
+								poly2.contour[poly2PointIndex].entryExit = entryExitPointLookUpTable[operation][poly1.polygonType][poly2.polygonType][poly1EnteringPoly2].poly2PointType
 
 							case BooleanIntersection:
 								// Adjust entry/exit based on polygon types
@@ -484,12 +527,11 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 
 func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation BooleanOperation) [][]Point[T] {
 	var direction polyTraversalDirection
-	var currentPoint polyTreePoint[T]
 
 	// todo: Step 1: handle edge cases like polygons not intersecting etc.
 
 	// Step 2: Normal traversal logic
-	results := make([][]Point[T], 0)
+	resultContours := make([][]Point[T], 0)
 
 	for {
 		// Find the starting point for traversal
@@ -498,13 +540,13 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 			fmt.Println("no unvisited entry points")
 			break // No unvisited entry points
 		}
-		fmt.Println("starting with:", currentPointIndex, currentPoly)
+		fmt.Println("starting with:", currentPoly.contour[currentPointIndex].point)
 
-		// Initialize result path
-		result := make([]Point[T], 0, len(p.contour)+len(other.contour))
+		// Initialize resultContour path
+		resultContour := make([]Point[T], 0, len(p.contour)+len(other.contour))
 
 		// loop (combined):
-		//   - add current point to result & mark as visited
+		//   - add current point to resultContour & mark as visited
 		//   - if direction == CCW { increment point index } else { decrement point index }
 		//   - if point is exit:
 		//       - swap poly
@@ -512,19 +554,18 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 		//   - if point matches start point, loop completed
 
 		// set initial traversal direction
-		if currentPoly.polygonType == PTSolid {
-			direction = polyTraversalForward
-		} else {
-			direction = polyTraversalReverse
-		}
+		//if currentPoly.polygonType == PTSolid {
+		direction = polyTraversalForward
+		//} else {
+		//	direction = polyTraversalReverse
+		//}
 
 		for {
 
-			currentPoint = currentPoly.contour[currentPointIndex]
-
-			// Append current point to result path
-			result = append(result, NewPoint(currentPoly.contour[currentPointIndex].point.x, currentPoly.contour[currentPointIndex].point.y))
-			fmt.Println("added point:", currentPoint)
+			// Append current point to resultContour path
+			// Do division here
+			resultContour = append(resultContour, NewPoint(currentPoly.contour[currentPointIndex].point.x/2, currentPoly.contour[currentPointIndex].point.y/2))
+			fmt.Println("added point:", currentPoly.contour[currentPointIndex].point)
 
 			if currentPoly.contour[currentPointIndex].entryExit == intersectionTypeEntry {
 				fmt.Println("point is entry")
@@ -584,19 +625,87 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 			}
 
 			// Stop if we loop back to the starting point in the same polygon
-			if currentPoly.contour[currentPointIndex].point.x == result[0].x && currentPoly.contour[currentPointIndex].point.y == result[0].y {
+			if currentPoly.contour[currentPointIndex].point.x/2 == resultContour[0].x && currentPoly.contour[currentPointIndex].point.y/2 == resultContour[0].y {
 				fmt.Println("finished loop")
 				break
 			}
 		}
 
-		results = append(results, result)
+		resultContours = append(resultContours, resultContour)
 	}
 
-	// TODO: Handle no results for specific operations
-	//if len(results) == 0 && operation == BooleanUnion {
+	// TODO: Handle no resultContours for specific operations
+	//if len(resultContours) == 0 && operation == BooleanUnion {
 	//	return [][]polyPoint[T]{poly1, poly2}
 	//}
 
-	return results
+	return resultContours
+}
+
+func nestPointsToPolyTrees[T SignedNumber](contours [][]Point[T]) (*PolyTree[T], error) {
+	// Sanity check: ensure contours exist
+	if len(contours) == 0 {
+		return nil, fmt.Errorf("no contours provided")
+	}
+
+	// Sort polygons by area (ascending order, largest last)
+	slices.SortFunc(contours, func(a, b []Point[T]) int {
+		areaA := SignedArea2X(a)
+		areaB := SignedArea2X(b)
+		switch {
+		case areaA < areaB:
+			return -1
+		case areaA > areaB:
+			return 1
+		default:
+			return 0
+		}
+	})
+
+	// Create the root PolyTree from the largest polygon
+	rootTree, err := NewPolyTree(contours[len(contours)-1], PTSolid)
+	if err != nil {
+		return nil, err
+	}
+
+	// Process the remaining polygons
+	for i := len(contours) - 2; i >= 0; i-- {
+		polyToNest, err := NewPolyTree(contours[i], PTSolid)
+		if err != nil {
+			return nil, err
+		}
+
+		// Try to find the correct parent polygon
+		parent := rootTree.findParentPolygon(polyToNest)
+		if parent == nil {
+			// If no parent is found, add as a sibling to the root
+			rootTree.addSibling(polyToNest)
+		} else {
+			// Add as a child of the parent
+			if parent.polygonType == PTSolid {
+				polyToNest.polygonType = PTHole
+			} else {
+				polyToNest.polygonType = PTSolid
+			}
+			parent.addChild(polyToNest)
+		}
+	}
+
+	return rootTree, nil
+}
+
+func (p *PolyTree[T]) findParentPolygon(polyToNest *PolyTree[T]) *PolyTree[T] {
+	// Check if polyToNest is inside the current polygon
+	if p.contour.isContourInside(polyToNest.contour) {
+		// Check recursively if it fits inside any child
+		for _, child := range p.children {
+			if nestedParent := child.findParentPolygon(polyToNest); nestedParent != nil {
+				return nestedParent
+			}
+		}
+		// If no child contains it, the current polygon is the parent
+		return p
+	}
+	// If not inside the current polygon, return nil
+	return nil
 }
