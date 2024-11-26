@@ -55,6 +55,50 @@ var entryExitPointLookUpTable = map[BooleanOperation]map[PolygonType]map[Polygon
 			},
 		},
 	},
+	BooleanIntersection: {
+		PTSolid: {
+			PTSolid: {
+				true:  {poly1PointType: intersectionTypeEntry, poly2PointType: intersectionTypeExit},
+				false: {poly1PointType: intersectionTypeExit, poly2PointType: intersectionTypeEntry},
+			},
+			PTHole: {
+				true:  {poly1PointType: intersectionTypeExit, poly2PointType: intersectionTypeEntry},
+				false: {poly1PointType: intersectionTypeEntry, poly2PointType: intersectionTypeExit},
+			},
+		},
+		PTHole: {
+			PTSolid: {
+				true:  {poly1PointType: intersectionTypeEntry, poly2PointType: intersectionTypeExit},
+				false: {poly1PointType: intersectionTypeExit, poly2PointType: intersectionTypeEntry},
+			},
+			PTHole: {
+				true:  {poly1PointType: intersectionTypeExit, poly2PointType: intersectionTypeEntry},
+				false: {poly1PointType: intersectionTypeEntry, poly2PointType: intersectionTypeExit},
+			},
+		},
+	},
+	BooleanSubtraction: {
+		PTSolid: {
+			PTSolid: {
+				true:  {poly1PointType: intersectionTypeExit, poly2PointType: intersectionTypeExit},
+				false: {poly1PointType: intersectionTypeEntry, poly2PointType: intersectionTypeEntry},
+			},
+			PTHole: {
+				true:  {poly1PointType: intersectionTypeEntry, poly2PointType: intersectionTypeEntry},
+				false: {poly1PointType: intersectionTypeExit, poly2PointType: intersectionTypeExit},
+			},
+		},
+		PTHole: {
+			PTSolid: {
+				true:  {poly1PointType: intersectionTypeExit, poly2PointType: intersectionTypeExit},
+				false: {poly1PointType: intersectionTypeEntry, poly2PointType: intersectionTypeEntry},
+			},
+			PTHole: {
+				true:  {poly1PointType: intersectionTypeEntry, poly2PointType: intersectionTypeEntry},
+				false: {poly1PointType: intersectionTypeExit, poly2PointType: intersectionTypeExit},
+			},
+		},
+	},
 }
 
 type contour[T SignedNumber] []polyTreePoint[T]
@@ -464,45 +508,9 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 								poly1Point1Index, poly1Point1.point, poly2PointIndex, poly2Point.point)
 							fmt.Printf("Midpoint: %v, Inside Poly2: %t\n", midT, poly1EnteringPoly2)
 
-							switch operation {
-							case BooleanUnion:
-
-								// todo: use lookup table for other boolean ops
-								poly1.contour[poly1Point1Index].entryExit = entryExitPointLookUpTable[operation][poly1.polygonType][poly2.polygonType][poly1EnteringPoly2].poly1PointType
-								poly2.contour[poly2PointIndex].entryExit = entryExitPointLookUpTable[operation][poly1.polygonType][poly2.polygonType][poly1EnteringPoly2].poly2PointType
-
-							case BooleanIntersection:
-								// Adjust entry/exit based on polygon types
-								if poly2.polygonType == PTHole {
-									poly1EnteringPoly2 = !poly1EnteringPoly2
-								}
-
-								if poly1EnteringPoly2 {
-									poly1.contour[poly1Point1Index].entryExit = intersectionTypeEntry
-									poly2.contour[poly2PointIndex].entryExit = intersectionTypeExit
-								} else {
-									poly1.contour[poly1Point1Index].entryExit = intersectionTypeExit
-									poly2.contour[poly2PointIndex].entryExit = intersectionTypeEntry
-								}
-
-							case BooleanSubtraction:
-								// Adjust entry/exit based on polygon types
-								//if poly1.polygonType == PTHole {
-								//	poly1EnteringPoly2 = !poly1EnteringPoly2
-								//}
-								if poly2.polygonType == PTHole {
-									poly1EnteringPoly2 = !poly1EnteringPoly2
-								}
-
-								if poly1EnteringPoly2 {
-									poly1.contour[poly1Point1Index].entryExit = intersectionTypeExit
-									poly2.contour[poly2PointIndex].entryExit = intersectionTypeExit
-								} else {
-									poly1.contour[poly1Point1Index].entryExit = intersectionTypeEntry
-									poly2.contour[poly2PointIndex].entryExit = intersectionTypeEntry
-								}
-
-							}
+							// use lookup table to determine entry/exit points
+							poly1.contour[poly1Point1Index].entryExit = entryExitPointLookUpTable[operation][poly1.polygonType][poly2.polygonType][poly1EnteringPoly2].poly1PointType
+							poly2.contour[poly2PointIndex].entryExit = entryExitPointLookUpTable[operation][poly1.polygonType][poly2.polygonType][poly1EnteringPoly2].poly2PointType
 
 							// Debug Logging: Marked Entry/Exit
 							fmt.Printf("Poly1 EntryExit: %s, Poly2 EntryExit: %s\n",
