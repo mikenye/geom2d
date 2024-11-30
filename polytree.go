@@ -372,10 +372,21 @@ func (p *PolyTree[T]) addChild(child *PolyTree[T]) error {
 
 func (p *PolyTree[T]) addSibling(sibling *PolyTree[T]) error {
 	if p.polygonType != sibling.polygonType {
-		return fmt.Errorf("cannot add sibling: mismatched polygon types (current: %v, sibling: %v)", p.polygonType, sibling.polygonType)
+		return fmt.Errorf("cannot add sibling as polygonType is mismatched")
 	}
+
+	// Add the new sibling to the existing siblings of p
+	for _, existingSibling := range p.siblings {
+		existingSibling.siblings = append(existingSibling.siblings, sibling)
+		sibling.siblings = append(sibling.siblings, existingSibling)
+	}
+
+	// Add p to the sibling's sibling list
 	sibling.siblings = append(sibling.siblings, p)
+
+	// Add the sibling to p's sibling list
 	p.siblings = append(p.siblings, sibling)
+
 	return nil
 }
 

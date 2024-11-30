@@ -7,6 +7,99 @@ import (
 	"testing"
 )
 
+func TestPolyTree_AddSibling(t *testing.T) {
+	t.Run("Adding a Sibling with Matching polygonType", func(t *testing.T) {
+		poly1, err := NewPolyTree([]Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}}, PTSolid)
+		require.NoError(t, err, "error creating poly1, when none was expected")
+		poly2, err := NewPolyTree([]Point[int]{{20, 20}, {30, 20}, {30, 30}, {20, 30}}, PTSolid)
+		require.NoError(t, err, "error creating poly2, when none was expected")
+
+		err = poly1.addSibling(poly2)
+		require.NoError(t, err, "error calling addSibling, when none was expected")
+		assert.Contains(t, poly1.siblings, poly2)
+		assert.Contains(t, poly2.siblings, poly1)
+	})
+
+	t.Run("Adding a Sibling with Mismatched polygonType", func(t *testing.T) {
+		poly1, err := NewPolyTree([]Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}}, PTSolid)
+		require.NoError(t, err, "error creating poly1, when none was expected")
+		poly2, err := NewPolyTree([]Point[int]{{20, 20}, {30, 20}, {30, 30}, {20, 30}}, PTHole)
+		require.NoError(t, err, "error creating poly2, when none was expected")
+
+		err = poly1.addSibling(poly2)
+		require.Error(t, err, "no error returned from addSibling, when one was expected")
+	})
+
+	t.Run("Adding Multiple Siblings", func(t *testing.T) {
+		poly1, err := NewPolyTree([]Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}}, PTSolid)
+		require.NoError(t, err, "error creating poly1, when none was expected")
+		poly2, err := NewPolyTree([]Point[int]{{20, 20}, {30, 20}, {30, 30}, {20, 30}}, PTSolid)
+		require.NoError(t, err, "error creating poly2, when none was expected")
+		poly3, err := NewPolyTree([]Point[int]{{40, 40}, {50, 40}, {50, 50}, {40, 50}}, PTSolid)
+		require.NoError(t, err, "error creating poly3, when none was expected")
+
+		err = poly1.addSibling(poly2)
+		require.NoError(t, err, "error returned from poly1.addSibling(poly2) when none was expected")
+		err = poly1.addSibling(poly3)
+		require.NoError(t, err, "error returned from poly1.addSibling(poly3) when none was expected")
+
+		assert.Contains(t, poly1.siblings, poly2)
+		assert.Contains(t, poly1.siblings, poly3)
+		assert.Contains(t, poly2.siblings, poly1)
+		assert.Contains(t, poly2.siblings, poly3)
+		assert.Contains(t, poly3.siblings, poly1)
+		assert.Contains(t, poly3.siblings, poly2)
+	})
+}
+
+func TestPolyTree_AddChild(t *testing.T) {
+	t.Run("Adding a Child with Opposite polygonType", func(t *testing.T) {
+		parent, err := NewPolyTree([]Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}}, PTSolid)
+		require.NoError(t, err, "error creating parent polygon, when none was expected")
+
+		child, err := NewPolyTree([]Point[int]{{2, 2}, {8, 2}, {8, 8}, {2, 8}}, PTHole)
+		require.NoError(t, err, "error creating child polygon, when none was expected")
+
+		err = parent.addChild(child)
+		require.NoError(t, err, "error calling addChild, when none was expected")
+
+		assert.Contains(t, parent.children, child)
+		assert.Equal(t, parent, child.parent)
+	})
+
+	t.Run("Adding a Child with Mismatched polygonType", func(t *testing.T) {
+		parent, err := NewPolyTree([]Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}}, PTSolid)
+		require.NoError(t, err, "error creating parent polygon, when none was expected")
+
+		child, err := NewPolyTree([]Point[int]{{2, 2}, {8, 2}, {8, 8}, {2, 8}}, PTSolid)
+		require.NoError(t, err, "error creating child polygon, when none was expected")
+
+		err = parent.addChild(child)
+		require.Error(t, err, "no error returned from addChild, when one was expected")
+	})
+
+	t.Run("Adding Multiple Children", func(t *testing.T) {
+		parent, err := NewPolyTree([]Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}}, PTSolid)
+		require.NoError(t, err, "error creating parent polygon, when none was expected")
+
+		child1, err := NewPolyTree([]Point[int]{{2, 2}, {4, 2}, {4, 4}, {2, 4}}, PTHole)
+		require.NoError(t, err, "error creating first child polygon, when none was expected")
+
+		child2, err := NewPolyTree([]Point[int]{{6, 6}, {8, 6}, {8, 8}, {6, 8}}, PTHole)
+		require.NoError(t, err, "error creating second child polygon, when none was expected")
+
+		err = parent.addChild(child1)
+		require.NoError(t, err, "error calling addChild for child1, when none was expected")
+		err = parent.addChild(child2)
+		require.NoError(t, err, "error calling addChild for child2, when none was expected")
+
+		assert.Contains(t, parent.children, child1)
+		assert.Contains(t, parent.children, child2)
+		assert.Equal(t, parent, child1.parent)
+		assert.Equal(t, parent, child2.parent)
+	})
+}
+
 func TestNestPointsToPolyTrees(t *testing.T) {
 	tests := map[string]struct {
 		contours [][]Point[int]
