@@ -5,6 +5,102 @@ import (
 	"slices"
 )
 
+// Valid values for BooleanOperation
+const (
+	// BooleanUnion represents the union operation, which combines two polygons into a single polygon
+	// that encompasses the areas of both input polygons. Overlapping regions are merged.
+	BooleanUnion BooleanOperation = iota
+
+	// BooleanIntersection represents the intersection operation, which computes the region(s)
+	// where two polygons overlap. The result is one or more polygons that covers only the shared area.
+	BooleanIntersection
+
+	// BooleanSubtraction represents the subtraction operation, which removes the area of one polygon
+	// from another. The result is one or more polygons representing the area of the first polygon excluding
+	// the overlapping region with the second polygon.
+	BooleanSubtraction
+)
+
+// Valid values for PointPolygonRelationship
+const (
+	// PPRPointInHole indicates the point is inside a hole within the polygon.
+	// Holes are void regions within the polygon that are not part of its solid area.
+	PPRPointInHole PointPolygonRelationship = iota - 1
+
+	// PPRPointOutside indicates the point lies outside the root polygon.
+	// This includes points outside the boundary and not within any nested holes or islands.
+	PPRPointOutside
+
+	// PPRPointOnVertex indicates the point coincides with a vertex of the polygon,
+	// including vertices of its holes or nested islands.
+	PPRPointOnVertex
+
+	// PPRPointOnEdge indicates the point lies exactly on an edge of the polygon.
+	// This includes edges of the root polygon, its holes, or its nested islands.
+	PPRPointOnEdge
+
+	// PPRPointInside indicates the point is strictly inside the solid area of the polygon,
+	// excluding any holes within the polygon.
+	PPRPointInside
+
+	// PPRPointInsideIsland indicates the point lies within a nested island inside the polygon.
+	// Islands are solid regions contained within holes of the polygon.
+	PPRPointInsideIsland
+)
+
+// Valid values for PolygonType
+const (
+	// PTSolid represents a solid region of the polygon, commonly referred to as an "island."
+	// PTSolid polygons are the primary filled areas, excluding any void regions (holes).
+	PTSolid PolygonType = iota
+
+	// PTHole represents a void region of the polygon, often nested within a solid polygon.
+	// Holes are not part of the filled area of the polygon and are treated as exclusions.
+	PTHole
+)
+
+// Valid values for polyIntersectionType
+const (
+	// intersectionTypeNotSet indicates that the intersection type has not been set.
+	// This is the default value for uninitialized points or non-intersection points.
+	intersectionTypeNotSet polyIntersectionType = iota
+
+	// intersectionTypeEntry indicates that the point serves as an entry point to the area of interest
+	// when traversing the polygon during an operation.
+	intersectionTypeEntry
+
+	// intersectionTypeExit indicates that the point serves as an exit point from the area of interest
+	// when traversing the polygon during an operation.
+	intersectionTypeExit
+)
+
+// Valid values for polyPointType
+const (
+	// pointTypeOriginal indicates that the point is an original, unmodified vertex of the polygon.
+	// These points are part of the polygon's initial definition.
+	pointTypeOriginal polyPointType = iota
+
+	// pointTypeOriginalAndIntersection indicates that the point is an original vertex that also serves
+	// as an intersection point between polygons during operations such as union or intersection.
+	pointTypeOriginalAndIntersection
+
+	// pointTypeAddedIntersection indicates that the point is an intersection point that was added
+	// during a polygon operation. These points are not part of the polygon's original definition
+	// but are dynamically introduced for computational purposes.
+	pointTypeAddedIntersection
+)
+
+// Valid values for polyTraversalDirection
+const (
+	// polyTraversalForward specifies that the traversal proceeds
+	// in a counterclockwise direction through the polygon's vertices or edges.
+	polyTraversalForward = polyTraversalDirection(iota)
+
+	// polyTraversalReverse specifies that the traversal proceeds
+	// in a clockwise direction through the polygon's vertices or edges.
+	polyTraversalReverse
+)
+
 // Valid values for PolyTreeMismatch
 const (
 	// PTMNoMismatch indicates that there is no mismatch between the compared PolyTree structures.
@@ -156,6 +252,15 @@ var entryExitPointLookUpTable = map[BooleanOperation]map[PolygonType]map[Polygon
 	},
 }
 
+// BooleanOperation defines the types of Boolean operations that can be performed on polygons.
+// These operations are fundamental in computational geometry for combining or modifying shapes.
+//
+// The supported operations are:
+// - Union: Combines two polygons into one, merging their areas.
+// - Intersection: Finds the overlapping region between two polygons.
+// - Subtraction: Subtracts one polygon's area from another.
+type BooleanOperation uint8
+
 // NewPolyTreeOption defines a functional option type for configuring a new PolyTree during creation.
 //
 // This type allows for flexible and extensible initialization of PolyTree objects by applying optional
@@ -180,6 +285,23 @@ var entryExitPointLookUpTable = map[BooleanOperation]map[PolygonType]map[Polygon
 // This pattern makes it easy to add optional properties to a PolyTree without requiring an extensive list
 // of parameters in the NewPolyTree function.
 type NewPolyTreeOption[T SignedNumber] func(*PolyTree[T])
+
+// PointPolygonRelationship (PPR) defines the possible spatial relationships between a point
+// and a polygon, accounting for structures such as holes and nested islands.
+//
+// The relationships are enumerated as follows:
+//   - PPRPointInside: The point lies strictly within the boundaries of the polygon.
+//   - PPRPointOutside: The point lies outside the outermost boundary of the polygon.
+//   - PPRPointOnVertex: The point coincides with a vertex of the polygon or one of its holes/islands.
+//   - PPRPointOnEdge: The point lies exactly on an edge of the polygon or one of its holes/islands.
+//   - PPRPointInHole: The point lies inside a hole within the polygon.
+//   - PPRPointInsideIsland: The point lies inside an island nested within the polygon.
+type PointPolygonRelationship int8
+
+// PolygonType (PT) defines whether the inside of the contour of a polygon represents either a solid region (island)
+// or a void region (hole). This distinction is essential for operations involving polygons
+// with complex structures, such as those containing holes or nested islands.
+type PolygonType uint8
 
 // PolyTree represents a polygon that can be part of a hierarchical structure. It supports
 // complex polygons with holes and islands and enables operations like unions, intersections,
@@ -256,6 +378,43 @@ type PolyTreeMismatch uint8
 // coordinates.
 type contour[T SignedNumber] []polyTreePoint[T]
 
+// polyEdge represents an edge of a polygon, storing the geometric line segment
+// and additional metadata for polygon operations.
+//
+// This type is used internally for operations such as determining point-in-polygon
+// relationships and handling ray intersection tests. It provides both the edge's
+// geometric representation and its relationship with a ray used in algorithms.
+type polyEdge[T SignedNumber] struct {
+	// lineSegment represents the geometric edge of the polygon as a line segment.
+	// This field is used for geometric operations such as intersection checks and edge traversal.
+	lineSegment LineSegment[T]
+
+	// rel specifies the relationship of this edge with a ray during point-in-polygon tests.
+	// This field is primarily used for algorithms like ray-casting to determine whether
+	// a point is inside or outside the polygon.
+	rel LineSegmentsRelationship
+}
+
+// polyIntersectionType defines the type of intersection point in polygon operations,
+// distinguishing between entry and exit (of area of interest) points during traversal.
+//
+// This type is primarily used in Boolean operations (e.g., union, intersection, subtraction)
+// to identify transitions at intersection points between polygons.
+type polyIntersectionType int
+
+// polyPointType defines the type of point in a polygon, used to distinguish between
+// original vertices and additional points introduced during polygon operations.
+//
+// This type is essential for managing polygon data during Boolean operations (e.g., union,
+// intersection, subtraction) and other algorithms that require distinguishing original
+// points from dynamically added points.
+type polyPointType uint8
+
+// polyTraversalDirection defines the direction in which a polygon's vertices are traversed.
+// This can either be clockwise or counterclockwise and is used to specify how to iterate
+// through a polygon's vertices or edges during boolean operations and other processing.
+type polyTraversalDirection uint8
+
 // polyTreeEqOption defines a functional option for configuring the behaviour of the Eq method
 // on a PolyTree. These options are used to customize the comparison logic, such as whether to
 // track visited nodes to prevent infinite recursion during comparisons of siblings and children.
@@ -318,6 +477,20 @@ type polyTreePoint[T SignedNumber] struct {
 
 	// Index of the corresponding intersection point in the partner polygon.
 	intersectionPartnerPointIndex int
+}
+
+// simpleConvexPolygon represents a convex polygon, which is a polygon where all interior angles
+// are less than 180 degrees, and no line segment between two points on the boundary extends outside the polygon.
+//
+// This type is used internally to optimize geometric operations such as point-in-polygon checks,
+// as convex polygons allow for faster algorithms compared to general polygons.
+//
+// As this is used internally, no checks are in place to enforce convexity.
+// The ConvexHull function returns this type.
+type simpleConvexPolygon[T SignedNumber] struct {
+	// Points contains the ordered vertices of the convex polygon. The points are arranged
+	// sequentially in either clockwise or counterclockwise order, forming the boundary of the convex hull.
+	Points []Point[T]
 }
 
 // NewPolyTree creates a new [PolyTree] object from a set of points defining the polygon's contour.
@@ -411,6 +584,42 @@ func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPo
 
 	// Return the constructed PolyTree.
 	return p, nil
+}
+
+// newSimpleConvexPolygon creates a new simpleConvexPolygon from a given slice of points.
+// The input points are assumed to be ordered to form a convex polygon.
+//
+// This function is primarily used internally to construct a convex polygon representation
+// for optimization purposes, such as in point-in-polygon checks.
+//
+// Parameters:
+//
+//   - points []Point[T]: A slice of points representing the vertices of the convex polygon.
+//     The points are assumed to be ordered sequentially, either clockwise
+//     or counterclockwise, to define the boundary of a convex polygon.
+//
+// Returns:
+//
+//   - *simpleConvexPolygon[T]: A pointer to a new simpleConvexPolygon containing the provided points.
+//
+// Notes:
+//   - This function assumes that the input points are already ordered and form a valid convex polygon.
+//     No validation is performed to verify the convexity of the polygon or the order of the points.
+//   - As this function is used internally, it expects the caller to ensure the validity of the input.
+//
+// Example:
+//
+//	points := []Point[float64]{
+//	    {X: 0, Y: 0},
+//	    {X: 4, Y: 0},
+//	    {X: 4, Y: 4},
+//	    {X: 0, Y: 4},
+//	}
+//	scp := newSimpleConvexPolygon(points)
+//	// scp represents a convex polygon with the given points.
+func newSimpleConvexPolygon[T SignedNumber](points []Point[T]) simpleConvexPolygon[T] {
+	// Assume `points` is already ordered to form a convex polygon
+	return simpleConvexPolygon[T]{Points: points}
 }
 
 // WithChildren is an option for the NewPolyTree function that assigns child polygons to the created PolyTree.
@@ -835,6 +1044,18 @@ func (c *contour[T]) toPoints() []Point[T] {
 	}
 
 	return originalPoints
+}
+
+func (p *polyIntersectionType) String() string {
+	switch *p {
+	case intersectionTypeNotSet:
+		return "not set"
+	case intersectionTypeEntry:
+		return "entry"
+	case intersectionTypeExit:
+		return "exit"
+	}
+	return ""
 }
 
 // BooleanOperation performs a Boolean operation (union, intersection, or subtraction)
@@ -1592,6 +1813,54 @@ func (p *PolyTree[T]) resetIntersectionMetadataAndReorder() {
 	p.contour.reorder()
 }
 
+// ContainsPoint determines whether a given point lies inside the convex polygon.
+//
+// This method uses a clockwise orientation check for each edge of the polygon to determine
+// if the point is on the "correct" side of all edges. For convex polygons, this is sufficient
+// to verify containment.
+//
+// Parameters:
+//
+//   - point Point[T]: The point to check.
+//
+// Returns:
+//
+//   - bool: True if the point lies inside or on the boundary of the convex polygon; false otherwise.
+//
+// Algorithm:
+//   - Iterate over each edge of the convex polygon, defined by consecutive points in the Points slice.
+//   - For each edge, check the orientation of the given point relative to the edge using the Orientation function.
+//   - If the point is found to be on the "outside" of any edge (i.e., the orientation is clockwise),
+//     it is determined to be outside the polygon, and the method returns false.
+//   - If the point passes all edge checks, it is inside the polygon, and the method returns true.
+//
+// Notes:
+//   - This method assumes that the `simpleConvexPolygon` is indeed convex. No validation of convexity
+//     is performed, as this type is intended for internal use and relies on being constructed correctly.
+//
+// Example:
+//
+//	scp := simpleConvexPolygon{Points: []Point{
+//	    {X: 0, Y: 0}, {X: 4, Y: 0}, {X: 4, Y: 4}, {X: 0, Y: 4},
+//	}}
+//	inside := scp.ContainsPoint(Point{X: 2, Y: 2}) // Returns true
+//	outside := scp.ContainsPoint(Point{X: 5, Y: 5}) // Returns false
+//
+// todo: this example only makes sense in the context of this module - users of the module won't be able to do this as simpleConvexPolygon is private. Consider how we address this. Potentially add a ConvexHull method of Polygon?
+func (scp *simpleConvexPolygon[T]) ContainsPoint(point Point[T]) bool {
+	// Loop over each edge, defined by consecutive points
+	for i := 0; i < len(scp.Points); i++ {
+		a := scp.Points[i]
+		b := scp.Points[(i+1)%len(scp.Points)] // Wrap to form a closed polygon
+
+		// Check if the point is on the correct side of the edge
+		if Orientation(a, b, point) == PointsClockwise {
+			return false // Point is outside
+		}
+	}
+	return true // Point is inside
+}
+
 // compareLowestLeftmost compares two contours and determines their relative order
 // based on the lowest, leftmost point in each contour.
 //
@@ -1714,6 +1983,42 @@ func nestPointsToPolyTrees[T SignedNumber](contours [][]Point[T]) (*PolyTree[T],
 
 	// Step 5: Return the root PolyTree
 	return rootTree, nil
+}
+
+// togglePolyTraversalDirection toggles the traversal direction of a polygon between clockwise
+// and counterclockwise.
+//
+// This function is used in algorithms that require switching the traversal direction of a polygon's
+// vertices, such as during Boolean operations or polygon manipulations.
+//
+// Parameters:
+//
+//   - direction polyTraversalDirection: The current traversal direction, either clockwise
+//     or counterclockwise.
+//
+// Returns polyTraversalDirection: The opposite traversal direction.
+//   - If the input is polyTraversalReverse, the output
+//     will be polyTraversalForward.
+//   - If the input is polyTraversalForward, the output
+//     will be polyTraversalReverse.
+//
+// Example:
+//
+//	currentDirection := polyTraversalReverse
+//	newDirection := togglePolyTraversalDirection(currentDirection)
+//	// newDirection == polyTraversalForward
+//
+// Notes:
+//   - This function assumes that the input is a valid polyTraversalDirection value.
+//   - If an invalid value is provided, the function may not behave as expected.
+//
+// Dependencies:
+//   - Relies on the polyTraversalDirection type and its constants for traversal direction.
+func togglePolyTraversalDirection(direction polyTraversalDirection) polyTraversalDirection {
+	if direction == polyTraversalReverse {
+		return polyTraversalForward
+	}
+	return polyTraversalReverse
 }
 
 // withVisited creates an option to configure a PolyTree equality check with a predefined
