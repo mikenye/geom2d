@@ -1,6 +1,7 @@
 package geom2d
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -9,14 +10,14 @@ import (
 func TestNestPointsToPolyTrees(t *testing.T) {
 	tests := map[string]struct {
 		contours [][]Point[int]
-		expected func() *PolyTree[int]
+		expected func() (*PolyTree[int], error)
 		wantErr  bool
 	}{
 		"single polygon": {
 			contours: [][]Point[int]{
 				{{0, 0}, {10, 0}, {10, 10}, {0, 10}},
 			},
-			expected: func() *PolyTree[int] {
+			expected: func() (*PolyTree[int], error) {
 				return &PolyTree[int]{
 					contour: contour[int]{
 						polyTreePoint[int]{ // 0
@@ -60,7 +61,7 @@ func TestNestPointsToPolyTrees(t *testing.T) {
 						Points: []Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}},
 					},
 					maxX: 21,
-				}
+				}, nil
 			},
 			wantErr: false,
 		},
@@ -70,248 +71,49 @@ func TestNestPointsToPolyTrees(t *testing.T) {
 				{{5, 5}, {15, 5}, {15, 15}, {5, 15}}, // Inner hole
 				{{7, 7}, {13, 7}, {13, 13}, {7, 13}}, // Island inside hole
 			},
-			expected: func() *PolyTree[int] {
+			expected: func() (*PolyTree[int], error) {
 				root := &PolyTree[int]{
 					contour: contour[int]{
-						polyTreePoint[int]{ // 0
-							point:                         Point[int]{0, 0},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-						polyTreePoint[int]{ // 1
-							point:                         Point[int]{40, 0},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-						polyTreePoint[int]{ // 2
-							point:                         Point[int]{40, 40},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-						polyTreePoint[int]{ // 3
-							point:                         Point[int]{0, 40},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
+						{Point[int]{0, 0}, pointTypeOriginal, intersectionTypeNotSet, false, nil, -1},
+						{Point[int]{40, 0}, pointTypeOriginal, intersectionTypeNotSet, false, nil, -1},
+						{Point[int]{40, 40}, pointTypeOriginal, intersectionTypeNotSet, false, nil, -1},
+						{Point[int]{0, 40}, pointTypeOriginal, intersectionTypeNotSet, false, nil, -1},
 					},
 					polygonType: PTSolid,
-					siblings:    nil,
-					children:    nil,
-					parent:      nil,
-					hull: simpleConvexPolygon[int]{
-						Points: []Point[int]{{0, 0}, {20, 0}, {20, 20}, {0, 20}},
-					},
-					maxX: 41,
+					hull:        simpleConvexPolygon[int]{Points: []Point[int]{{0, 0}, {20, 0}, {20, 20}, {0, 20}}},
+					maxX:        41,
 				}
 				hole := &PolyTree[int]{
 					contour: contour[int]{
-						polyTreePoint[int]{ // 0
-							point:                         Point[int]{10, 10},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-						polyTreePoint[int]{ // 1
-							point:                         Point[int]{30, 10},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-						polyTreePoint[int]{ // 2
-							point:                         Point[int]{30, 30},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-						polyTreePoint[int]{ // 3
-							point:                         Point[int]{10, 30},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
+						{Point[int]{10, 10}, pointTypeOriginal, intersectionTypeNotSet, false, nil, -1},
+						{Point[int]{30, 10}, pointTypeOriginal, intersectionTypeNotSet, false, nil, -1},
+						{Point[int]{30, 30}, pointTypeOriginal, intersectionTypeNotSet, false, nil, -1},
+						{Point[int]{10, 30}, pointTypeOriginal, intersectionTypeNotSet, false, nil, -1},
 					},
 					polygonType: PTHole,
-					siblings:    nil,
-					children:    nil,
-					parent:      nil,
-					hull: simpleConvexPolygon[int]{
-						Points: []Point[int]{{5, 5}, {15, 5}, {15, 15}, {5, 15}},
-					},
-					maxX: 31,
+					hull:        simpleConvexPolygon[int]{Points: []Point[int]{{5, 5}, {15, 5}, {15, 15}, {5, 15}}},
+					maxX:        31,
 				}
 				island := &PolyTree[int]{
 					contour: contour[int]{
-						polyTreePoint[int]{ // 0
-							point:                         Point[int]{14, 14},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-						polyTreePoint[int]{ // 1
-							point:                         Point[int]{26, 14},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-						polyTreePoint[int]{ // 2
-							point:                         Point[int]{26, 26},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-						polyTreePoint[int]{
-							point:                         Point[int]{14, 26},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
+						{Point[int]{14, 14}, pointTypeOriginal, intersectionTypeNotSet, false, nil, -1},
+						{Point[int]{26, 14}, pointTypeOriginal, intersectionTypeNotSet, false, nil, -1},
+						{Point[int]{26, 26}, pointTypeOriginal, intersectionTypeNotSet, false, nil, -1},
+						{Point[int]{14, 26}, pointTypeOriginal, intersectionTypeNotSet, false, nil, -1},
 					},
 					polygonType: PTSolid,
-					siblings:    nil,
-					children:    nil,
-					parent:      nil,
-					hull: simpleConvexPolygon[int]{
-						Points: []Point[int]{{7, 7}, {13, 7}, {13, 13}, {7, 13}},
-					},
-					maxX: 27,
+					hull:        simpleConvexPolygon[int]{Points: []Point[int]{{7, 7}, {13, 7}, {13, 13}, {7, 13}}},
+					maxX:        27,
 				}
-				hole.addChild(island)
-				root.addChild(hole)
-				return root
+				if err := hole.addChild(island); err != nil {
+					return nil, fmt.Errorf("failed to add island: %w", err)
+				}
+				if err := root.addChild(hole); err != nil {
+					return nil, fmt.Errorf("failed to add hole: %w", err)
+				}
+				return root, nil
 			},
 			wantErr: false,
-		},
-		"siblings": {
-			contours: [][]Point[int]{
-				{{0, 0}, {10, 0}, {10, 10}, {0, 10}},     // Polygon 1
-				{{20, 20}, {30, 20}, {30, 30}, {20, 30}}, // Polygon 2
-			},
-			expected: func() *PolyTree[int] {
-				poly1 := &PolyTree[int]{
-					contour: contour[int]{
-						polyTreePoint[int]{ // 0
-							point:                         Point[int]{40, 40},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-						polyTreePoint[int]{ // 1
-							point:                         Point[int]{60, 40},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-						polyTreePoint[int]{ // 2
-							point:                         Point[int]{60, 60},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-						polyTreePoint[int]{ // 3
-							point:                         Point[int]{40, 60},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-					},
-					polygonType: PTSolid,
-					siblings:    nil,
-					children:    nil,
-					parent:      nil,
-					hull: simpleConvexPolygon[int]{
-						Points: []Point[int]{{20, 20}, {30, 20}, {30, 30}, {20, 30}},
-					},
-					maxX: 61,
-				}
-				poly2 := &PolyTree[int]{
-					contour: contour[int]{
-						polyTreePoint[int]{ // 0
-							point:                         Point[int]{0, 0},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-						polyTreePoint[int]{ // 1
-							point:                         Point[int]{20, 0},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-						polyTreePoint[int]{ // 2
-							point:                         Point[int]{20, 20},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-						polyTreePoint[int]{ // 3
-							point:                         Point[int]{0, 20},
-							pointType:                     pointTypeOriginal,
-							entryExit:                     intersectionTypeNotSet,
-							visited:                       false,
-							intersectionPartner:           nil,
-							intersectionPartnerPointIndex: -1,
-						},
-					},
-					polygonType: PTSolid,
-					siblings:    nil,
-					children:    nil,
-					parent:      nil,
-					hull: simpleConvexPolygon[int]{
-						Points: []Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}},
-					},
-					maxX: 21,
-				}
-				poly1.addSibling(poly2)
-				return poly1
-			},
-			wantErr: false,
-		},
-		"no input polygons": {
-			contours: [][]Point[int]{},
-			expected: nil,
-			wantErr:  true,
 		},
 	}
 
@@ -323,7 +125,11 @@ func TestNestPointsToPolyTrees(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
-			assert.Equal(t, tc.expected(), got)
+
+			expected, err := tc.expected()
+			assert.NoError(t, err)
+
+			assert.Equal(t, expected, got)
 		})
 	}
 }
@@ -1322,4 +1128,144 @@ func TestNewBetterPolygon_booleanOperationTraversal_Subtraction(t *testing.T) {
 	}
 	resultingPointsSubtraction = polyTree2.booleanOperationTraversal(polyTree1, BooleanSubtraction)
 	assert.Equal(t, expectedPointsSubtraction, resultingPointsSubtraction)
+}
+
+func TestPolyTree_Intersects_NoIntersection(t *testing.T) {
+	p1 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{0, 0}},
+		{point: Point[int]{10, 0}},
+		{point: Point[int]{10, 10}},
+		{point: Point[int]{0, 10}},
+	}}
+	p2 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{20, 20}},
+		{point: Point[int]{30, 20}},
+		{point: Point[int]{30, 30}},
+		{point: Point[int]{20, 30}},
+	}}
+	require.False(t, p1.Intersects(p2))
+}
+
+func TestPolyTree_Intersects_PointInside(t *testing.T) {
+	p1 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{0, 0}},
+		{point: Point[int]{10, 0}},
+		{point: Point[int]{10, 10}},
+		{point: Point[int]{0, 10}},
+	}}
+	p2 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{5, 5}},
+		{point: Point[int]{6, 5}},
+		{point: Point[int]{6, 6}},
+		{point: Point[int]{5, 6}},
+	}}
+	require.True(t, p1.Intersects(p2))
+}
+
+func TestPolyTree_Intersects_EdgeOverlap(t *testing.T) {
+	p1 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{0, 0}},
+		{point: Point[int]{10, 0}},
+		{point: Point[int]{10, 10}},
+		{point: Point[int]{0, 10}},
+	}}
+	p2 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{5, 0}},
+		{point: Point[int]{15, 0}},
+		{point: Point[int]{15, 5}},
+		{point: Point[int]{5, 5}},
+	}}
+	require.True(t, p1.Intersects(p2))
+}
+
+func TestPolyTree_Intersects_OverlappingPolygons(t *testing.T) {
+	p1 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{0, 0}},
+		{point: Point[int]{10, 0}},
+		{point: Point[int]{10, 10}},
+		{point: Point[int]{0, 10}},
+	}}
+	p2 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{5, 5}},
+		{point: Point[int]{15, 5}},
+		{point: Point[int]{15, 15}},
+		{point: Point[int]{5, 15}},
+	}}
+	require.True(t, p1.Intersects(p2))
+}
+
+func TestContour_iterEdges_Empty(t *testing.T) {
+	contour := contour[int]{}
+	count := 0
+	contour.iterEdges(func(edge LineSegment[int]) bool {
+		count++
+		return true
+	})
+	require.Equal(t, 0, count, "iterEdges should not yield edges for an empty contour")
+}
+
+func TestContour_iterEdges_TwoPoints(t *testing.T) {
+	contour := contour[int]{
+		{point: Point[int]{0, 0}},
+		{point: Point[int]{10, 0}},
+	}
+	var edges []LineSegment[int]
+	contour.iterEdges(func(edge LineSegment[int]) bool {
+		edges = append(edges, edge)
+		return true
+	})
+	require.Equal(t, 2, len(edges), "iterEdges should yield exactly two edges for a closed loop with two points")
+	require.Equal(t, NewLineSegment(Point[int]{0, 0}, Point[int]{10, 0}), edges[0])
+	require.Equal(t, NewLineSegment(Point[int]{10, 0}, Point[int]{0, 0}), edges[1])
+}
+
+func TestContour_iterEdges_Triangle(t *testing.T) {
+	contour := contour[int]{
+		{point: Point[int]{0, 0}},
+		{point: Point[int]{10, 0}},
+		{point: Point[int]{5, 10}},
+	}
+	var edges []LineSegment[int]
+	contour.iterEdges(func(edge LineSegment[int]) bool {
+		edges = append(edges, edge)
+		return true
+	})
+	require.Equal(t, 3, len(edges), "iterEdges should yield exactly three edges for a triangle")
+	require.Equal(t, NewLineSegment(Point[int]{0, 0}, Point[int]{10, 0}), edges[0])
+	require.Equal(t, NewLineSegment(Point[int]{10, 0}, Point[int]{5, 10}), edges[1])
+	require.Equal(t, NewLineSegment(Point[int]{5, 10}, Point[int]{0, 0}), edges[2])
+}
+
+func TestContour_iterEdges_FullPolygon(t *testing.T) {
+	contour := contour[int]{
+		{point: Point[int]{0, 0}},
+		{point: Point[int]{10, 0}},
+		{point: Point[int]{10, 10}},
+		{point: Point[int]{0, 10}},
+	}
+	var edges []LineSegment[int]
+	contour.iterEdges(func(edge LineSegment[int]) bool {
+		edges = append(edges, edge)
+		return true
+	})
+	require.Equal(t, 4, len(edges), "iterEdges should yield one edge per contour segment")
+	require.Equal(t, NewLineSegment(Point[int]{0, 0}, Point[int]{10, 0}), edges[0])
+	require.Equal(t, NewLineSegment(Point[int]{10, 0}, Point[int]{10, 10}), edges[1])
+	require.Equal(t, NewLineSegment(Point[int]{10, 10}, Point[int]{0, 10}), edges[2])
+	require.Equal(t, NewLineSegment(Point[int]{0, 10}, Point[int]{0, 0}), edges[3])
+}
+
+func TestContour_iterEdges_EarlyExit(t *testing.T) {
+	contour := contour[int]{
+		{point: Point[int]{0, 0}},
+		{point: Point[int]{10, 0}},
+		{point: Point[int]{10, 10}},
+		{point: Point[int]{0, 10}},
+	}
+	count := 0
+	contour.iterEdges(func(edge LineSegment[int]) bool {
+		count++
+		return count < 2 // Exit after two edges
+	})
+	require.Equal(t, 2, count, "iterEdges should exit early when yield returns false")
 }

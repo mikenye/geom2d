@@ -662,7 +662,7 @@ func triangleAreaX2Signed[T SignedNumber](p0, p1, p2 Point[T]) T {
 // See https://en.wikipedia.org/wiki/Convex_hull for more information on convex hulls.
 //
 // TODO: The function currently returns the convex hull as a slice of points. Consider returning a polyline or polygon type for better representation.
-func ConvexHull[T SignedNumber](points ...Point[T]) []Point[T] {
+func ConvexHull[T SignedNumber](points []Point[T]) []Point[T] {
 
 	var (
 		pt0Index, pt1Index, pt2Index int

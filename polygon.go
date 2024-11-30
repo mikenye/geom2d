@@ -1333,7 +1333,7 @@ func NewPolygon[T SignedNumber](points []Point[T], polygonType PolygonType, chil
 	}
 
 	// Create convex hull
-	hull := ConvexHull(points...)
+	hull := ConvexHull(points)
 	EnsureCounterClockwise(hull)
 	p.hull = newSimpleConvexPolygon(hull)
 

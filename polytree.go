@@ -196,6 +196,27 @@ func (c *contour[T]) insertPoint(start, end int, intersection polyTreePoint[T]) 
 	*c = slices.Insert(*c, insertPos, intersection)
 }
 
+// iterEdges iterates over all edges in the contour, calling the `yield` function for each edge.
+// Each edge is represented as a LineSegment connecting two consecutive points in the contour.
+// The contour is assumed to represent a closed loop, so the last point is connected back to the first.
+//
+// The `yield` function receives a LineSegment representing an edge and should return `true`
+// to continue iteration or `false` to terminate early.
+//
+// If the contour has fewer than two points, the method returns without calling `yield`.
+func (c *contour[T]) iterEdges(yield func(LineSegment[T]) bool) {
+	if len(*c) < 2 {
+		return // A contour with fewer than two points cannot form edges
+	}
+
+	for i := range *c {
+		j := (i + 1) % len(*c) // Wrap around to connect the last point to the first
+		if !yield(NewLineSegment((*c)[i].point, (*c)[j].point)) {
+			return // Exit early if `yield` returns false
+		}
+	}
+}
+
 func (c *contour[T]) toEdges() []polyEdge[T] {
 	edges := make([]polyEdge[T], 0, len(*c))
 	for i := range *c {
@@ -238,6 +259,62 @@ type PolyTree[T SignedNumber] struct {
 	// maxX stores the maximum X-coordinate value among the polygon's vertices. This is used
 	// for ray-casting operations to determine point-in-polygon relationships.
 	maxX T
+}
+
+func (p *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOperation) (*PolyTree[T], error) {
+	// Edge Case: Check if polygons intersect
+	if !p.Intersects(other) {
+		switch operation {
+		case BooleanUnion:
+			if err := p.addSibling(other); err != nil {
+				return nil, fmt.Errorf("failed to add sibling: %w", err)
+			}
+			return p, nil
+		case BooleanIntersection:
+			return nil, nil // No intersection
+		case BooleanSubtraction:
+			return p, nil // Original polygon remains unchanged
+		default:
+			return nil, fmt.Errorf("unknown operation: %v", operation)
+		}
+	}
+
+	// find intersection points between all polys
+	p.findIntersections(other)
+
+	// mark points for Intersection
+	p.markEntryExitPoints(other, operation)
+
+	// perform traversal and nest resultant polygons
+	return nestPointsToPolyTrees(p.booleanOperationTraversal(other, operation))
+}
+
+func (p *PolyTree[T]) Intersects(other *PolyTree[T]) bool {
+	// Check if any point of "other" is inside "p"
+	for _, otherPoint := range other.contour {
+		if p.contour.isPointInside(otherPoint.point) {
+			return true
+		}
+	}
+
+	// Check if any point of "p" is inside "other"
+	for _, point := range p.contour {
+		if other.contour.isPointInside(point.point) {
+			return true
+		}
+	}
+
+	// Check for edge intersections
+	for poly1Edge := range p.contour.iterEdges {
+		for poly2Edge := range other.contour.iterEdges {
+			if poly1Edge.IntersectsLineSegment(poly2Edge) {
+				return true
+			}
+		}
+	}
+
+	// No intersections detected
+	return false
 }
 
 // returns this poly and all children (including nested children of children etc)
@@ -284,14 +361,22 @@ func (p *PolyTree[T]) resetIntersectionMetadata() {
 	}
 }
 
-func (p *PolyTree[T]) addChild(child *PolyTree[T]) {
+func (p *PolyTree[T]) addChild(child *PolyTree[T]) error {
+	if p.polygonType == child.polygonType {
+		return fmt.Errorf("cannot add child: mismatched polygon types (parent: %v, child: %v)", p.polygonType, child.polygonType)
+	}
 	child.parent = p
 	p.children = append(p.children, child)
+	return nil
 }
 
-func (p *PolyTree[T]) addSibling(sibling *PolyTree[T]) {
+func (p *PolyTree[T]) addSibling(sibling *PolyTree[T]) error {
+	if p.polygonType != sibling.polygonType {
+		return fmt.Errorf("cannot add sibling: mismatched polygon types (current: %v, sibling: %v)", p.polygonType, sibling.polygonType)
+	}
 	sibling.siblings = append(sibling.siblings, p)
 	p.siblings = append(p.siblings, sibling)
+	return nil
 }
 
 type polyTreePoint[T SignedNumber] struct {
@@ -358,7 +443,7 @@ func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPo
 	p.maxX++
 
 	// Create convex hull
-	hull := ConvexHull(points...) // todo: just use the slice?
+	hull := ConvexHull(points)
 	EnsureCounterClockwise(hull)
 	p.hull = newSimpleConvexPolygon(hull)
 
@@ -673,21 +758,23 @@ func nestPointsToPolyTrees[T SignedNumber](contours [][]Point[T]) (*PolyTree[T],
 	// Create the root PolyTree from the largest polygon
 	rootTree, err := NewPolyTree(contours[len(contours)-1], PTSolid)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create root PolyTree: %w", err)
 	}
 
 	// Process the remaining polygons
 	for i := len(contours) - 2; i >= 0; i-- {
 		polyToNest, err := NewPolyTree(contours[i], PTSolid)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create PolyTree for contour %d: %w", i, err)
 		}
 
 		// Try to find the correct parent polygon
 		parent := rootTree.findParentPolygon(polyToNest)
 		if parent == nil {
 			// If no parent is found, add as a sibling to the root
-			rootTree.addSibling(polyToNest)
+			if err := rootTree.addSibling(polyToNest); err != nil {
+				return nil, fmt.Errorf("failed to add sibling: %w", err)
+			}
 		} else {
 			// Add as a child of the parent
 			if parent.polygonType == PTSolid {
@@ -695,7 +782,9 @@ func nestPointsToPolyTrees[T SignedNumber](contours [][]Point[T]) (*PolyTree[T],
 			} else {
 				polyToNest.polygonType = PTSolid
 			}
-			parent.addChild(polyToNest)
+			if err := parent.addChild(polyToNest); err != nil {
+				return nil, fmt.Errorf("failed to add child to parent polygon: %w", err)
+			}
 		}
 	}
 

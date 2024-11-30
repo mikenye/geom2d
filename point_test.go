@@ -21,7 +21,7 @@ func BenchmarkConvexHull(b *testing.B) {
 
 	// Run the benchmark loop
 	for i := 0; i < b.N; i++ {
-		_ = ConvexHull(points...)
+		_ = ConvexHull(points)
 	}
 }
 
@@ -1189,12 +1189,12 @@ func TestConvexHull(t *testing.T) {
 			switch points := tt.points.(type) {
 			case []Point[int]:
 				expected := tt.expected.([]Point[int])
-				actual := ConvexHull(points...)
+				actual := ConvexHull(points)
 				assert.Equal(t, expected, actual)
 
 			case []Point[float64]:
 				expected := tt.expected.([]Point[float64])
-				actual := ConvexHull(points...)
+				actual := ConvexHull(points)
 				assert.Equal(t, expected, actual)
 			}
 		})
