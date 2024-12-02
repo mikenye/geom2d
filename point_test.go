@@ -33,6 +33,12 @@ func TestPoint_Add(t *testing.T) {
 	}{
 		// Integer points
 		{
+			name:     "int: (1,2)+(0,0)",
+			p:        NewPoint(1, 2),
+			q:        NewPoint(0, 0),
+			expected: NewPoint(1, 2),
+		},
+		{
 			name:     "int: (1,2)+(3,4)",
 			p:        NewPoint(1, 2),
 			q:        NewPoint(3, 4),
@@ -979,6 +985,12 @@ func TestPoint_Sub(t *testing.T) {
 			p:        NewPoint(5, 5),
 			q:        NewPoint(2, 3),
 			expected: NewPoint(3, 2),
+		},
+		{
+			name:     "int: (3,4) - (0,0)",
+			p:        NewPoint(3, 4),
+			q:        NewPoint(0, 0),
+			expected: NewPoint(3, 4),
 		},
 
 		// Float64 points
