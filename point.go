@@ -291,7 +291,7 @@ func (p Point[T]) IsOnLineSegment(l LineSegment[T]) bool {
 // ProjectOntoLineSegment projects the Point p onto a given LineSegment l.
 //
 // The function calculates the closest point on the LineSegment defined by
-// the endpoints l.A() and l.End() to the Point p. It utilizes vector
+// the endpoints l.Start() and l.End() to the Point p. It utilizes vector
 // mathematics to determine the projection of Point p onto the infinite line
 // represented by the LineSegment. If the projected point falls beyond the ends of the
 // LineSegment, the function returns the closest endpoint of the segment.
@@ -447,7 +447,7 @@ func (p Point[T]) Scale(k T) Point[T] {
 	return p.ScaleFrom(NewPoint[T](0, 0), k)
 }
 
-// ScaleFrom scales the point by a factor `k` relative to a reference point `ref`.
+// ScaleFrom scales the point by a factor k relative to a reference point ref.
 //
 // Parameters:
 //   - ref: Point[float64] - The reference point from which scaling originates.
@@ -468,17 +468,17 @@ func (p Point[float64]) ScaleFrom(ref Point[float64], k float64) Point[float64] 
 	)
 }
 
-// String returns a string representation of the Point p in the format "(x,y)".
+// String returns a string representation of the Point p in the format "Point[(x, y)]".
 // This provides a readable format for the point’s coordinates, useful for debugging
 // and displaying points in logs or output.
 //
 // Returns:
-//   - string: A string representation of the Point in the format "(x,y)".
+//   - string: A string representation of the Point in the format "Point[(x, y)]".
 //
 // Example Usage:
 //
 //	p := NewPoint(3, 4)
-//	str := p.String() // str is "Point[(3,4)]"
+//	str := p.String() // str is "Point[(3, 4)]"
 func (p Point[T]) String() string {
 	return fmt.Sprintf("Point[(%v, %v)]", p.x, p.y)
 }
@@ -634,7 +634,8 @@ func orderPointsByAngleAboutLowestPoint[T SignedNumber](lowestPoint Point[T], po
 // Returns:
 //   - T: Twice the signed area of the triangle. This value helps determine the relative orientation of the points.
 //
-// todo: how is this a cross product?
+// The formula here uses the 2D cross product of vectors (p1 - p0) and (p2 - p0)
+// to compute twice the signed area of the triangle formed by p0, p1, p2.
 func triangleAreaX2Signed[T SignedNumber](p0, p1, p2 Point[T]) T {
 	return (p1.x-p0.x)*(p2.y-p0.y) - (p2.x-p0.x)*(p1.y-p0.y)
 }
@@ -654,39 +655,41 @@ func triangleAreaX2Signed[T SignedNumber](p0, p1, p2 Point[T]) T {
 //     The returned slice includes only the points that form the outer boundary of the input set.
 //
 // Note:
-//   - The function removes points from the input slice `points` that do not belong to the convex hull, so it modifies the original slice.
 //   - If the `points` parameter is empty or has fewer than three points, the function returns the input points unchanged, as a convex hull cannot be formed.
 //
 // See https://en.wikipedia.org/wiki/Graham_scan for more information on the Graham scan algorithm.
 //
 // See https://en.wikipedia.org/wiki/Convex_hull for more information on convex hulls.
-//
-// TODO: The function currently returns the convex hull as a slice of points. Consider returning a polyline or polygon type for better representation.
 func ConvexHull[T SignedNumber](points []Point[T]) []Point[T] {
 
 	var (
 		pt0Index, pt1Index, pt2Index int
 		pt0, pt1, pt2                Point[T]
 	)
+
+	// Copy points into a new slice, to prevent modifying input slice
+	output := make([]Point[T], len(points))
+	_ = copy(output, points)
+
 	// Find the point with the lowest y-coordinate.
 	// If the lowest y-coordinate exists in more than one point in the set,
 	// the point with the lowest x-coordinate out of the candidates should be chosen.
-	_, lowestPoint := findLowestLeftestPoint(points...)
+	_, lowestPoint := findLowestLeftestPoint(output...)
 
 	// Order the points by angle about the lowest point
-	orderPointsByAngleAboutLowestPoint(lowestPoint, points)
+	orderPointsByAngleAboutLowestPoint(lowestPoint, output)
 
 	// Starting with the lowest point, work through points, popping off
 	// any that cause a clockwise turn, to maintain convexity.
-	for pt0Index = 0; pt0Index < len(points); pt0Index++ {
-		pt1Index = (pt0Index + 1) % len(points)
-		pt2Index = (pt1Index + 1) % len(points)
-		pt0 = points[pt0Index]
-		pt1 = points[pt1Index]
-		pt2 = points[pt2Index]
+	for pt0Index = 0; pt0Index < len(output); pt0Index++ {
+		pt1Index = (pt0Index + 1) % len(output)
+		pt2Index = (pt1Index + 1) % len(output)
+		pt0 = output[pt0Index]
+		pt1 = output[pt1Index]
+		pt2 = output[pt2Index]
 		o := Orientation(pt0, pt1, pt2)
 		if o == PointsClockwise {
-			points = slices.Delete(points, pt1Index, pt1Index+1)
+			output = slices.Delete(output, pt1Index, pt1Index+1)
 			pt0Index -= 3
 			if pt0Index < 0 {
 				pt0Index = 0
@@ -694,7 +697,7 @@ func ConvexHull[T SignedNumber](points []Point[T]) []Point[T] {
 		}
 	}
 
-	return points
+	return output
 }
 
 // EnsureClockwise ensures that a slice of points representing a polygon is ordered in a clockwise direction.
@@ -719,9 +722,9 @@ func ConvexHull[T SignedNumber](points []Point[T]) []Point[T] {
 // Example:
 //
 //	points := []Point[float64]{
-//	    {X: 0, Y: 0},
-//	    {X: 4, Y: 0},
-//	    {X: 4, Y: 4},
+//		NewPoint(0, 0),
+//		NewPoint(4, 0),
+//		NewPoint(4, 4),
 //	}
 //	EnsureClockwise(points)
 //	// points is now ordered in a clockwise direction.
@@ -758,13 +761,13 @@ func EnsureClockwise[T SignedNumber](points []Point[T]) {
 //
 // Example:
 //
-//	points := []Point[float64]{
-//	    {X: 0, Y: 0},
-//	    {X: 4, Y: 4},
-//	    {X: 4, Y: 0},
-//	}
-//	EnsureCounterClockwise(points)
-//	// points is now ordered in a counterclockwise direction.
+//		points := []Point[float64]{
+//			NewPoint(0, 0),
+//			NewPoint(4, 4),
+//	     	NewPoint(4, 0),
+//		}
+//		EnsureCounterClockwise(points)
+//		// points is now ordered in a counterclockwise direction.
 //
 // Dependencies:
 //   - This function uses SignedArea2X to compute the signed area of the polygon.
@@ -841,28 +844,28 @@ func Orientation[T SignedNumber](p0, p1, p2 Point[T]) PointOrientation {
 	}
 }
 
-// RelativeAngle calculates the angle in radians between two points, A and End, relative to an optional origin Point O.
-// This angle is measured from the origin to the line segments connecting A and End.
+// RelativeAngle calculates the angle in radians between two points, A and B, relative to an optional origin Point O.
+// This angle is measured from the origin to the line segments connecting A and B.
 // If no origin is provided, the function defaults to using the point (0, 0) as the origin.
 //
 // Parameters:
 //   - A: The first point forming one side of the angle.
-//   - End: The second point forming the other side of the angle.
+//   - B: The second point forming the other side of the angle.
 //   - O: An optional origin Point. If not provided, the origin defaults to (0, 0).
 //
 // Returns:
-//   - radians (float64): The angle between points A and End relative to the origin, in radians.
+//   - radians (float64): The angle between points A and B relative to the origin, in radians.
 //
 // Example Usage:
 //
 //	A := NewPoint(1, 0)
-//	End := NewPoint(0, 1)
-//	radians := RelativeAngle(A, End) // radians is π/2 (90 degrees) for a right angle
+//	B := NewPoint(0, 1)
+//	radians := RelativeAngle(A, B) // radians is π/2 (90 degrees) for a right angle
 func RelativeAngle[T SignedNumber](A, B Point[T], O ...Point[T]) (radians float64) {
 	return math.Acos(RelativeCosineOfAngle(A, B, O...))
 }
 
-// RelativeCosineOfAngle calculates the cosine of the angle between two points, A and End, relative to an optional origin Point O.
+// RelativeCosineOfAngle calculates the cosine of the angle between two points, A and B, relative to an optional origin Point O.
 // This function returns the cosine of the angle directly, avoiding the costly acos calculation, which can improve performance
 // in applications where only the cosine value is needed.
 //
@@ -870,17 +873,17 @@ func RelativeAngle[T SignedNumber](A, B Point[T], O ...Point[T]) (radians float6
 //
 // Parameters:
 //   - A: The first point forming one side of the angle.
-//   - End: The second point forming the other side of the angle.
+//   - B: The second point forming the other side of the angle.
 //   - O: An optional origin Point. If not provided, the origin defaults to (0, 0).
 //
 // Returns:
-//   - float64: The cosine of the angle between points A and End relative to the origin.
+//   - float64: The cosine of the angle between points A and B relative to the origin.
 //
 // Example Usage:
 //
 //	A := NewPoint(1, 0)
-//	End := NewPoint(0, 1)
-//	cosine := RelativeCosineOfAngle(A, End) // cosine is 0 for a 90-degree angle
+//	B := NewPoint(0, 1)
+//	cosine := RelativeCosineOfAngle(A, B) // cosine is 0 for a 90-degree angle
 //
 // Note:
 //   - This function does not currently handle division by zero errors. If either vector OA or OB has zero length,
@@ -909,9 +912,40 @@ func RelativeCosineOfAngle[T SignedNumber](A, B Point[T], O ...Point[T]) float64
 	return float64(OAdotOB) / (magnitudeOA * magnitudeOB)
 }
 
-// SignedArea2X calculates twice the signed area of the polygon formed by the given points.
-// If the result is positive, points are in counterclockwise order.
-// If negative, points are in clockwise order.
+// SignedArea2X computes twice the signed area of a polygon defined by the given points.
+//
+// The function calculates the signed area of the polygon using the Shoelace formula,
+// adapted to sum the areas of triangles formed by consecutive points. The result is
+// twice the actual signed area, which avoids introducing fractional values and simplifies
+// calculations with integer-based coordinate types.
+//
+// A positive signed area indicates that the points are ordered counterclockwise,
+// while a negative signed area indicates clockwise order. This function is commonly
+// used to determine the orientation of a polygon or to compute its area efficiently.
+//
+// Parameters:
+//   - points: A slice of Point values representing the vertices of the polygon in order.
+//     The polygon is assumed to be closed, meaning the first point connects
+//     to the last point.
+//
+// Returns:
+//   - The signed area multiplied by 2 (hence "2X").
+//     Returns 0 if the number of points is fewer than 3, as a valid polygon cannot be formed.
+//
+// Example Usage:
+//
+//	points := []Point[int]{
+//		NewPoint(0, 0),
+//		NewPoint(4, 0),
+//		NewPoint(4, 3),
+//	}
+//	signedArea := SignedArea2X(points)
+//	fmt.Println(signedArea) // Output: 12 (twice the signed area)
+//
+// Notes:
+//   - The function assumes the input points form a simple polygon (no self-intersections).
+//   - If the points are not in order, the result may not represent the true orientation
+//     or area of the intended polygon.
 func SignedArea2X[T SignedNumber](points []Point[T]) T {
 	var area T
 	n := len(points)
