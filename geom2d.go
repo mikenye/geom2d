@@ -1,8 +1,14 @@
-// Package geom2d provides foundational definitions, constants, and utility types for 2D geometry operations.
+// Package geom2d provides a comprehensive set of tools for computational geometry in two dimensions.
 //
-// This file contains core type definitions, global variables, constants, and utility functions
-// that are shared across the package. It serves as the basis for other types like Point and LineSegment,
-// offering foundational functionality and supporting mathematical constants and helper functions.
+// This file serves as the entry point for the package and contains utility functions and foundational
+// concepts shared across all geometric types. These include global constants, enums for relationships,
+// and generic helper functions.
+//
+// The geom2d package is built around core types like Point, LineSegment, Circle, Rectangle, and PolyTree,
+// supporting a wide range of operations including transformations, boolean geometry, and spatial relationships.
+//
+// Designed for both performance and clarity, geom2d leverages Go generics to handle various numeric types
+// and provides intuitive APIs for working with 2D geometric data.
 
 package geom2d
 

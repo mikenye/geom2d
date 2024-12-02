@@ -1,7 +1,9 @@
-// File circle.go contains the Circle type, which represents a circle in 2D space,
-// along with methods for performing various calculations related to circles.
-// This includes determining circumference and area, checking if a point is within
-// the circle, and testing intersections with line segments.
+// This file defines the Circle type, which represents a circle specified by a center point and a radius.
+// The Circle type includes methods for geometric computations such as circumference, area, and checking
+// relationships like containment and intersection with other shapes.
+//
+// The Circle type integrates seamlessly with the geom2d package, allowing it to be used in combination
+// with other geometric primitives, including points, line segments, and polygons.
 
 package geom2d
 

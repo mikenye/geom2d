@@ -1,8 +1,29 @@
-// linesegment.go defines the LineSegment type and implements methods for operations on line segments in 2D space.
+// The `linesegment.go` file defines the `LineSegment` type and its associated methods,
+// providing foundational tools for working with line segments in 2D geometry.
 //
-// This file includes the definition of the LineSegment type, with methods for calculations and relationships
-// between line segments, including distance calculations, midpoint computations, and intersections. Functions
-// that primarily operate on line segments are centralized in this file.
+// A `LineSegment` represents a finite, straight line connecting two points in 2D space.
+// It is defined by its start and end points and supports operations such as:
+// - Calculating distances to other points or geometric primitives.
+// - Determining relationships with other line segments (e.g., intersection points).
+// - Performing transformations like scaling, translating, and reflection.
+// - Querying properties such as midpoint, length, or bounding box.
+//
+// ### Core Concepts
+//
+// - **Precision Handling**: Many methods use generics to accept various numeric types (`T`),
+//   but results are often returned as `float64` to preserve precision when performing geometric calculations.
+// - **Point Operations**: A `LineSegment` integrates seamlessly with `Point` types for operations like
+//   projection, reflection, and determining relative positions.
+//
+// ### Key Functionality
+//
+// The methods in this file are grouped into areas such as:
+// - **Properties**: Querying properties of the `LineSegment`, such as its length, midpoint, or bounding box.
+// - **Relationships**: Determining geometric relationships with other entities, like intersection points.
+// - **Transformations**: Applying geometric transformations like scaling, reflection, and translation.
+//
+// This file complements other geometric types in the `geom2d` package, ensuring consistent
+// support for Boolean operations, relationships, and transformations across different 2D primitives.
 
 package geom2d
 

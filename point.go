@@ -1,8 +1,10 @@
-// point.go defines the Point type and implements methods for operations on points in 2D space.
+// This file contains the implementation of the Point type, which represents a point in 2D space.
+// It includes methods for basic arithmetic operations, transformations, relationships with other types,
+// and utilities like equality checks and conversions between numeric types.
 //
-// This file includes the definition of the Point type, along with methods for performing calculations
-// and transformations involving points. Functions that primarily operate on points, such as distance
-// calculations or projections, are also implemented here.
+// The Point type is designed to be flexible and efficient, leveraging generics to support various numeric
+// types (e.g., int, float64). It serves as a building block for more complex geometric types like LineSegment,
+// Circle, and Rectangle.
 
 package geom2d
 
