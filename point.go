@@ -147,40 +147,96 @@ func (p Point[T]) CrossProduct(q Point[T]) T {
 	return (p.x * q.y) - (p.y * q.x)
 }
 
-// DistanceToLineSegment calculates the orthogonal distance from the Point p
-// to the specified LineSegment l. This distance is determined by projecting
-// the Point p onto the LineSegment and measuring the distance from p to
-// the projected Point.
-//
-// Returns the distance as a float64.
-//
-// The function first computes the projection of p onto the line segment defined
-// by the endpoints of l. It then converts the original point p to a
-// Point[float64] to ensure accurate distance calculation, as the
-// DistanceToPoint function operates on float64 points.
-func (p Point[T]) DistanceToLineSegment(l LineSegment[T]) float64 {
-	projectedPoint := p.ProjectOntoLineSegment(l)
-	pf := p.AsFloat()
-	return pf.DistanceToPoint(projectedPoint)
-}
-
-// DistanceToPoint calculates the Euclidean (straight-line) distance between Point p and another Point q.
-// This method returns the distance as a float64, allowing for precise measurement of the straight-line
-// separation between two points.
+// DistanceToLineSegment calculates the orthogonal (shortest) distance from the current Point p
+// to a specified LineSegment l. This distance is the length of the perpendicular line segment
+// from p to the closest point on l.
 //
 // Parameters:
-//   - q: The Point to which the distance is calculated from the calling Point.
+//   - l: The LineSegment to which the distance is calculated.
+//   - opts: A variadic slice of Option functions to customize the calculation behavior.
+//     WithEpsilon(epsilon float64): Adjusts the result by snapping small floating-point
+//     deviations to cleaner values based on the specified epsilon threshold.
+//
+// Behavior:
+//   - The function first computes the projection of p onto the given line segment l. This is
+//     the closest point on l to p, whether it falls within the line segment or on one of its endpoints.
+//   - The distance is then calculated as the Euclidean distance from p to the projected point,
+//     using the DistanceToPoint method for precision.
 //
 // Returns:
-//   - float64: The Euclidean distance between p and q.
+//   - float64: The shortest distance between the point p and the line segment l, optionally
+//     adjusted based on epsilon if provided.
+//
+// Example Usage:
+//
+//	p := NewPoint(3, 4)
+//	l := NewLineSegment(NewPoint(0, 0), NewPoint(6, 8))
+//
+//	// Default behavior (no epsilon adjustment)
+//	distance := p.DistanceToLineSegment(l)
+//
+//	// With epsilon adjustment
+//	distanceWithEpsilon := p.DistanceToLineSegment(l, WithEpsilon(1e-4))
+//
+// Notes:
+//   - If the point p lies exactly on the line segment, the distance will be zero (or adjusted
+//     to zero if within epsilon).
+//   - This method ensures precision by converting points to float64 before performing calculations.
+func (p Point[T]) DistanceToLineSegment(l LineSegment[T], opts ...Option) float64 {
+	projectedPoint := p.ProjectOntoLineSegment(l)
+	pf := p.AsFloat()
+	return pf.DistanceToPoint(projectedPoint, opts...)
+}
+
+// DistanceToPoint calculates the Euclidean (straight-line) distance between the current Point p
+// and another Point q. The result is returned as a float64, providing precise measurement
+// of the straight-line separation between the two points.
+//
+// Parameters:
+//   - q: The Point to which the distance is calculated.
+//   - opts: A variadic slice of Option functions to customize the behavior of the calculation.
+//     WithEpsilon(epsilon float64): Adjusts the result by snapping near-zero distances
+//     (or distances close to clean values like integers) to a more precise value based
+//     on the specified epsilon threshold.
+//
+// Behavior:
+//   - The function computes the Euclidean distance using the formula:
+//     distance = sqrt((p.x - q.x)^2 + (p.y - q.y)^2)
+//   - If the `WithEpsilon` option is provided, the computed distance is adjusted such that
+//     deviations within the epsilon range are snapped to a clean value.
+//
+// Returns:
+//   - float64: The Euclidean distance between the two points, optionally adjusted based on epsilon.
 //
 // Example Usage:
 //
 //	p := NewPoint(3, 4)
 //	q := NewPoint(6, 8)
-//	distance := p.DistanceToPoint(q) // distance is the straight-line distance between p and q
-func (p Point[T]) DistanceToPoint(q Point[T]) float64 {
-	return math.Sqrt(float64(p.DistanceSquaredToPoint(q)))
+//
+//	// Default behavior (no epsilon adjustment)
+//	distance := p.DistanceToPoint(q) // Straight-line distance between p and q
+//
+//	// With epsilon adjustment
+//	distanceWithEpsilon := p.DistanceToPoint(q, WithEpsilon(1e-4))
+//	// Adjusts small floating-point deviations based on epsilon
+//
+// Notes:
+//   - Epsilon adjustment is useful for snapping results to clean values, particularly when
+//     small floating-point errors could propagate in further calculations.
+func (p Point[T]) DistanceToPoint(q Point[T], opts ...Option) float64 {
+
+	// Apply options with defaults
+	options := applyOptions(geomOptions{epsilon: 0}, opts...)
+
+	// Calculate distance
+	distance := math.Sqrt(float64(p.DistanceSquaredToPoint(q)))
+
+	// Apply epsilon if specified
+	if options.epsilon > 0 {
+		distance = applyEpsilon(distance, options.epsilon)
+	}
+
+	return distance
 }
 
 // DistanceSquaredToPoint calculates the squared Euclidean distance between Point p and another Point q.
@@ -202,25 +258,56 @@ func (p Point[T]) DistanceSquaredToPoint(q Point[T]) T {
 	return (q.x-p.x)*(q.x-p.x) + (q.y-p.y)*(q.y-p.y)
 }
 
-// Div returns a new Point that scales the calling Point p by dividing each of its coordinates by a scalar value k.
-// This method performs division and returns a Point of type Point[float64] to preserve any fractional values,
-// making it suitable for applications where precise scaling is required.
+// Div scales the calling Point p by dividing each of its coordinates by a scalar value k.
+// The method returns a new Point of type Point[float64], ensuring that fractional values
+// are preserved. This is particularly useful for applications where precise scaling is required.
 //
 // Parameters:
 //   - k: The scalar value by which to divide the x and y coordinates of Point p.
+//   - opts: A variadic slice of Option functions to customize the behavior of the division.
+//     WithEpsilon(epsilon float64): Adjusts the result by snapping small floating-point
+//     deviations to cleaner values based on the specified epsilon threshold.
+//
+// Behavior:
+//   - Each coordinate of the Point is divided by k, resulting in fractional values where appropriate.
+//   - If the `WithEpsilon` option is provided, the resulting coordinates are adjusted such that
+//     deviations within the epsilon range are snapped to clean values (e.g., rounding near-zero values to zero).
 //
 // Returns:
-//   - Point[float64]: A new Point with x and y coordinates scaled by the division, as floating-point values.
+//   - Point[float64]: A new Point with coordinates scaled by the division and optionally adjusted based on epsilon.
 //
 // Example Usage:
 //
 //	p := NewPoint(10, 20)
+//
+//	// Default behavior (no epsilon adjustment)
 //	scaledPoint := p.Div(2) // scaledPoint is a Point[float64] with coordinates (5.0, 10.0)
-func (p Point[T]) Div(k T) Point[float64] {
-	return Point[float64]{
+//
+//	// With epsilon adjustment
+//	scaledPointWithEpsilon := p.Div(2, WithEpsilon(1e-4))
+//	// Adjusts small floating-point deviations in the result based on epsilon
+//
+// Notes:
+//   - If k is zero, this function will cause a runtime panic due to division by zero.
+//     Ensure that k is non-zero before calling this method.
+//   - Epsilon adjustment is particularly useful when dividing by values that might introduce
+//     floating-point imprecisions in the resulting coordinates.
+func (p Point[T]) Div(k T, opts ...Option) Point[float64] {
+
+	// Apply options with defaults
+	options := applyOptions(geomOptions{epsilon: 0}, opts...)
+
+	divided := Point[float64]{
 		x: float64(p.x) / float64(k),
 		y: float64(p.y) / float64(k),
 	}
+
+	if options.epsilon > 0 {
+		divided.x = applyEpsilon(divided.x, options.epsilon)
+		divided.y = applyEpsilon(divided.y, options.epsilon)
+	}
+
+	return divided
 }
 
 // DotProduct calculates the dot product of the vector represented by Point p with the vector represented by Point q.
@@ -242,21 +329,51 @@ func (p Point[T]) DotProduct(q Point[T]) T {
 	return (p.x * q.x) + (p.y * q.y)
 }
 
-// Eq reports whether the calling Point p is equal to another Point q.
-// Two points are considered equal if both their x and y coordinates are identical.
+// Eq determines whether the calling Point p is equal to another Point q.
+// Equality can be evaluated either exactly (default) or approximately using an epsilon threshold.
 //
 // Parameters:
 //   - q: The Point to compare with the calling Point.
+//   - opts: A variadic slice of Option functions to customize the equality check.
+//     WithEpsilon(epsilon float64): Specifies a tolerance for comparing the coordinates
+//     of p and q. If the absolute difference between the coordinates of p and q is less
+//     than epsilon, they are considered equal.
+//
+// Behavior:
+//   - By default, the function performs an exact equality check, returning true only if
+//     the x and y coordinates of p and q are identical.
+//   - If the `WithEpsilon` option is provided, the function performs an approximate equality
+//     check, considering p and q equal if their coordinate differences are within the specified
+//     epsilon threshold.
 //
 // Returns:
-//   - bool: True if the x and y coordinates of p and q are equal; otherwise, false.
+//   - bool: True if p and q are equal based on the specified comparison mode; otherwise, false.
 //
 // Example Usage:
 //
-//	p := NewPoint(3, 4)
-//	q := NewPoint(3, 4)
-//	isEqual := p.Eq(q) // isEqual is true because p and q have the same coordinates
-func (p Point[T]) Eq(q Point[T]) bool {
+//	p := NewPoint(3.0, 4.0)
+//	q := NewPoint(3.0, 4.0)
+//
+//	// Exact equality
+//	isEqual := p.Eq(q) // isEqual is true
+//
+//	// Approximate equality with epsilon
+//	r := NewPoint(3.000001, 4.000001)
+//	isApproximatelyEqual := p.Eq(r, WithEpsilon(1e-5)) // isApproximatelyEqual is true
+//
+// Notes:
+//   - Approximate equality is particularly useful when comparing points with floating-point
+//     coordinates, where small precision errors may result in slightly different values.
+func (p Point[T]) Eq(q Point[T], opts ...Option) bool {
+	// Apply options with defaults
+	options := applyOptions(geomOptions{epsilon: 0}, opts...)
+
+	if options.epsilon > 0 {
+		return math.Abs(float64(p.x)-float64(q.x)) < options.epsilon &&
+			math.Abs(float64(p.y)-float64(q.y)) < options.epsilon
+	}
+
+	// Exact equality for default behavior
 	return p.x == q.x && p.y == q.y
 }
 
@@ -398,21 +515,39 @@ func (p Point[float64]) reflectAcrossLine(line LineSegment[float64]) Point[float
 	return NewPoint(newX, newY)
 }
 
-// Rotate rotates the point by a specified angle (in radians) around a given origin point.
+// Rotate rotates the point by a specified angle (in radians) around a given pivot point.
 //
 // Parameters:
-//   - origin: Point[T] - The origin point around which to rotate.
-//   - radians: float64 - The rotation angle in radians.
+//   - pivot: Point[T] - The point around which the rotation is performed.
+//   - radians: float64 - The angle of rotation, specified in radians.
+//   - opts: ...Option - Functional options for customizing the rotation behavior. WithEpsilon(epsilon float64): Specifies a tolerance for rounding small floating-point deviations to cleaner values (e.g., snapping near-zero values to zero).
+//
+// Behavior:
+//   - The method first translates the point to the origin (relative to the pivot),
+//     applies the rotation matrix, and then translates the point back to its original position.
+//   - If the `WithEpsilon` option is provided, small numerical deviations in the rotated coordinates
+//     (e.g., -0.9999999999999998 instead of -1) will be adjusted based on the specified epsilon.
 //
 // Returns:
 //   - Point[float64] - A new point representing the rotated position.
 //
-// Example usage:
+// Example Usage:
 //
-//	p := NewPoint[float64](3.0, 4.0)
-//	origin := NewPoint[float64](1.0, 1.0)
-//	rotated := p.Rotate(origin, math.Pi / 2) // Rotates p 90 degrees around origin
-func (p Point[T]) Rotate(pivot Point[T], radians float64) Point[float64] {
+//	pivot := geom2d.NewPoint(1.0, 1.0)
+//	circle := geom2d.NewCircle(geom2d.NewPoint(3.0, 3.0), 5.0)
+//
+//	// Rotates the circle 90 degrees around (1.0, 1.0)
+//	rotatedCircle := circle.Rotate(pivot, math.Pi/2, geom2d.WithEpsilon(1e-10))
+//
+//	// rotatedCircle = Circle[center=(-1, 3), radius=5]
+//
+// Notes:
+//   - If no options are provided, the default behavior applies, and no epsilon adjustment is made.
+//   - The return type is always `Point[float64]` to ensure precision in the rotated result.
+func (p Point[T]) Rotate(pivot Point[T], radians float64, opts ...Option) Point[float64] {
+	// Apply options with defaults
+	options := applyOptions(geomOptions{epsilon: 0}, opts...)
+
 	pf := p.AsFloat()
 	originf := pivot.AsFloat()
 
@@ -423,6 +558,12 @@ func (p Point[T]) Rotate(pivot Point[T], radians float64) Point[float64] {
 	// Apply rotation
 	rotatedX := translatedX*math.Cos(radians) - translatedY*math.Sin(radians)
 	rotatedY := translatedX*math.Sin(radians) + translatedY*math.Cos(radians)
+
+	// Apply epsilon if specified
+	if options.epsilon > 0 {
+		rotatedX = applyEpsilon(rotatedX, options.epsilon)
+		rotatedY = applyEpsilon(rotatedY, options.epsilon)
+	}
 
 	// Translate back
 	newX := rotatedX + originf.x

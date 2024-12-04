@@ -110,6 +110,45 @@ type LineSegment[T SignedNumber] struct {
 	end   Point[T]
 }
 
+func (r *LineSegmentsRelationship) String() string {
+	switch *r {
+	case LSRCollinearDisjoint:
+		return "LSRCollinearDisjoint"
+	case LSRMiss:
+		return "LSRMiss"
+	case LSRIntersects:
+		return "LSRIntersects"
+	case LSRAeqC:
+		return "LSRAeqC"
+	case LSRAeqD:
+		return "LSRAeqD"
+	case LSRBeqC:
+		return "LSRBeqC"
+	case LSRBeqD:
+		return "LSRBeqD"
+	case LSRAonCD:
+		return "LSRAonCD"
+	case LSRBonCD:
+		return "LSRAonCD"
+	case LSRConAB:
+		return "LSRConAB"
+	case LSRDonAB:
+		return "LSRDonAB"
+	case LSRCollinearAonCD:
+		return "LSRCollinearAonCD"
+	case LSRCollinearBonCD:
+		return "LSRCollinearBonCD"
+	case LSRCollinearABinCD:
+		return "LSRCollinearABinCD"
+	case LSRCollinearCDinAB:
+		return "LSRCollinearCDinAB"
+	case LSRCollinearEqual:
+		return "LSRCollinearEqual"
+	default:
+		panic(fmt.Errorf("unsupported LineSegmentsRelationship"))
+	}
+}
+
 // AddLineSegment adds the start and end points of another line segment to this one.
 //
 // This method performs an element-wise addition, where the `start` and `end` points
@@ -204,24 +243,38 @@ func (AB LineSegment[T]) AsIntRounded() LineSegment[int] {
 //
 // Parameters:
 //   - CD: LineSegment[T] - The line segment to compare with `AB`.
+//   - opts: A variadic slice of Option functions to customize the behavior of the calculation.
+//     WithEpsilon(epsilon float64): Specifies a tolerance for snapping near-zero results to zero or
+//     for handling small floating-point deviations in distance calculations.
+//
+// Behavior:
+//   - The function checks whether the segments intersect or touch. If so, the distance is immediately returned as 0.
+//   - For non-intersecting segments, the function calculates the shortest distance using the following steps:
+//     1. Compute direct distances between the endpoints of `AB` and `CD`.
+//     2. Compute distances to the perpendicular projections of each endpoint onto the opposite segment.
+//     3. Track the minimum distance among all calculations and return this value.
+//   - If `WithEpsilon` is provided, epsilon adjustments are applied to the calculated distances and projections
+//     to ensure robustness against floating-point precision errors.
 //
 // Returns:
-//   - float64 - The minimum distance between the two segments. If the segments intersect or touch, this value is 0.
+//   - float64: The minimum distance between the two segments. If the segments intersect or touch, this value is 0.
 //
-// The function converts the segments to float64 for precise calculations, checks the intersection status,
-// and computes distances in three main parts:
-//  1. Direct distances between endpoints of `AB` and `CD`.
-//  2. Perpendicular projections of each endpoint onto the opposite segment.
-//  3. Tracks the minimum distance among all calculations and returns this value.
-//
-// Example usage:
+// Example Usage:
 //
 //	segmentAB := NewLineSegment(NewPoint(0, 0), NewPoint(2, 2))
 //	segmentCD := NewLineSegment(NewPoint(3, 3), NewPoint(5, 5))
+//
+//	// Default behavior (no epsilon adjustment)
 //	distance := segmentAB.DistanceToLineSegment(segmentCD)
 //
-// `distance` will hold the minimum distance between `AB` and `CD`.
-func (AB LineSegment[T]) DistanceToLineSegment(CD LineSegment[T]) float64 {
+//	// With epsilon adjustment
+//	distanceWithEpsilon := segmentAB.DistanceToLineSegment(segmentCD, WithEpsilon(1e-4))
+//
+// Notes:
+//   - Epsilon adjustment is particularly useful when working with floating-point coordinates, where small
+//     imprecisions might cause distances to deviate slightly from expected values.
+//   - This function is backward-compatible, maintaining exact calculations if no options are provided.
+func (AB LineSegment[T]) DistanceToLineSegment(CD LineSegment[T], opts ...Option) float64 {
 	// If line segments intersect, the distance is zero.
 	if AB.IntersectsLineSegment(CD) {
 		return 0
@@ -241,33 +294,60 @@ func (AB LineSegment[T]) DistanceToLineSegment(CD LineSegment[T]) float64 {
 	}
 
 	// Calculate distances between endpoints.
-	updateMinDist(ABf.start.DistanceToPoint(CDf.start))
-	updateMinDist(ABf.start.DistanceToPoint(CDf.end))
-	updateMinDist(ABf.end.DistanceToPoint(CDf.start))
-	updateMinDist(ABf.end.DistanceToPoint(CDf.end))
+	updateMinDist(ABf.start.DistanceToPoint(CDf.start, opts...))
+	updateMinDist(ABf.start.DistanceToPoint(CDf.end, opts...))
+	updateMinDist(ABf.end.DistanceToPoint(CDf.start, opts...))
+	updateMinDist(ABf.end.DistanceToPoint(CDf.end, opts...))
 
 	// Calculate distances to projections on the opposite segment.
-	updateMinDist(ABf.start.DistanceToPoint(ABf.start.ProjectOntoLineSegment(CDf)))
-	updateMinDist(ABf.end.DistanceToPoint(ABf.end.ProjectOntoLineSegment(CDf)))
-	updateMinDist(CDf.start.DistanceToPoint(CDf.start.ProjectOntoLineSegment(ABf)))
-	updateMinDist(CDf.end.DistanceToPoint(CDf.end.ProjectOntoLineSegment(ABf)))
+	updateMinDist(ABf.start.DistanceToPoint(ABf.start.ProjectOntoLineSegment(CDf), opts...))
+	updateMinDist(ABf.end.DistanceToPoint(ABf.end.ProjectOntoLineSegment(CDf), opts...))
+	updateMinDist(CDf.start.DistanceToPoint(CDf.start.ProjectOntoLineSegment(ABf), opts...))
+	updateMinDist(CDf.end.DistanceToPoint(CDf.end.ProjectOntoLineSegment(ABf), opts...))
 
 	return minDist
 }
 
-// DistanceToPoint calculates the orthogonal distance from the specified Point p
-// to the LineSegment AB. This distance is determined by projecting
-// the Point p onto the LineSegment and measuring the distance from p to
-// the projected Point.
+// DistanceToPoint calculates the orthogonal (shortest) distance from a specified Point p
+// to the LineSegment AB. This distance is determined by projecting the Point p onto the
+// LineSegment and measuring the distance from p to the projected Point.
 //
-// Returns the distance as a float64.
+// Parameters:
+//   - p: The Point for which the distance to the LineSegment AB is calculated.
+//   - opts: A variadic slice of Option functions to customize the behavior of the calculation.
+//     WithEpsilon(epsilon float64): Specifies a tolerance for snapping near-zero results to zero
+//     or handling small floating-point deviations in distance calculations.
 //
-// The function first computes the projection of p onto the line segment defined
-// by the endpoints of l. It then converts the original point p to a
-// Point[float64] to ensure accurate distance calculation, as the
-// DistanceToPoint function operates on float64 points.
-func (AB LineSegment[T]) DistanceToPoint(p Point[T]) float64 {
-	return p.DistanceToLineSegment(AB)
+// Behavior:
+//   - The function computes the projection of p onto the given LineSegment AB. This is the closest
+//     point on AB to p, whether it lies within the segment bounds or at an endpoint.
+//   - The orthogonal distance is then calculated as the Euclidean distance between p and the
+//     projected point.
+//   - If `WithEpsilon` is provided, epsilon adjustments are applied to the calculated distance
+//     to ensure robustness against floating-point precision errors.
+//
+// Returns:
+//   - float64: The shortest distance between the point p and the LineSegment AB, optionally
+//     adjusted based on epsilon.
+//
+// Example Usage:
+//
+//	segmentAB := NewLineSegment(NewPoint(0, 0), NewPoint(6, 8))
+//	p := NewPoint(3, 4)
+//
+//	// Default behavior (no epsilon adjustment)
+//	distance := segmentAB.DistanceToPoint(p)
+//
+//	// With epsilon adjustment
+//	distanceWithEpsilon := segmentAB.DistanceToPoint(p, WithEpsilon(1e-4))
+//
+// Notes:
+//   - This function leverages the Point.DistanceToLineSegment method to perform the calculation,
+//     ensuring precision and consistency across related operations.
+//   - Epsilon adjustment is particularly useful for applications involving floating-point data,
+//     where small deviations can affect the accuracy of results.
+func (AB LineSegment[T]) DistanceToPoint(p Point[T], opts ...Option) float64 {
+	return p.DistanceToLineSegment(AB, opts...)
 }
 
 // End returns the ending point of the line segment.
@@ -279,24 +359,44 @@ func (AB LineSegment[T]) End() Point[T] {
 }
 
 // Eq checks if two line segments are equal by comparing their start and end points.
-//
-// This method returns true if both the `start` and `end` points of the current line segment
-// (`AB`) are equal to the corresponding `start` and `end` points of the `CD` line segment.
-// Equality is determined based on the `Eq` method of the `Point` type.
+// Equality can be evaluated either exactly (default) or approximately using an epsilon threshold.
 //
 // Parameters:
 //   - CD: LineSegment[T] - The line segment to compare with the current line segment.
+//   - opts: A variadic slice of Option functions to customize the equality check.
+//     WithEpsilon(epsilon float64): Specifies a tolerance for comparing the start and end
+//     points of the line segments. If the absolute difference between the coordinates of
+//     the points is less than epsilon, they are considered equal.
+//
+// Behavior:
+//   - By default, the function performs an exact equality check, returning true only if
+//     both the `start` and `end` points of `AB` and `CD` are identical.
+//   - If `WithEpsilon` is provided, the function performs an approximate equality check,
+//     considering the points equal if their coordinate differences are within the specified
+//     epsilon threshold.
 //
 // Returns:
-//   - bool - Returns `true` if both line segments have identical start and end points, and `false` otherwise.
+//   - bool - Returns `true` if both line segments have identical (or approximately equal) start
+//     and end points; otherwise, `false`.
 //
-// Example usage:
+// Example Usage:
 //
-//	segment1 := NewLineSegment(NewPoint(1, 1), NewPoint(4, 5))
-//	segment2 := NewLineSegment(NewPoint(1, 1), NewPoint(4, 5))
+//	segment1 := NewLineSegment(NewPoint(1.0, 1.0), NewPoint(4.0, 5.0))
+//	segment2 := NewLineSegment(NewPoint(1.0, 1.0), NewPoint(4.0, 5.0))
+//
+//	// Default behavior (exact equality)
 //	equal := segment1.Eq(segment2) // equal will be true
-func (AB LineSegment[T]) Eq(CD LineSegment[T]) bool {
-	return AB.start.Eq(CD.start) && AB.end.Eq(CD.end)
+//
+//	// Approximate equality with epsilon
+//	segment3 := NewLineSegment(NewPoint(1.00001, 1.00001), NewPoint(4.00001, 5.00001))
+//	approximatelyEqual := segment1.Eq(segment3, WithEpsilon(1e-4)) // approximatelyEqual will be true
+//
+// Notes:
+//   - Approximate equality is useful when comparing line segments with floating-point coordinates,
+//     where small precision errors might otherwise cause inequality.
+//   - This function relies on the `Eq` method of the `Point` type, which supports epsilon adjustments.
+func (AB LineSegment[T]) Eq(CD LineSegment[T], opts ...Option) bool {
+	return AB.start.Eq(CD.start, opts...) && AB.end.Eq(CD.end, opts...)
 }
 
 // IntersectsLineSegment checks whether there is any intersection or overlap between LineSegment AB and LineSegment CD.
@@ -388,32 +488,85 @@ func (AB LineSegment[T]) IntersectionPoint(CD LineSegment[T]) (Point[float64], b
 	return intersection, true
 }
 
-// Length calculates the length of the line segment.
+// Length calculates the length of the line segment, optionally using an epsilon threshold
+// to adjust the precision of the calculation.
 //
-// This function computes the distance between the starting point and the ending point of the line segment `AB`,
-// using the Euclidean distance formula.
+// Parameters:
+//   - opts: A variadic slice of Option functions to customize the behavior of the calculation.
+//   - WithEpsilon(epsilon float64): Specifies a tolerance for snapping small floating-point
+//     deviations in the calculated length to cleaner values, improving robustness.
+//
+// Behavior:
+//   - The function computes the Euclidean distance between the `start` and `end` points of the
+//     line segment using the `DistanceToPoint` method.
+//   - If `WithEpsilon` is provided, the resulting length is adjusted such that small deviations
+//     due to floating-point precision errors are corrected.
 //
 // Returns:
-//   - float64 - The length of the line segment.
-func (AB LineSegment[T]) Length() float64 {
-	return AB.start.DistanceToPoint(AB.end)
+//   - float64: The length of the line segment, optionally adjusted based on epsilon.
+//
+// Example Usage:
+//
+//	segment := NewLineSegment(NewPoint(0, 0), NewPoint(3, 4))
+//
+//	// Default behavior (no epsilon adjustment)
+//	length := segment.Length() // length will be 5.0
+//
+// Notes:
+//   - This function relies on `DistanceToPoint`, which supports epsilon adjustments for distance
+//     calculations. Epsilon is particularly useful for floating-point coordinates where minor
+//     imprecisions might affect the result.
+func (AB LineSegment[T]) Length(opts ...Option) float64 {
+	return AB.start.DistanceToPoint(AB.end, opts...)
 }
 
-// Midpoint calculates the midpoint of the line segment.
+// Midpoint calculates the midpoint of the line segment, optionally applying an epsilon
+// threshold to adjust the precision of the result.
 //
-// This function finds the midpoint by averaging the x and y coordinates of the start and end points.
-// The result is returned as a `Point[float64]`, regardless of the segment’s original coordinate type,
-// ensuring precision.
+// Parameters:
+//   - opts: A variadic slice of Option functions to customize the behavior of the calculation.
+//     WithEpsilon(epsilon float64): Specifies a tolerance for snapping near-integer or
+//     near-zero results to cleaner values, improving robustness in floating-point calculations.
+//
+// Behavior:
+//   - The midpoint is calculated by averaging the x and y coordinates of the `start` and `end`
+//     points of the line segment.
+//   - If `WithEpsilon` is provided, the resulting midpoint coordinates are adjusted such that
+//     small deviations due to floating-point precision errors are corrected.
 //
 // Returns:
-//   - Point[float64] - The midpoint of the line segment as a point with floating-point coordinates.
-func (AB LineSegment[T]) Midpoint() Point[float64] {
+//   - Point[float64]: The midpoint of the line segment as a point with floating-point coordinates,
+//     optionally adjusted based on epsilon.
+//
+// Example Usage:
+//
+//	segment := NewLineSegment(NewPoint(0, 0), NewPoint(4, 4))
+//
+//	// Default behavior (no epsilon adjustment)
+//	midpoint := segment.Midpoint() // midpoint will be (2.0, 2.0)
+//
+// Notes:
+//   - Epsilon adjustment is particularly useful when working with floating-point coordinates
+//     where minor imprecisions could affect the midpoint calculation.
+//   - The midpoint is always returned as `Point[float64]`, ensuring precision regardless of the
+//     coordinate type of the original line segment.
+func (AB LineSegment[T]) Midpoint(opts ...Option) Point[float64] {
+	// Apply geomOptions with defaults
+	options := applyOptions(geomOptions{epsilon: 0}, opts...)
+
 	start := AB.start.AsFloat()
 	end := AB.end.AsFloat()
-	return NewPoint[float64](
-		(start.x+end.x)/2,
-		(start.y+end.y)/2,
-	)
+
+	midX := (start.x + end.x) / 2
+	midY := (start.y + end.y) / 2
+
+	// Apply epsilon if specified
+	if options.epsilon > 0 {
+		midX = applyEpsilon(midX, options.epsilon)
+		midY = applyEpsilon(midY, options.epsilon)
+	}
+
+	return NewPoint[float64](midX, midY)
 }
 
 // Points returns the two endpoints of the line segment as a slice of Points.
@@ -476,58 +629,78 @@ func (AB LineSegment[float64]) Reflect(axis ReflectionAxis, line ...LineSegment[
 //
 // Parameters:
 //   - CD: LineSegment[T] - The line segment to compare with `AB`.
+//   - opts: A variadic slice of Option functions to customize the behavior of the relationship check.
+//     WithEpsilon(epsilon float64): Specifies a tolerance for comparing points and collinearity calculations,
+//     allowing for robust handling of floating-point precision errors.
+//
+// Behavior:
+//   - The function first checks if the two line segments are exactly equal (or approximately equal if epsilon is provided).
+//   - It then evaluates endpoint coincidences, collinearity, intersection, and containment using orientation tests,
+//     point-on-segment checks, and direct comparisons.
+//   - If WithEpsilon is provided, epsilon adjustments are applied to point comparisons, collinearity checks, and
+//     point-on-segment tests to ensure robustness against floating-point imprecision.
 //
 // Returns:
-//   - LineSegmentsRelationship - A constant that describes the relationship between segments `AB` and `CD`.
+//   - LineSegmentsRelationship: A constant that describes the relationship between segments AB and CD.
 //
 // Possible return values:
 //   - LSRCollinearDisjoint: The segments are collinear but do not overlap or touch at any point.
 //   - LSRMiss: The segments are not collinear, disjoint, and do not intersect, overlap, or touch at any point.
 //   - LSRIntersects: The segments intersect at a unique point that is not an endpoint.
-//   - LSRAeqC, LSRAeqD, LSRBeqC, LSRBeqD: An endpoint of `AB` coincides with an endpoint of `CD`. For example,
-//     `LSRAeqC` indicates that point A of `AB` coincides with point C of `CD`.
+//   - LSRAeqC, LSRAeqD, LSRBeqC, LSRBeqD: An endpoint of AB coincides with an endpoint of CD. For example,
+//     LSRAeqC indicates that point A of AB coincides with point C of CD.
 //   - LSRAonCD, LSRBonCD, LSRConAB, LSRDonAB: One endpoint of one segment lies on the other segment without
-//     the segments being collinear. For example, `LSRAonCD` indicates that point A of `AB` lies on segment `CD`.
-//   - LSRCollinearAonCD, LSRCollinearBonCD: The segments are collinear
-//     with partial overlap where one endpoint of one segment lies on the other. For example, `LSRCollinearAonCD`
-//     means point A of `AB` lies on `CD` with collinearity.
-//   - LSRCollinearABinCD: The entire segment `AB` is contained within segment `CD`.
-//   - LSRCollinearCDinAB: The entire segment `CD` is contained within segment `AB`.
-//   - LSRCollinearEqual: The segments `AB` and `CD` are exactly equal, sharing both endpoints in the same locations.
+//     the segments being collinear. For example, LSRAonCD indicates that point A of AB lies on segment CD.
+//   - LSRCollinearAonCD, LSRCollinearBonCD: The segments are collinear with partial overlap where one endpoint of one
+//     segment lies on the other. For example, LSRCollinearAonCD means point A of AB lies on CD with collinearity.
+//   - LSRCollinearABinCD: The entire segment AB is contained within segment CD.
+//   - LSRCollinearCDinAB: The entire segment CD is contained within segment AB.
+//   - LSRCollinearEqual: The segments AB and CD are exactly equal, sharing both endpoints in the same locations.
 //
-// Example usage:
+// Example Usage:
 //
 //	segmentAB := NewLineSegment(NewPoint(0, 0), NewPoint(2, 2))
 //	segmentCD := NewLineSegment(NewPoint(1, 1), NewPoint(3, 3))
+//
+//	// Default behavior (no epsilon adjustment)
 //	relationship := segmentAB.RelationshipToLineSegment(segmentCD)
 //
-// The variable `relationship` should equal `LSRCollinearAonCD` as:
-//   - `AB` and `CD` are Collinear
-//   - `A` lies on `CD`
-//   - `AB` and `CD` don't fully overlap.
-func (AB LineSegment[T]) RelationshipToLineSegment(CD LineSegment[T]) LineSegmentsRelationship {
+//	// With epsilon adjustment
+//	relationshipWithEpsilon := segmentAB.RelationshipToLineSegment(segmentCD, WithEpsilon(1e-4))
+//
+//	// The variable `relationship` should equal `LSRCollinearAonCD` as:
+//	//   - `AB` and `CD` are collinear
+//	//   - `A` lies on `CD`
+//	//   - `AB` and `CD` don't fully overlap.
+//
+// Notes:
+//   - Epsilon adjustment is particularly useful when working with floating-point coordinates, where small
+//     precision errors might otherwise cause incorrect results.
+//   - This function relies on the `Eq`, `Orientation`, and `IsOnLineSegment` methods, all of which support
+//     epsilon adjustments.
+func (AB LineSegment[T]) RelationshipToLineSegment(CD LineSegment[T], opts ...Option) LineSegmentsRelationship {
 
 	// Check if segments are exactly equal
-	if (AB.start.Eq(CD.start) && AB.end.Eq(CD.end)) || (AB.start.Eq(CD.end) && AB.end.Eq(CD.start)) {
+	if (AB.start.Eq(CD.start, opts...) && AB.end.Eq(CD.end, opts...)) || (AB.start.Eq(CD.end, opts...) && AB.end.Eq(CD.start, opts...)) {
 		return LSRCollinearEqual
 	}
 
 	switch {
 
 	// Check if A and C coincide
-	case AB.start.Eq(CD.start):
+	case AB.start.Eq(CD.start, opts...):
 		return LSRAeqC
 
 	// Check if A and D coincide
-	case AB.start.Eq(CD.end):
+	case AB.start.Eq(CD.end, opts...):
 		return LSRAeqD
 
 	// Check if End and C coincide
-	case AB.end.Eq(CD.start):
+	case AB.end.Eq(CD.start, opts...):
 		return LSRBeqC
 
 	// Check if End and D coincide
-	case AB.end.Eq(CD.end):
+	case AB.end.Eq(CD.end, opts...):
 		return LSRBeqD
 
 	}
@@ -594,27 +767,57 @@ func (AB LineSegment[T]) RelationshipToLineSegment(CD LineSegment[T]) LineSegmen
 }
 
 // Rotate rotates the LineSegment around a given pivot point by a specified angle in radians.
+// Optionally, an epsilon threshold can be applied to adjust the precision of the resulting coordinates.
 //
 // Parameters:
-//   - radians: float64 - The rotation angle in radians.
 //   - pivot: Point[T] - The point around which to rotate the line segment.
+//   - radians: float64 - The rotation angle in radians.
+//   - opts: A variadic slice of Option functions to customize the behavior of the rotation.
+//     WithEpsilon(epsilon float64): Specifies a tolerance for snapping near-zero or near-integer
+//     values in the resulting coordinates to cleaner values, improving robustness.
+//
+// Behavior:
+//   - The function rotates the start and end points of the line segment around the given pivot
+//     point by the specified angle using the Point.Rotate method.
+//   - If WithEpsilon is provided, epsilon adjustments are applied to the rotated coordinates to
+//     handle floating-point precision errors.
 //
 // Returns:
-//   - LineSegment[float64] - A new line segment representing the rotated position.
-func (AB LineSegment[T]) Rotate(pivot Point[T], radians float64) LineSegment[float64] {
-	newStart := AB.start.Rotate(pivot, radians)
-	newEnd := AB.end.Rotate(pivot, radians)
+//   - LineSegment[float64]: A new line segment representing the rotated position, with floating-point coordinates.
+//
+// Example Usage:
+//
+//	segment := geom2d.NewLineSegment(geom2d.NewPoint(0, 0), geom2d.NewPoint(10, 0))
+//	pivot := geom2d.NewPoint(0, 0)
+//	angle := math.Pi / 2 // Rotate 90 degrees
+//
+//	// Default behavior (no epsilon adjustment)
+//	rotatedSegment := segment.Rotate(pivot, angle)
+//	// rotatedSegment = LineSegment[(0, 0) -> (6.123233995736757e-16, 10)]
+//
+//	// With epsilon adjustment
+//	rotatedSegmentWithEpsilon := segment.Rotate(pivot, angle, geom2d.WithEpsilon(1e-10))
+//	// rotatedSegmentWithEpsilon =LineSegment[(0, 0) -> (0, 10)]
+//
+// Notes:
+//   - Epsilon adjustment is particularly useful when the rotation involves floating-point
+//     calculations that could result in minor inaccuracies.
+//   - The returned line segment always has `float64` coordinates, ensuring precision regardless
+//     of the coordinate type of the original line segment.
+func (AB LineSegment[T]) Rotate(pivot Point[T], radians float64, opts ...Option) LineSegment[float64] {
+	newStart := AB.start.Rotate(pivot, radians, opts...)
+	newEnd := AB.end.Rotate(pivot, radians, opts...)
 	return NewLineSegment(newStart, newEnd)
 }
 
 // Scale scales the line segment by a given factor from a specified origin point.
 //
 // Parameters:
-//   - origin: ScaleOrigin - The point from which to scale (start, end, or midpoint).
+//   - origin: ScaleOrigin - The point from which to scale (ScaleFromStart, ScaleFromEnd, or ScaleFromMidpoint).
 //   - factor: float64 - The scaling factor.
 //
 // Returns:
-//   - LineSegment[T] - A new line segment scaled relative to the specified origin.
+//   - LineSegment[float64] - A new line segment scaled relative to the specified origin.
 func (AB LineSegment[T]) Scale(origin ScaleOrigin, factor float64) LineSegment[float64] {
 	var refPoint Point[float64]
 	switch origin {

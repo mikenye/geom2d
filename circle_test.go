@@ -305,69 +305,81 @@ func TestCircle_RelationshipToLineSegment(t *testing.T) {
 	tests := map[string]struct {
 		segment  LineSegment[float64]
 		circle   Circle[float64]
+		epsilon  float64
 		expected CircleLineSegmentRelationship
 	}{
 		"segment completely inside circle": {
 			segment:  NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](2, 2)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
+			epsilon:  0,
 			expected: CLRInside,
 		},
 		"segment completely outside circle": {
 			segment:  NewLineSegment(NewPoint[float64](10, 10), NewPoint[float64](15, 15)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
+			epsilon:  0,
 			expected: CLROutside,
 		},
 		"segment intersects circle at two points": {
 			segment:  NewLineSegment(NewPoint[float64](-6, 0), NewPoint[float64](6, 0)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
+			epsilon:  0,
 			expected: CLRIntersecting,
 		},
 		"segment is tangent to circle": {
 			segment:  NewLineSegment(NewPoint[float64](5, -5), NewPoint[float64](5, 5)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
+			epsilon:  1e-10,
 			expected: CLRTangent,
 		},
 		"segment partially inside circle": {
 			segment:  NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](10, 10)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
+			epsilon:  0,
 			expected: CLRIntersecting,
 		},
 		"segment with one endpoint on circumference and other outside": {
 			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](10, 10)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
+			epsilon:  1e-10,
 			expected: CLROneEndOnCircumferenceOutside,
 		},
 		"segment with one endpoint on circumference and other inside": {
 			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](2, 2)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
+			epsilon:  1e-10,
 			expected: CLROneEndOnCircumferenceInside,
 		},
 		"segment with both endpoints on circumference": {
 			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](-5, 0)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
+			epsilon:  1e-10,
 			expected: CLRBothEndsOnCircumference,
 		},
 		"degenerate segment inside circle": {
 			segment:  NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](1, 1)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
+			epsilon:  0,
 			expected: CLRInside,
 		},
 		"degenerate segment on circle boundary": {
 			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](5, 0)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
+			epsilon:  1e-10,
 			expected: CLRBothEndsOnCircumference,
 		},
 		"degenerate segment outside circle": {
 			segment:  NewLineSegment(NewPoint[float64](10, 10), NewPoint[float64](10, 10)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
+			epsilon:  0,
 			expected: CLROutside,
 		},
 	}
 
-	for name, tt := range tests {
+	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			result := tt.circle.RelationshipToLineSegment(tt.segment)
-			assert.Equal(t, tt.expected, result)
+			result := tc.circle.RelationshipToLineSegment(tc.segment, WithEpsilon(tc.epsilon))
+			assert.Equal(t, tc.expected, result)
 		})
 	}
 }
@@ -376,34 +388,39 @@ func TestCircle_RelationshipToPoint(t *testing.T) {
 	tests := map[string]struct {
 		circle   Circle[float64]
 		point    Point[float64]
+		epsilon  float64
 		expected PointCircleRelationship
 	}{
 		"point inside circle": {
 			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
 			point:    NewPoint[float64](-3.0, -2.0),
+			epsilon:  0,
 			expected: PCRInside,
 		},
 		"point on circle boundary": {
 			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
 			point:    NewPoint[float64](3.0, 4.0),
+			epsilon:  1e-10,
 			expected: PCROnCircumference,
 		},
 		"point outside circle": {
 			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
 			point:    NewPoint[float64](6.0, 8.0),
+			epsilon:  0,
 			expected: PCROutside,
 		},
 		"point at center of circle": {
 			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
 			point:    NewPoint[float64](0.0, 0.0),
+			epsilon:  0,
 			expected: PCRInside,
 		},
 	}
 
-	for name, tt := range tests {
+	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			result := tt.circle.RelationshipToPoint(tt.point)
-			assert.Equal(t, tt.expected, result)
+			result := tc.circle.RelationshipToPoint(tc.point, WithEpsilon(tc.epsilon))
+			assert.Equal(t, tc.expected, result)
 		})
 	}
 }
