@@ -32,50 +32,6 @@ import (
 	"math"
 )
 
-// LineSegmentsRelationship (LSR) defines the possible spatial relationships between two line segments, AB and CD.
-//
-// Where:
-//   - LineSegment AB starts at Point A and ends at Point End
-//   - LineSegment CD starts at Point C and ends at Point D
-//
-// This type is used by functions that analyze the geometric relationship between two line segments
-// to provide precise information about their interaction, such as intersection, overlap, or disjointedness.
-type LineSegmentsRelationship int8
-
-// Valid values for LineSegmentsRelationship:
-//
-// LineSegmentsRelationship represents possible spatial relationships between two line segments, AB and CD.
-//
-// # LSR stands for Line Segment Relationship
-//
-// A positive value indicates that the segments have some form of relationship (e.g., intersection,
-// overlap, or containment). A non-positive value (either 0 or -1) indicates no interaction between
-// the segments.
-//
-// Note: `LSRCollinearDisjoint` is intentionally assigned a value of -1. This allows for a simple check
-// to determine whether the segments have any interaction by evaluating if `LineSegmentsRelationship > 0`.
-// `LSRCollinearDisjoint` specifically represents the case where the segments are collinear but
-// do not overlap or touch at any point, making it distinct from `LSRMiss`, which represents disjoint,
-// non-collinear segments.
-const (
-	LSRCollinearDisjoint LineSegmentsRelationship = iota - 1 // Segments are collinear and do not intersect, overlap, or touch at any point.
-	LSRMiss                                                  // The segments are not collinear, disjoint and do not intersect, overlap, or touch at any point.
-	LSRIntersects                                            // The segments intersect at a unique point that is not an endpoint.
-	LSRAeqC                                                  // Point A of segment AB coincides with Point C of segment CD
-	LSRAeqD                                                  // Point A of segment AB coincides with Point D of segment CD
-	LSRBeqC                                                  // Point End of segment AB coincides with Point C of segment CD
-	LSRBeqD                                                  // Point End of segment AB coincides with Point D of segment CD
-	LSRAonCD                                                 // Point A lies on LineSegment CD
-	LSRBonCD                                                 // Point End lies on LineSegment CD
-	LSRConAB                                                 // Point C lies on LineSegment AB
-	LSRDonAB                                                 // Point D lies on LineSegment AB
-	LSRCollinearAonCD                                        // Point A lies on LineSegment CD (partial overlap), and line segments are collinear
-	LSRCollinearBonCD                                        // Point End lies on LineSegment CD (partial overlap), and line segments are collinear
-	LSRCollinearABinCD                                       // Segment AB is fully contained within segment CD
-	LSRCollinearCDinAB                                       // Segment CD is fully contained within segment AB
-	LSRCollinearEqual                                        // The segments AB and CD are exactly equal, sharing both endpoints in the same locations.
-)
-
 // ScaleOrigin specifies the origin point from which a line segment should be scaled.
 //
 // The origin can be set to either the start point, the end point, or the midpoint
@@ -110,45 +66,6 @@ type LineSegment[T SignedNumber] struct {
 	end   Point[T]
 }
 
-func (r *LineSegmentsRelationship) String() string {
-	switch *r {
-	case LSRCollinearDisjoint:
-		return "LSRCollinearDisjoint"
-	case LSRMiss:
-		return "LSRMiss"
-	case LSRIntersects:
-		return "LSRIntersects"
-	case LSRAeqC:
-		return "LSRAeqC"
-	case LSRAeqD:
-		return "LSRAeqD"
-	case LSRBeqC:
-		return "LSRBeqC"
-	case LSRBeqD:
-		return "LSRBeqD"
-	case LSRAonCD:
-		return "LSRAonCD"
-	case LSRBonCD:
-		return "LSRAonCD"
-	case LSRConAB:
-		return "LSRConAB"
-	case LSRDonAB:
-		return "LSRDonAB"
-	case LSRCollinearAonCD:
-		return "LSRCollinearAonCD"
-	case LSRCollinearBonCD:
-		return "LSRCollinearBonCD"
-	case LSRCollinearABinCD:
-		return "LSRCollinearABinCD"
-	case LSRCollinearCDinAB:
-		return "LSRCollinearCDinAB"
-	case LSRCollinearEqual:
-		return "LSRCollinearEqual"
-	default:
-		panic(fmt.Errorf("unsupported LineSegmentsRelationship"))
-	}
-}
-
 // AddLineSegment adds the start and end points of another line segment to this one.
 //
 // This method performs an element-wise addition, where the `start` and `end` points
@@ -169,33 +86,13 @@ func (r *LineSegmentsRelationship) String() string {
 //	// `result` will be a new segment from (3, 4) to (5, 7)
 func (AB LineSegment[T]) AddLineSegment(CD LineSegment[T]) LineSegment[T] {
 	return NewLineSegment(
-		AB.start.Add(CD.start),
-		AB.end.Add(CD.end),
+		AB.start.Translate(CD.start),
+		AB.end.Translate(CD.end),
 	)
 }
 
-// AddVector translates the line segment by adding a given vector to both the start and end points.
-//
-// This method moves the line segment by the specified vector, effectively shifting
-// both endpoints by the vector’s coordinates. It’s useful for translating the entire
-// segment in a given direction.
-//
-// Parameters:
-//   - v: Point[T] - The vector to add to both endpoints of the segment.
-//
-// Returns:
-//   - LineSegment[T] - A new line segment translated by the given vector.
-//
-// Example usage:
-//
-//	segment := NewLineSegment(NewPoint(1, 1), NewPoint(4, 5))
-//	translated := segment.AddVector(NewPoint(2, 3))
-//	// `translated` will be a new segment from (3, 4) to (6, 8)
-func (AB LineSegment[T]) AddVector(v Point[T]) LineSegment[T] {
-	return NewLineSegment(
-		AB.start.Add(v),
-		AB.end.Add(v),
-	)
+func (AB LineSegment[T]) Area() float64 {
+	return 0
 }
 
 // AsFloat converts the line segment to a LineSegment[float64] type.
@@ -233,6 +130,14 @@ func (AB LineSegment[T]) AsInt() LineSegment[int] {
 //   - LineSegment[int] - The line segment with both endpoints converted to integer coordinates by rounding.
 func (AB LineSegment[T]) AsIntRounded() LineSegment[int] {
 	return NewLineSegment(AB.start.AsIntRounded(), AB.end.AsIntRounded())
+}
+
+func (AB LineSegment[T]) BoundingBox() Rectangle[T] {
+	return NewRectangleByOppositeCorners(AB.start, AB.end)
+}
+
+func (AB LineSegment[T]) ContainsPoint(p Point[T]) bool {
+	return p.IsOnLineSegment(AB)
 }
 
 // DistanceToLineSegment calculates the minimum distance between two line segments, AB and CD.
@@ -403,7 +308,7 @@ func (AB LineSegment[T]) Eq(CD LineSegment[T], opts ...Option) bool {
 //
 // This function returns true if segments `AB` and `CD` have an intersecting spatial relationship, such as intersection,
 // overlap, containment, or endpoint coincidence. It leverages the `RelationshipToLineSegment` function to
-// determine if the relationship value is greater than `LSRMiss`, indicating that the segments are not fully
+// determine if the relationship value is greater than `LLRMiss`, indicating that the segments are not fully
 // disjoint.
 //
 // Parameters:
@@ -420,7 +325,7 @@ func (AB LineSegment[T]) Eq(CD LineSegment[T], opts ...Option) bool {
 //
 // `intersects` will be `true` as there is an intersecting relationship between `AB` and `CD`.
 func (AB LineSegment[T]) IntersectsLineSegment(CD LineSegment[T]) bool {
-	if AB.RelationshipToLineSegment(CD) > LSRMiss {
+	if AB.RelationshipToLineSegment(CD) > LLRMiss {
 		return true
 	}
 	return false
@@ -484,7 +389,7 @@ func (AB LineSegment[T]) IntersectionPoint(CD LineSegment[T]) (Point[float64], b
 	}
 
 	// Calculate the intersection point
-	intersection := A.Add(dir1.Scale(t))
+	intersection := A.Translate(dir1.Scale(NewPoint[float64](0, 0), t))
 	return intersection, true
 }
 
@@ -518,6 +423,10 @@ func (AB LineSegment[T]) IntersectionPoint(CD LineSegment[T]) (Point[float64], b
 //     imprecisions might affect the result.
 func (AB LineSegment[T]) Length(opts ...Option) float64 {
 	return AB.start.DistanceToPoint(AB.end, opts...)
+}
+
+func (AB LineSegment[T]) Perimeter(opts ...Option) float64 {
+	return AB.Length(opts...)
 }
 
 // Midpoint calculates the midpoint of the line segment, optionally applying an epsilon
@@ -567,6 +476,10 @@ func (AB LineSegment[T]) Midpoint(opts ...Option) Point[float64] {
 	}
 
 	return NewPoint[float64](midX, midY)
+}
+
+func (AB LineSegment[T]) Center(opts ...Option) Point[float64] {
+	return AB.Midpoint(opts...)
 }
 
 // Points returns the two endpoints of the line segment as a slice of Points.
@@ -620,11 +533,51 @@ func (AB LineSegment[float64]) Reflect(axis ReflectionAxis, line ...LineSegment[
 	return NewLineSegment(startReflected, endReflected)
 }
 
+// RelationshipToCircle determines the spatial relationship of the line segment
+// to a circle. It returns one of several possible relationships, such as whether
+// the segment is inside, outside, tangent to, or intersects the circle.
+//
+// Parameters:
+//   - c: The circle to analyze.
+//   - opts: A variadic slice of Option functions to customize the behavior of the relationship check.
+//     WithEpsilon(epsilon float64): Specifies a tolerance for comparing distances to the circle's radius,
+//     improving robustness against floating-point precision errors.
+//
+// Returns:
+//   - CircleLineSegmentRelationship: An enum value indicating the relationship.
+//
+// Possible Relationships:
+//   - CLROutside: The segment lies entirely outside the circle.
+//   - CLRInside: The segment lies entirely within the circle.
+//   - CLRIntersecting: The segment intersects the circle at two points.
+//   - CLRTangent: The segment is tangent to the circle, touching it at exactly one point.
+//   - CLROneEndOnCircumferenceOutside: One endpoint is on the circle's boundary, and the other is outside.
+//   - CLROneEndOnCircumferenceInside: One endpoint is on the circle's boundary, and the other is inside.
+//   - CLRBothEndsOnCircumference: Both endpoints lie on the circle's boundary.
+//
+// Example Usage:
+//
+//	c := NewCircle(NewPoint(0, 0), 5)
+//	segment := NewLineSegment(NewPoint(0, -6), NewPoint(0, 6))
+//
+//	// Default behavior (no epsilon adjustment)
+//	relationship := segment.RelationshipToCircle(c)
+//
+//	// With epsilon adjustment
+//	relationshipWithEpsilon := segment.RelationshipToCircle(c, WithEpsilon(1e-4))
+//
+// Notes:
+//   - Epsilon adjustment is particularly useful for floating-point coordinates, where small precision
+//     errors might otherwise cause incorrect classifications.
+func (AB LineSegment[T]) RelationshipToCircle(c Circle[T], opts ...Option) CircleLineSegmentRelationship {
+	return c.RelationshipToLineSegment(AB, opts...)
+}
+
 // RelationshipToLineSegment determines the spatial relationship between two line segments, AB and CD.
 //
 // This function evaluates the relationship between two line segments, `AB` and `CD`, by checking for
 // endpoint coincidences, intersections, collinear relationships, and containment. It returns a
-// `LineSegmentsRelationship` constant that describes the exact relationship between the segments, such
+// `LineSegmentLineSegmentRelationship` constant that describes the exact relationship between the segments, such
 // as intersection, partial overlap, or full containment.
 //
 // Parameters:
@@ -641,21 +594,21 @@ func (AB LineSegment[float64]) Reflect(axis ReflectionAxis, line ...LineSegment[
 //     point-on-segment tests to ensure robustness against floating-point imprecision.
 //
 // Returns:
-//   - LineSegmentsRelationship: A constant that describes the relationship between segments AB and CD.
+//   - LineSegmentLineSegmentRelationship: A constant that describes the relationship between segments AB and CD.
 //
 // Possible return values:
-//   - LSRCollinearDisjoint: The segments are collinear but do not overlap or touch at any point.
-//   - LSRMiss: The segments are not collinear, disjoint, and do not intersect, overlap, or touch at any point.
-//   - LSRIntersects: The segments intersect at a unique point that is not an endpoint.
-//   - LSRAeqC, LSRAeqD, LSRBeqC, LSRBeqD: An endpoint of AB coincides with an endpoint of CD. For example,
-//     LSRAeqC indicates that point A of AB coincides with point C of CD.
-//   - LSRAonCD, LSRBonCD, LSRConAB, LSRDonAB: One endpoint of one segment lies on the other segment without
-//     the segments being collinear. For example, LSRAonCD indicates that point A of AB lies on segment CD.
-//   - LSRCollinearAonCD, LSRCollinearBonCD: The segments are collinear with partial overlap where one endpoint of one
-//     segment lies on the other. For example, LSRCollinearAonCD means point A of AB lies on CD with collinearity.
-//   - LSRCollinearABinCD: The entire segment AB is contained within segment CD.
-//   - LSRCollinearCDinAB: The entire segment CD is contained within segment AB.
-//   - LSRCollinearEqual: The segments AB and CD are exactly equal, sharing both endpoints in the same locations.
+//   - LLRCollinearDisjoint: The segments are collinear but do not overlap or touch at any point.
+//   - LLRMiss: The segments are not collinear, disjoint, and do not intersect, overlap, or touch at any point.
+//   - LLRIntersects: The segments intersect at a unique point that is not an endpoint.
+//   - LLRAeqC, LLRAeqD, LLRBeqC, LLRBeqD: An endpoint of AB coincides with an endpoint of CD. For example,
+//     LLRAeqC indicates that point A of AB coincides with point C of CD.
+//   - LLRAonCD, LLRBonCD, LLRConAB, LLRDonAB: One endpoint of one segment lies on the other segment without
+//     the segments being collinear. For example, LLRAonCD indicates that point A of AB lies on segment CD.
+//   - LLRCollinearAonCD, LLRCollinearBonCD: The segments are collinear with partial overlap where one endpoint of one
+//     segment lies on the other. For example, LLRCollinearAonCD means point A of AB lies on CD with collinearity.
+//   - LLRCollinearABinCD: The entire segment AB is contained within segment CD.
+//   - LLRCollinearCDinAB: The entire segment CD is contained within segment AB.
+//   - LLRCollinearEqual: The segments AB and CD are exactly equal, sharing both endpoints in the same locations.
 //
 // Example Usage:
 //
@@ -668,7 +621,7 @@ func (AB LineSegment[float64]) Reflect(axis ReflectionAxis, line ...LineSegment[
 //	// With epsilon adjustment
 //	relationshipWithEpsilon := segmentAB.RelationshipToLineSegment(segmentCD, WithEpsilon(1e-4))
 //
-//	// The variable `relationship` should equal `LSRCollinearAonCD` as:
+//	// The variable `relationship` should equal `LLRCollinearAonCD` as:
 //	//   - `AB` and `CD` are collinear
 //	//   - `A` lies on `CD`
 //	//   - `AB` and `CD` don't fully overlap.
@@ -678,30 +631,30 @@ func (AB LineSegment[float64]) Reflect(axis ReflectionAxis, line ...LineSegment[
 //     precision errors might otherwise cause incorrect results.
 //   - This function relies on the `Eq`, `Orientation`, and `IsOnLineSegment` methods, all of which support
 //     epsilon adjustments.
-func (AB LineSegment[T]) RelationshipToLineSegment(CD LineSegment[T], opts ...Option) LineSegmentsRelationship {
+func (AB LineSegment[T]) RelationshipToLineSegment(CD LineSegment[T], opts ...Option) LineSegmentLineSegmentRelationship {
 
 	// Check if segments are exactly equal
 	if (AB.start.Eq(CD.start, opts...) && AB.end.Eq(CD.end, opts...)) || (AB.start.Eq(CD.end, opts...) && AB.end.Eq(CD.start, opts...)) {
-		return LSRCollinearEqual
+		return LLRCollinearEqual
 	}
 
 	switch {
 
 	// Check if A and C coincide
 	case AB.start.Eq(CD.start, opts...):
-		return LSRAeqC
+		return LLRAeqC
 
 	// Check if A and D coincide
 	case AB.start.Eq(CD.end, opts...):
-		return LSRAeqD
+		return LLRAeqD
 
 	// Check if End and C coincide
 	case AB.end.Eq(CD.start, opts...):
-		return LSRBeqC
+		return LLRBeqC
 
 	// Check if End and D coincide
 	case AB.end.Eq(CD.end, opts...):
-		return LSRBeqD
+		return LLRBeqD
 
 	}
 
@@ -718,23 +671,23 @@ func (AB LineSegment[T]) RelationshipToLineSegment(CD LineSegment[T], opts ...Op
 
 		// Check if A lies on CD
 		case AB.start.IsOnLineSegment(CD) && !AB.end.IsOnLineSegment(CD):
-			return LSRAonCD
+			return LLRAonCD
 
 		// Check if End lies on CD
 		case !AB.start.IsOnLineSegment(CD) && AB.end.IsOnLineSegment(CD):
-			return LSRBonCD
+			return LLRBonCD
 
 		// Check if C lies on AB
 		case CD.start.IsOnLineSegment(AB) && !CD.end.IsOnLineSegment(AB):
-			return LSRConAB
+			return LLRConAB
 
 		// Check if D lies on AB
 		case !CD.start.IsOnLineSegment(AB) && CD.end.IsOnLineSegment(AB):
-			return LSRDonAB
+			return LLRDonAB
 
 		// Default case that lines intersect without any "edge cases"
 		default:
-			return LSRIntersects
+			return LLRIntersects
 		}
 	}
 
@@ -743,27 +696,87 @@ func (AB LineSegment[T]) RelationshipToLineSegment(CD LineSegment[T], opts ...Op
 		// Check if segments are collinear and disjoint
 		if !AB.start.IsOnLineSegment(CD) && !AB.end.IsOnLineSegment(CD) &&
 			!CD.start.IsOnLineSegment(AB) && !CD.end.IsOnLineSegment(AB) {
-			return LSRCollinearDisjoint
+			return LLRCollinearDisjoint
 		}
 		// Check if AB is fully contained within CD
 		if AB.start.IsOnLineSegment(CD) && AB.end.IsOnLineSegment(CD) {
-			return LSRCollinearABinCD
+			return LLRCollinearABinCD
 		}
 		// Check if CD is fully contained within AB
 		if CD.start.IsOnLineSegment(AB) && CD.end.IsOnLineSegment(AB) {
-			return LSRCollinearCDinAB
+			return LLRCollinearCDinAB
 		}
 		// Check specific collinear partial overlaps
 		if AB.start.IsOnLineSegment(CD) {
-			return LSRCollinearAonCD
+			return LLRCollinearAonCD
 		}
 		if AB.end.IsOnLineSegment(CD) {
-			return LSRCollinearBonCD
+			return LLRCollinearBonCD
 		}
 	}
 
 	// If none of the conditions matched, the segments are disjoint
-	return LSRMiss
+	return LLRMiss
+}
+
+func (AB LineSegment[T]) RelationshipToPoint(p Point[T], opts ...Option) PointLineSegmentRelationship {
+	return p.RelationshipToLineSegment(AB)
+}
+
+// RelationshipToPolyTree determines the spatial relationship of a line segment to a PolyTree.
+//
+// The function evaluates whether the line segment:
+//   - Intersects any boundary within the PolyTree.
+//   - Is entirely within a solid or hole polygon in the PolyTree.
+//   - Lies entirely outside the PolyTree.
+//
+// Parameters:
+//   - tree: A pointer to the PolyTree to evaluate.
+//   - opts: Optional configurations for geometric calculations, such as epsilon tolerance for floating-point comparisons.
+//
+// Returns:
+//   - PolyTreeLineSegmentRelationship: The relationship between the line segment and the PolyTree.
+//
+// Behavior:
+//   - If the line segment intersects any boundary (considering epsilon), the function immediately returns PTLRIntersectsBoundary.
+//   - If the segment's endpoints are entirely contained within the same polygon, the function returns PTLRInsideSolid or PTLRInsideHole, depending on the polygon type.
+//   - The function uses an epsilon tolerance when checking relationships between line segments and polygon edges.
+//   - If no stronger relationship is found, the function returns PTLRMiss, indicating the segment is entirely outside the PolyTree.
+func (AB LineSegment[T]) RelationshipToPolyTree(tree *PolyTree[T], opts ...Option) PolyTreeLineSegmentRelationship {
+
+	// as the points in a polytree contour are doubled, we need to also double the input line segment
+	lineSegmentDoubled := AB.Scale(NewPoint[T](0, 0), 2)
+
+	highestRel := PTLRMiss // Default to outside
+
+	// Iterate through each polygon in the tree
+	for poly := range tree.iterPolys {
+		// Check each edge of the polygon's contour
+		for edge := range poly.contour.iterEdges {
+			// Determine relationship between poly contour & line segment
+			rel := edge.RelationshipToLineSegment(lineSegmentDoubled, opts...)
+			// any intersection
+			if rel > LLRMiss {
+				return PTLRIntersectsBoundary
+			}
+		}
+
+		// check for containment
+		if poly.contour.isPointInside(lineSegmentDoubled.start) && poly.contour.isPointInside(lineSegmentDoubled.end) {
+			switch poly.polygonType {
+			case PTSolid:
+				highestRel = PTLRInsideSolid
+			case PTHole:
+				highestRel = PTLRInsideHole
+			}
+		}
+	}
+
+	return highestRel
+}
+
+func (AB LineSegment[T]) RelationshipToRectangle(r Rectangle[T]) RectangleLineSegmentRelationship {
+	return r.RelationshipToLineSegment(AB)
 }
 
 // Rotate rotates the LineSegment around a given pivot point by a specified angle in radians.
@@ -818,20 +831,12 @@ func (AB LineSegment[T]) Rotate(pivot Point[T], radians float64, opts ...Option)
 //
 // Returns:
 //   - LineSegment[float64] - A new line segment scaled relative to the specified origin.
-func (AB LineSegment[T]) Scale(origin ScaleOrigin, factor float64) LineSegment[float64] {
-	var refPoint Point[float64]
-	switch origin {
-	case ScaleFromStart:
-		refPoint = AB.start.AsFloat()
-	case ScaleFromEnd:
-		refPoint = AB.end.AsFloat()
-	case ScaleFromMidpoint:
-		refPoint = AB.Midpoint()
-	}
-
+//
+// todo: Implement ScaleFrom as per Point type
+func (AB LineSegment[T]) Scale(ref Point[T], factor T) LineSegment[T] {
 	return NewLineSegment(
-		AB.start.AsFloat().ScaleFrom(refPoint, factor),
-		AB.end.AsFloat().ScaleFrom(refPoint, factor),
+		AB.start.Scale(ref, factor),
+		AB.end.Scale(ref, factor),
 	)
 }
 
@@ -892,6 +897,32 @@ func (AB LineSegment[T]) SubVector(v Point[T]) LineSegment[T] {
 	return NewLineSegment(
 		AB.start.Sub(v),
 		AB.end.Sub(v),
+	)
+}
+
+// Translate moves the line segment by a specified vector.
+//
+// This method shifts the line segment's position in the 2D plane by translating
+// both its start and end points by the given vector `delta`. The relative
+// orientation and length of the line segment remain unchanged.
+//
+// Parameters:
+//   - delta: Point[T] - The vector by which to translate the line segment.
+//
+// Returns:
+//   - LineSegment[T]: A new LineSegment translated by the specified vector.
+//
+// Example Usage:
+//
+//	lineSegment := NewLineSegment(NewPoint(1, 1), NewPoint(4, 4))
+//	translationVector := NewPoint(2, 3)
+//	translatedLineSegment := lineSegment.Translate(translationVector)
+//	// translatedLineSegment has its start point at (3, 4)
+//	// and end point at (6, 7), preserving its length and orientation.
+func (AB LineSegment[T]) Translate(delta Point[T]) LineSegment[T] {
+	return NewLineSegment(
+		AB.start.Translate(delta),
+		AB.end.Translate(delta),
 	)
 }
 

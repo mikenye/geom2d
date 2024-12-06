@@ -52,27 +52,6 @@ type Point[T SignedNumber] struct {
 	y T
 }
 
-// Add returns a new Point that represents the sum of the calling Point p and another Point q.
-// Each coordinate of the result is the sum of the corresponding coordinates of p and q.
-//
-// Parameters:
-//   - q: The Point to add to the calling Point.
-//
-// Returns:
-//   - Point[T]: A new Point where the x and y coordinates are the sums of the x and y coordinates of p and q.
-//
-// Example Usage:
-//
-//	p1 := NewPoint(3, 4)
-//	p2 := NewPoint(1, 2)
-//	result := p1.Add(p2) // result is a Point with coordinates (4, 6)
-func (p Point[T]) Add(q Point[T]) Point[T] {
-	return Point[T]{
-		x: p.x + q.x,
-		y: p.y + q.y,
-	}
-}
-
 // AsFloat converts the Point's x and y coordinates to the float64 type, returning a new Point[float64].
 // This method is useful when higher precision or floating-point arithmetic is needed on the coordinates.
 //
@@ -515,6 +494,78 @@ func (p Point[float64]) reflectAcrossLine(line LineSegment[float64]) Point[float
 	return NewPoint(newX, newY)
 }
 
+func (p Point[T]) RelationshipToCircle(c Circle[T], opts ...Option) PointCircleRelationship {
+	return c.RelationshipToPoint(p, opts...)
+}
+
+func (p Point[T]) RelationshipToLineSegment(seg LineSegment[T], opts ...Option) PointLineSegmentRelationship {
+	options := applyOptions(geomOptions{epsilon: 0}, opts...)
+
+	// Check if the point coincides with the segment's start or end
+	if p.Eq(seg.start, opts...) {
+		return PLRPointEqStart
+	}
+	if p.Eq(seg.end, opts...) {
+		return PLRPointEqEnd
+	}
+
+	// Check if the point is collinear with the infinite line of the segment
+	orientation := Orientation(seg.start, seg.end, p)
+	if orientation != PointsCollinear {
+		return PLRMiss
+	}
+
+	// Check if the point lies within the bounding box of the segment
+	minX, maxX := min(seg.start.x, seg.end.x), max(seg.start.x, seg.end.x)
+	minY, maxY := min(seg.start.y, seg.end.y), max(seg.start.y, seg.end.y)
+
+	if float64(p.x) >= float64(minX)-options.epsilon && float64(p.x) <= float64(maxX)+options.epsilon &&
+		float64(p.y) >= float64(minY)-options.epsilon && float64(p.y) <= float64(maxY)+options.epsilon {
+		return PLRPointOnLineSegment
+	}
+
+	// If collinear but outside the segment's bounds
+	return PLRPointOnLine
+}
+
+func (p Point[T]) RelationshipToPolyTree(tree *PolyTree[T], opts ...Option) PointPolyTreeRelationship {
+	highestRel := PPTRPointOutside // Default to outside
+
+	// as the points in a polytree contour are doubled, we need to also double the input point
+	pDoubled := p.Scale(NewPoint[T](0, 0), 2)
+
+	for poly := range tree.iterPolys {
+		// Check if the point is on an edge
+		for edge := range poly.contour.iterEdges {
+			rel := edge.RelationshipToPoint(pDoubled, opts...)
+			switch rel {
+			case PLRPointEqStart, PLRPointEqEnd:
+				return PPTRPointOnVertex // Early return for vertex relationship
+			case PLRPointOnLineSegment:
+				return PPTRPointOnEdge // Early return for edge relationship
+			}
+		}
+
+		// Check if the point is inside the polygon
+		if poly.contour.isPointInside(pDoubled) {
+			switch {
+			case poly.parent == nil:
+				highestRel = PPTRPointInside
+			case poly.polygonType == PTHole:
+				highestRel = PPTRPointInHole
+			case poly.polygonType == PTSolid:
+				highestRel = PPTRPointInsideIsland
+			}
+		}
+	}
+
+	return highestRel
+}
+
+func (p Point[T]) RelationshipToRectangle(r Rectangle[T]) PointRectangleRelationship {
+	return r.RelationshipToPoint(p)
+}
+
 // Rotate rotates the point by a specified angle (in radians) around a given pivot point.
 //
 // Parameters:
@@ -572,25 +623,7 @@ func (p Point[T]) Rotate(pivot Point[T], radians float64, opts ...Option) Point[
 	return NewPoint(newX, newY)
 }
 
-// Scale returns a new Point that scales the calling Point p by a scalar value k.
-// Both the x and y coordinates of p are multiplied by the scalar, producing a Point
-// that is scaled proportionally in both dimensions.
-//
-// Parameters:
-//   - k: The scalar value by which to multiply the x and y coordinates of Point p.
-//
-// Returns:
-//   - Point[T]: A new Point where each coordinate is the result of scaling by k.
-//
-// Example Usage:
-//
-//	p := NewPoint(3, 4)
-//	scaledPoint := p.Scale(2) // scaledPoint is a Point with coordinates (6, 8)
-func (p Point[T]) Scale(k T) Point[T] {
-	return p.ScaleFrom(NewPoint[T](0, 0), k)
-}
-
-// ScaleFrom scales the point by a factor k relative to a reference point ref.
+// Scale scales the point by a factor k relative to a reference point ref.
 //
 // Parameters:
 //   - ref: Point[float64] - The reference point from which scaling originates.
@@ -603,8 +636,8 @@ func (p Point[T]) Scale(k T) Point[T] {
 //
 //	p := NewPoint(3, 4)
 //	ref := NewPoint(1, 1)
-//	scaled := p.ScaleFrom(ref, 2) // scaled is now (5, 7), relative to ref.
-func (p Point[float64]) ScaleFrom(ref Point[float64], k float64) Point[float64] {
+//	scaled := p.Scale(ref, 2) // scaled is now (5, 7), relative to ref.
+func (p Point[T]) Scale(ref Point[T], k T) Point[T] {
 	return NewPoint(
 		ref.x+(p.x-ref.x)*k,
 		ref.y+(p.y-ref.y)*k,
@@ -646,6 +679,23 @@ func (p Point[T]) Sub(q Point[T]) Point[T] {
 		x: p.x - q.x,
 		y: p.y - q.y,
 	}
+}
+
+// Translate moves the Point by a given displacement vector.
+//
+// Parameters:
+//   - delta: Point[T] - The displacement vector to apply.
+//
+// Returns:
+//   - Point[T]: A new Point resulting from the translation.
+//
+// Example Usage:
+//
+//	p := NewPoint(3, 4)
+//	delta := NewPoint(2, -1)
+//	translated := p.Translate(delta) // translated is a Point with coordinates (5, 3)
+func (p Point[T]) Translate(delta Point[T]) Point[T] {
+	return NewPoint(p.x+delta.x, p.y+delta.y)
 }
 
 // X returns the x-coordinate of the Point p.

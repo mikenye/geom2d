@@ -305,7 +305,7 @@ func TestContour_iterEdges_Triangle(t *testing.T) {
 func TestPolyTree_AddChild(t *testing.T) {
 	t.Run("Adding a nil child", func(t *testing.T) {
 		parent, _ := NewPolyTree([]Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}}, PTSolid)
-		err := parent.addChild(nil)
+		err := parent.AddChild(nil)
 		require.Error(t, err, "expected error when adding a nil child, but got none")
 	})
 
@@ -316,8 +316,8 @@ func TestPolyTree_AddChild(t *testing.T) {
 		child, err := NewPolyTree([]Point[int]{{2, 2}, {8, 2}, {8, 8}, {2, 8}}, PTHole)
 		require.NoError(t, err, "error creating child polygon, when none was expected")
 
-		err = parent.addChild(child)
-		require.NoError(t, err, "error calling addChild, when none was expected")
+		err = parent.AddChild(child)
+		require.NoError(t, err, "error calling AddChild, when none was expected")
 
 		assert.Contains(t, parent.children, child)
 		assert.Equal(t, parent, child.parent)
@@ -330,8 +330,8 @@ func TestPolyTree_AddChild(t *testing.T) {
 		child, err := NewPolyTree([]Point[int]{{2, 2}, {8, 2}, {8, 8}, {2, 8}}, PTSolid)
 		require.NoError(t, err, "error creating child polygon, when none was expected")
 
-		err = parent.addChild(child)
-		require.Error(t, err, "no error returned from addChild, when one was expected")
+		err = parent.AddChild(child)
+		require.Error(t, err, "no error returned from AddChild, when one was expected")
 	})
 
 	t.Run("Adding Multiple Children", func(t *testing.T) {
@@ -344,10 +344,10 @@ func TestPolyTree_AddChild(t *testing.T) {
 		child2, err := NewPolyTree([]Point[int]{{6, 6}, {8, 6}, {8, 8}, {6, 8}}, PTHole)
 		require.NoError(t, err, "error creating second child polygon, when none was expected")
 
-		err = parent.addChild(child1)
-		require.NoError(t, err, "error calling addChild for child1, when none was expected")
-		err = parent.addChild(child2)
-		require.NoError(t, err, "error calling addChild for child2, when none was expected")
+		err = parent.AddChild(child1)
+		require.NoError(t, err, "error calling AddChild for child1, when none was expected")
+		err = parent.AddChild(child2)
+		require.NoError(t, err, "error calling AddChild for child2, when none was expected")
 
 		assert.Contains(t, parent.children, child1)
 		assert.Contains(t, parent.children, child2)
@@ -359,7 +359,7 @@ func TestPolyTree_AddChild(t *testing.T) {
 func TestPolyTree_AddSibling(t *testing.T) {
 	t.Run("Adding a nil sibling", func(t *testing.T) {
 		poly1, _ := NewPolyTree([]Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}}, PTSolid)
-		err := poly1.addSibling(nil)
+		err := poly1.AddSibling(nil)
 		require.Error(t, err, "expected error when adding a nil sibling, but got none")
 	})
 
@@ -369,8 +369,8 @@ func TestPolyTree_AddSibling(t *testing.T) {
 		poly2, err := NewPolyTree([]Point[int]{{20, 20}, {30, 20}, {30, 30}, {20, 30}}, PTSolid)
 		require.NoError(t, err, "error creating poly2, when none was expected")
 
-		err = poly1.addSibling(poly2)
-		require.NoError(t, err, "error calling addSibling, when none was expected")
+		err = poly1.AddSibling(poly2)
+		require.NoError(t, err, "error calling AddSibling, when none was expected")
 		assert.Contains(t, poly1.siblings, poly2)
 		assert.Contains(t, poly2.siblings, poly1)
 	})
@@ -381,8 +381,8 @@ func TestPolyTree_AddSibling(t *testing.T) {
 		poly2, err := NewPolyTree([]Point[int]{{20, 20}, {30, 20}, {30, 30}, {20, 30}}, PTHole)
 		require.NoError(t, err, "error creating poly2, when none was expected")
 
-		err = poly1.addSibling(poly2)
-		require.Error(t, err, "no error returned from addSibling, when one was expected")
+		err = poly1.AddSibling(poly2)
+		require.Error(t, err, "no error returned from AddSibling, when one was expected")
 	})
 
 	t.Run("Adding Multiple Siblings", func(t *testing.T) {
@@ -393,10 +393,10 @@ func TestPolyTree_AddSibling(t *testing.T) {
 		poly3, err := NewPolyTree([]Point[int]{{40, 40}, {50, 40}, {50, 50}, {40, 50}}, PTSolid)
 		require.NoError(t, err, "error creating poly3, when none was expected")
 
-		err = poly1.addSibling(poly2)
-		require.NoError(t, err, "error returned from poly1.addSibling(poly2) when none was expected")
-		err = poly1.addSibling(poly3)
-		require.NoError(t, err, "error returned from poly1.addSibling(poly3) when none was expected")
+		err = poly1.AddSibling(poly2)
+		require.NoError(t, err, "error returned from poly1.AddSibling(poly2) when none was expected")
+		err = poly1.AddSibling(poly3)
+		require.NoError(t, err, "error returned from poly1.AddSibling(poly3) when none was expected")
 
 		assert.Contains(t, poly1.siblings, poly2)
 		assert.Contains(t, poly1.siblings, poly3)
@@ -428,7 +428,7 @@ func TestPolyTree_BooleanOperation(t *testing.T) {
 				if err != nil {
 					return nil, fmt.Errorf("error creating sibling: %w", err)
 				}
-				if err := root.addSibling(sibling); err != nil {
+				if err := root.AddSibling(sibling); err != nil {
 					return nil, fmt.Errorf("error adding sibling: %w", err)
 				}
 				return root, nil
@@ -470,7 +470,7 @@ func TestPolyTree_BooleanOperation(t *testing.T) {
 				if err != nil {
 					return nil, fmt.Errorf("error creating hole: %w", err)
 				}
-				if err := root.addChild(hole); err != nil {
+				if err := root.AddChild(hole); err != nil {
 					return nil, fmt.Errorf("error adding hole: %w", err)
 				}
 				return root, nil
@@ -794,35 +794,37 @@ func TestPolyTree_OrderConsistency(t *testing.T) {
 	// Create root and children
 	root, err := NewPolyTree([]Point[int]{{10, 10}, {20, 10}, {20, 20}, {10, 20}}, PTSolid)
 	require.NoError(t, err, "unexpected error returned when creating root")
-	child1, err := NewPolyTree([]Point[int]{{30, 30}, {40, 30}, {40, 40}, {30, 40}}, PTHole)
+
+	// Valid child polygons
+	child1, err := NewPolyTree([]Point[int]{{15, 15}, {18, 15}, {18, 18}, {15, 18}}, PTHole)
 	require.NoError(t, err, "unexpected error returned when creating child1")
-	child2, err := NewPolyTree([]Point[int]{{5, 5}, {15, 5}, {15, 15}, {5, 15}}, PTHole)
+	child2, err := NewPolyTree([]Point[int]{{11, 11}, {14, 11}, {14, 14}, {11, 14}}, PTHole)
 	require.NoError(t, err, "unexpected error returned when creating child2")
 
 	// Add children to root
-	err = root.addChild(child1)
+	err = root.AddChild(child1)
 	require.NoError(t, err, "unexpected error returned when adding child1 as a child of root")
-	err = root.addChild(child2)
+	err = root.AddChild(child2)
 	require.NoError(t, err, "unexpected error returned when adding child2 as a child of root")
 
 	// Verify children order
-	expectedChildOrder := []*PolyTree[int]{child2, child1}
+	expectedChildOrder := []*PolyTree[int]{child2, child1} // Ordered by lowest, leftmost point
 	assert.Equal(t, expectedChildOrder, root.children, "Children should be ordered by lowest, leftmost point")
 
-	// Create siblings
-	sibling1, err := NewPolyTree([]Point[int]{{50, 50}, {60, 50}, {60, 60}, {50, 60}}, PTSolid)
+	// Valid sibling polygons
+	sibling1, err := NewPolyTree([]Point[int]{{30, 30}, {40, 30}, {40, 40}, {30, 40}}, PTSolid)
 	require.NoError(t, err, "unexpected error returned when creating sibling1")
-	sibling2, err := NewPolyTree([]Point[int]{{25, 25}, {35, 25}, {35, 35}, {25, 35}}, PTSolid)
+	sibling2, err := NewPolyTree([]Point[int]{{5, 5}, {9, 5}, {9, 9}, {5, 9}}, PTSolid)
 	require.NoError(t, err, "unexpected error returned when creating sibling2")
 
 	// Add siblings to root
-	err = root.addSibling(sibling1)
+	err = root.AddSibling(sibling1)
 	require.NoError(t, err, "unexpected error returned when adding sibling1 as a sibling of root")
-	err = root.addSibling(sibling2)
+	err = root.AddSibling(sibling2)
 	require.NoError(t, err, "unexpected error returned when adding sibling2 as a sibling of root")
 
 	// Verify sibling order
-	expectedSiblingOrder := []*PolyTree[int]{sibling2, sibling1}
+	expectedSiblingOrder := []*PolyTree[int]{sibling2, sibling1} // Ordered by lowest, leftmost point
 	assert.Equal(t, expectedSiblingOrder, root.siblings, "Siblings should be ordered by lowest, leftmost point")
 }
 
@@ -924,10 +926,10 @@ func TestNestPointsToPolyTrees(t *testing.T) {
 					hull:        simpleConvexPolygon[int]{Points: []Point[int]{{7, 7}, {13, 7}, {13, 13}, {7, 13}}},
 					maxX:        27,
 				}
-				if err := hole.addChild(island); err != nil {
+				if err := hole.AddChild(island); err != nil {
 					return nil, fmt.Errorf("failed to add island: %w", err)
 				}
-				if err := root.addChild(hole); err != nil {
+				if err := root.AddChild(hole); err != nil {
 					return nil, fmt.Errorf("failed to add hole: %w", err)
 				}
 				return root, nil

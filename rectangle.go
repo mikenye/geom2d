@@ -14,29 +14,17 @@
 package geom2d
 
 import (
+	"fmt"
 	"image"
 	"slices"
 )
 
-// Rectangle represents a 2D rectangle defined by its top-left and bottom-right corners.
+// Rectangle represents an axis-aligned rectangle defined by its four corners.
 type Rectangle[T SignedNumber] struct {
 	topLeft     Point[T]
+	topRight    Point[T]
+	bottomLeft  Point[T]
 	bottomRight Point[T]
-}
-
-// Add adds a vector (Point[T]) or another Rectangle[T] to the current rectangle.
-// If a Point is added, it shifts the rectangle. If a Rectangle is added, it adjusts both corners.
-//
-// Parameters:
-//   - p: The Point[T] to add to both corners of the rectangle.
-//
-// Returns:
-//   - Rectangle[T]: A new Rectangle with adjusted corners.
-func (r Rectangle[T]) Add(p Point[T]) Rectangle[T] {
-	return NewRectangleByPoints(
-		r.topLeft.Add(p),
-		r.bottomRight.Add(p),
-	)
 }
 
 // Area calculates the area of the rectangle.
@@ -52,7 +40,7 @@ func (r Rectangle[T]) Area() T {
 // Returns:
 //   - Rectangle[float64]: A new Rectangle with float64 coordinates.
 func (r Rectangle[T]) AsFloat() Rectangle[float64] {
-	return NewRectangleByPoints(
+	return NewRectangleByOppositeCorners(
 		r.topLeft.AsFloat(),
 		r.bottomRight.AsFloat(),
 	)
@@ -64,7 +52,7 @@ func (r Rectangle[T]) AsFloat() Rectangle[float64] {
 // Returns:
 //   - Rectangle[int]: A new Rectangle with integer coordinates, truncated from the original values.
 func (r Rectangle[T]) AsInt() Rectangle[int] {
-	return NewRectangleByPoints(
+	return NewRectangleByOppositeCorners(
 		r.topLeft.AsInt(),
 		r.bottomRight.AsInt(),
 	)
@@ -76,7 +64,7 @@ func (r Rectangle[T]) AsInt() Rectangle[int] {
 // Returns:
 //   - Rectangle[int]: A new Rectangle with integer coordinates, rounded from the original values.
 func (r Rectangle[T]) AsIntRounded() Rectangle[int] {
-	return NewRectangleByPoints(
+	return NewRectangleByOppositeCorners(
 		r.topLeft.AsIntRounded(),
 		r.bottomRight.AsIntRounded(),
 	)
@@ -93,19 +81,17 @@ func (r Rectangle[T]) AsIntRounded() Rectangle[int] {
 func (r Rectangle[T]) ContainsPoint(p Point[T]) bool {
 	return p.x >= r.topLeft.x &&
 		p.x <= r.bottomRight.x &&
-		p.y >= r.topLeft.y &&
-		p.y <= r.bottomRight.y
+		p.y <= r.topLeft.y &&
+		p.y >= r.bottomRight.y
 }
 
-// Div divides the rectangle’s dimensions by a scalar value.
-//
-// Parameters:
-//   - divisor: The divisor by which to scale the rectangle.
-//
-// Returns:
-//   - Rectangle[float64]: A new Rectangle with dimensions divided by the divisor.
-func (r Rectangle[T]) Div(divisor float64) Rectangle[float64] {
-	return r.Scale(1 / divisor)
+func (r Rectangle[T]) Edges() []LineSegment[T] {
+	return []LineSegment[T]{
+		NewLineSegment(r.bottomLeft, r.bottomRight),
+		NewLineSegment(r.bottomRight, r.topRight),
+		NewLineSegment(r.topRight, r.topLeft),
+		NewLineSegment(r.topLeft, r.bottomLeft),
+	}
 }
 
 // Height calculates the height of the rectangle.
@@ -120,21 +106,20 @@ func (r Rectangle[T]) Height() T {
 	return height
 }
 
-// IsLineSegmentOnEdge checks if the given line segment lies entirely on one of the rectangle's edges.
+// isLineSegmentOnEdge checks if the given line segment lies entirely on one of the rectangle's edges.
 //
 // Parameters:
 //   - segment: The line segment to check.
 //
 // Returns:
 //   - bool: True if the segment lies on one of the rectangle's edges; otherwise, false.
-func (r Rectangle[T]) IsLineSegmentOnEdge(segment LineSegment[T]) bool {
-	return (segment.start.y == r.topLeft.y && segment.end.y == r.topLeft.y && segment.start.x >= r.topLeft.x && segment.end.x <= r.bottomRight.x) || // Top edge
-		(segment.start.y == r.bottomRight.y && segment.end.y == r.bottomRight.y && segment.start.x >= r.topLeft.x && segment.end.x <= r.bottomRight.x) || // Bottom edge
-		(segment.start.x == r.topLeft.x && segment.end.x == r.topLeft.x && segment.start.y >= r.topLeft.y && segment.end.y <= r.bottomRight.y) || // Left edge
-		(segment.start.x == r.bottomRight.x && segment.end.x == r.bottomRight.x && segment.start.y >= r.topLeft.y && segment.end.y <= r.bottomRight.y) // Right edge
+func (r Rectangle[T]) isLineSegmentOnEdge(segment LineSegment[T]) bool {
+	relToStart := r.RelationshipToPoint(segment.start)
+	relToEnd := r.RelationshipToPoint(segment.end)
+	return (relToStart == PRROnVertex || relToStart == PRROnEdge) && (relToEnd == PRROnVertex || relToEnd == PRROnEdge)
 }
 
-// IsLineSegmentOnEdgeWithEndTouchingVertex checks if the given line segment lies on an edge of the rectangle
+// isLineSegmentOnEdgeWithEndTouchingVertex checks if the given line segment lies on an edge of the rectangle
 // and one or both of its endpoints touch a vertex.
 //
 // Parameters:
@@ -142,88 +127,90 @@ func (r Rectangle[T]) IsLineSegmentOnEdge(segment LineSegment[T]) bool {
 //
 // Returns:
 //   - bool: True if the segment lies on an edge and touches a vertex; otherwise, false.
-func (r Rectangle[T]) IsLineSegmentOnEdgeWithEndTouchingVertex(segment LineSegment[T]) bool {
+func (r Rectangle[T]) isLineSegmentOnEdgeWithEndTouchingVertex(segment LineSegment[T]) bool {
 	vertices := []Point[T]{
 		r.topLeft,
 		NewPoint(r.topLeft.x, r.bottomRight.y), // Bottom-left
 		NewPoint(r.bottomRight.x, r.topLeft.y), // Top-right
 		r.bottomRight,
 	}
-	return r.IsLineSegmentOnEdge(segment) &&
+	return r.isLineSegmentOnEdge(segment) &&
 		(slices.Contains(vertices, segment.start) || slices.Contains(vertices, segment.end))
 }
 
-// LineSegmentEntersAndExits checks if a LineSegment enters the rectangle through one edge
-// and exits through another, indicating that it crosses through the rectangle.
+// todo: function below commented out as redundant (RelationshipToLineSegment)
+//// LineSegmentEntersAndExits checks if a LineSegment enters the rectangle through one edge
+//// and exits through another, indicating that it crosses through the rectangle.
+////
+//// Parameters:
+////   - segment: The line segment to check.
+////
+//// Returns:
+////   - bool: True if the segment enters through one edge and exits through another; otherwise, false.
+////
+//// Explanation of Logic:
+////   - The function iterates over each edge of the rectangle and checks the relationship
+////     between the segment and each edge using the RelationshipToLineSegment function.
+////   - If the segment strictly intersects an edge (LLRIntersects) or one end of the segment
+////     lies on an edge without the entire segment being on that edge (LLRConAB), it is counted
+////     as an entry or exit point. We only test LLRConAB (and not LLRDonAB) to avoid double counting.
+////   - If there is more than one intersection or endpoint contact with the rectangle's edges,
+////     the segment is considered to "enter and exit," returning true.
+////   - This approach prevents double-counting cases where the segment might lie on or touch an
+////     edge without fully crossing into the rectangle.
+//func (r Rectangle[T]) LineSegmentEntersAndExits(segment LineSegment[T]) bool {
+//	entryCount := 0
 //
-// Parameters:
-//   - segment: The line segment to check.
+//	edges := []LineSegment[T]{
+//		NewLineSegment(r.topLeft, NewPoint(r.bottomRight.x, r.topLeft.y)),     // Top edge
+//		NewLineSegment(NewPoint(r.bottomRight.x, r.topLeft.y), r.bottomRight), // Right edge
+//		NewLineSegment(r.bottomRight, NewPoint(r.topLeft.x, r.bottomRight.y)), // Bottom edge
+//		NewLineSegment(NewPoint(r.topLeft.x, r.bottomRight.y), r.topLeft),     // Left edge
+//	}
 //
-// Returns:
-//   - bool: True if the segment enters through one edge and exits through another; otherwise, false.
+//	var rel LineSegmentLineSegmentRelationship
+//	for _, edge := range edges {
 //
-// Explanation of Logic:
-//   - The function iterates over each edge of the rectangle and checks the relationship
-//     between the segment and each edge using the RelationshipToLineSegment function.
-//   - If the segment strictly intersects an edge (LSRIntersects) or one end of the segment
-//     lies on an edge without the entire segment being on that edge (LSRConAB), it is counted
-//     as an entry or exit point. We only test LSRConAB (and not LSRDonAB) to avoid double counting.
-//   - If there is more than one intersection or endpoint contact with the rectangle's edges,
-//     the segment is considered to "enter and exit," returning true.
-//   - This approach prevents double-counting cases where the segment might lie on or touch an
-//     edge without fully crossing into the rectangle.
-func (r Rectangle[T]) LineSegmentEntersAndExits(segment LineSegment[T]) bool {
-	entryCount := 0
+//		// Check for intersections or an endpoint lying on an edge without full overlap.
+//		// We only test LLRConAB (and not LLRDonAB) to avoid double counting.
+//		rel = segment.RelationshipToLineSegment(edge)
+//		if rel == LLRIntersects || rel == LLRConAB {
+//			entryCount++
+//		}
+//		if entryCount > 1 {
+//			return true // Enters and exits
+//		}
+//	}
+//	return false
+//}
 
-	edges := []LineSegment[T]{
-		NewLineSegment(r.topLeft, NewPoint(r.bottomRight.x, r.topLeft.y)),     // Top edge
-		NewLineSegment(NewPoint(r.bottomRight.x, r.topLeft.y), r.bottomRight), // Right edge
-		NewLineSegment(r.bottomRight, NewPoint(r.topLeft.x, r.bottomRight.y)), // Bottom edge
-		NewLineSegment(NewPoint(r.topLeft.x, r.bottomRight.y), r.topLeft),     // Left edge
-	}
-
-	var rel LineSegmentsRelationship
-	for _, edge := range edges {
-
-		// Check for intersections or an endpoint lying on an edge without full overlap.
-		// We only test LSRConAB (and not LSRDonAB) to avoid double counting.
-		rel = segment.RelationshipToLineSegment(edge)
-		if rel == LSRIntersects || rel == LSRConAB {
-			entryCount++
-		}
-		if entryCount > 1 {
-			return true // Enters and exits
-		}
-	}
-	return false
-}
-
-// LineSegmentIntersectsEdges checks if the given line segment intersects one or more edges of the rectangle.
+// todo: function below commented out as redundant (RelationshipToLineSegment)
+//// LineSegmentIntersectsEdges checks if the given line segment intersects one or more edges of the rectangle.
+////
+//// Parameters:
+////   - segment: The line segment to check.
+////
+//// Returns:
+////   - bool: True if the segment intersects any edge; otherwise, false.
+//func (r Rectangle[T]) LineSegmentIntersectsEdges(segment LineSegment[T]) bool {
+//	edges := []LineSegment[T]{
+//		NewLineSegment(r.topLeft, NewPoint(r.bottomRight.x, r.topLeft.y)),     // Top edge
+//		NewLineSegment(NewPoint(r.bottomRight.x, r.topLeft.y), r.bottomRight), // Right edge
+//		NewLineSegment(r.bottomRight, NewPoint(r.topLeft.x, r.bottomRight.y)), // Bottom edge
+//		NewLineSegment(NewPoint(r.topLeft.x, r.bottomRight.y), r.topLeft),     // Left edge
+//	}
 //
-// Parameters:
-//   - segment: The line segment to check.
-//
-// Returns:
-//   - bool: True if the segment intersects any edge; otherwise, false.
-func (r Rectangle[T]) LineSegmentIntersectsEdges(segment LineSegment[T]) bool {
-	edges := []LineSegment[T]{
-		NewLineSegment(r.topLeft, NewPoint(r.bottomRight.x, r.topLeft.y)),     // Top edge
-		NewLineSegment(NewPoint(r.bottomRight.x, r.topLeft.y), r.bottomRight), // Right edge
-		NewLineSegment(r.bottomRight, NewPoint(r.topLeft.x, r.bottomRight.y)), // Bottom edge
-		NewLineSegment(NewPoint(r.topLeft.x, r.bottomRight.y), r.topLeft),     // Left edge
-	}
-
-	var rel LineSegmentsRelationship
-	for _, edge := range edges {
-		rel = segment.RelationshipToLineSegment(edge)
-		switch rel {
-		case LSRIntersects, LSRConAB, LSRDonAB:
-			return true
-		default:
-		}
-	}
-	return false
-}
+//	var rel LineSegmentLineSegmentRelationship
+//	for _, edge := range edges {
+//		rel = segment.RelationshipToLineSegment(edge)
+//		switch rel {
+//		case LLRIntersects, LLRConAB, LLRDonAB:
+//			return true
+//		default:
+//		}
+//	}
+//	return false
+//}
 
 // Perimeter calculates the perimeter of the rectangle.
 //
@@ -241,18 +228,62 @@ func (r Rectangle[T]) Perimeter() T {
 func (r Rectangle[T]) Points() []Point[T] {
 	return []Point[T]{
 		r.topLeft,
-		NewPoint(r.bottomRight.x, r.topLeft.y), // Top-right
+		r.topRight,
 		r.bottomRight,
-		NewPoint(r.topLeft.x, r.bottomRight.y), // Bottom-left
+		r.bottomLeft,
 	}
 }
 
-// RelationshipToLineSegment determines the relationship between a line segment and the rectangle.
-// It returns one of several values indicating whether the segment is inside, outside, on an edge,
-// touches vertices or edges, or intersects the rectangle in different ways.
+func (r Rectangle[T]) RelationshipToCircle(c Circle[T], opts ...Option) CircleRectangleRelationship {
+	return c.RelationshipToRectangle(r, opts...)
+}
+
+// RelationshipToLineSegment determines the spatial relationship between a line segment and the rectangle.
+// It evaluates how the segment interacts with the rectangle, considering endpoints, edges, and intersections.
+//
+// Parameters:
+//   - segment: LineSegment[T] - The line segment to analyze.
 //
 // Returns:
-//   - RectangleLineSegmentRelationship: Enum value describing the relationship of the segment to the rectangle.
+//   - RectangleLineSegmentRelationship: An enum value describing the relationship of the segment
+//     to the rectangle. Possible relationships include:
+//   - RLROutside: The segment lies entirely outside the rectangle.
+//   - RLRInside: The segment lies entirely within the rectangle.
+//   - RLROnEdge: The segment lies entirely on one of the rectangle’s edges.
+//   - RLROnEdgeEndTouchesVertex: The segment lies on an edge, and one or both endpoints touch a vertex.
+//   - RLRInsideEndTouchesEdge: One endpoint of the segment lies on an edge, and the other is inside the rectangle.
+//   - RLRInsideEndTouchesVertex: One endpoint of the segment lies on a vertex, and the other is inside the rectangle.
+//   - RLROutsideEndTouchesEdge: One endpoint lies on an edge, and the other is outside the rectangle.
+//   - RLROutsideEndTouchesVertex: One endpoint lies on a vertex, and the other is outside the rectangle.
+//   - RLRIntersects: The segment intersects the rectangle through one or more edges.
+//   - RLREntersAndExits: The segment passes through the rectangle, entering and exiting via different edges.
+//   - RLROutside: The segment does not interact with the rectangle in any of the above ways.
+//
+// Behavior:
+//   - The function first evaluates the relationship of each endpoint of the segment to the rectangle using
+//     `RelationshipToPoint`.
+//   - If the segment is degenerate (both endpoints are the same), it directly determines the relationship based on
+//     the point’s position.
+//   - For non-degenerate segments, it checks interactions with the rectangle’s edges, using a combination of
+//     `LineSegment` relationships and endpoint relationships.
+//   - The function examines conditions such as:
+//   - Full containment
+//   - Touching or lying on edges
+//   - Intersection at one or more points
+//   - Entry and exit through different edges
+//
+// Example Usage:
+//
+//	rect := NewRectangleByPoints(NewPoint(0, 10), NewPoint(10, 0))
+//	segment := NewLineSegment(NewPoint(5, 15), NewPoint(5, -5))
+//
+//	relationship := rect.RelationshipToLineSegment(segment)
+//	// Returns RLREntersAndExits because the segment passes through the rectangle.
+//
+// Notes:
+//   - The rectangle is treated as axis-aligned.
+//   - Edge and vertex relationships are evaluated based on geometric precision.
+//   - Epsilon adjustments are not currently applied, so the function relies on exact evaluations of segment and point relationships.
 func (r Rectangle[T]) RelationshipToLineSegment(segment LineSegment[T]) RectangleLineSegmentRelationship {
 	// Determine relationships of each endpoint of the segment to the rectangle
 	startRelationship := r.RelationshipToPoint(segment.start)
@@ -281,55 +312,55 @@ func (r Rectangle[T]) RelationshipToLineSegment(segment LineSegment[T]) Rectangl
 	}
 
 	// Identify relationships with each edge
-	edgeRelationships := make([]LineSegmentsRelationship, len(edges))
+	edgeRelationships := make([]LineSegmentLineSegmentRelationship, len(edges))
 	for i, edge := range edges {
 		edgeRelationships[i] = edge.RelationshipToLineSegment(segment)
 	}
 
 	// Check if segment enters and exists
-	if countOccurrencesInSlice(edgeRelationships, LSRAonCD) >= 1 &&
-		countOccurrencesInSlice(edgeRelationships, LSRBonCD) >= 1 &&
+	if countOccurrencesInSlice(edgeRelationships, LLRAonCD) >= 1 &&
+		countOccurrencesInSlice(edgeRelationships, LLRBonCD) >= 1 &&
 		startRelationship == PRROutside && endRelationship == PRROutside {
 		return RLREntersAndExits
 	}
 
 	// Check if segment fully inside
-	if adjacentInSlice(edgeRelationships, LSRAeqC, LSRBeqD) &&
-		adjacentInSlice(edgeRelationships, LSRAeqD, LSRBeqC) &&
+	if adjacentInSlice(edgeRelationships, LLRAeqC, LLRBeqD) &&
+		adjacentInSlice(edgeRelationships, LLRAeqD, LLRBeqC) &&
 		startRelationship == PRROnVertex && endRelationship == PRROnVertex {
 		return RLRInsideEndTouchesVertex
 	}
 
 	// Check if segment is inside, with one end on an edge
-	if countOccurrencesInSlice(edgeRelationships, LSRMiss) == 3 &&
-		(countOccurrencesInSlice(edgeRelationships, LSRDonAB) == 1 ||
-			countOccurrencesInSlice(edgeRelationships, LSRConAB) == 1) &&
+	if countOccurrencesInSlice(edgeRelationships, LLRMiss) == 3 &&
+		(countOccurrencesInSlice(edgeRelationships, LLRDonAB) == 1 ||
+			countOccurrencesInSlice(edgeRelationships, LLRConAB) == 1) &&
 		((startRelationship == PRROnEdge && endRelationship == PRRInside) ||
 			(startRelationship == PRRInside && endRelationship == PRROnEdge)) {
 		return RLRInsideEndTouchesEdge
 	}
 
 	// Check if segment is fully outside
-	if countOccurrencesInSlice(edgeRelationships, LSRMiss) == len(edges) &&
+	if countOccurrencesInSlice(edgeRelationships, LLRMiss) == len(edges) &&
 		startRelationship == PRROutside && endRelationship == PRROutside {
 		return RLROutside
 	}
 
 	// Check if the segment lies entirely on an edge
-	if countOccurrencesInSlice(edgeRelationships, LSRCollinearEqual) == 1 {
-		if r.IsLineSegmentOnEdgeWithEndTouchingVertex(segment) {
+	if countOccurrencesInSlice(edgeRelationships, LLRCollinearEqual) == 1 {
+		if r.isLineSegmentOnEdgeWithEndTouchingVertex(segment) {
 			return RLROnEdgeEndTouchesVertex
 		}
 		return RLROnEdge
 	}
-	if countOccurrencesInSlice(edgeRelationships, LSRCollinearCDinAB) == 1 &&
-		countOccurrencesInSlice(edgeRelationships, LSRMiss) == 3 &&
+	if countOccurrencesInSlice(edgeRelationships, LLRCollinearCDinAB) == 1 &&
+		countOccurrencesInSlice(edgeRelationships, LLRMiss) == 3 &&
 		startRelationship == PRROnEdge && endRelationship == PRROnEdge {
 		return RLROnEdge
 	}
 
 	// Check if the segment intersects the rectangle through one or more edges
-	intersectionCount := countOccurrencesInSlice(edgeRelationships, LSRIntersects)
+	intersectionCount := countOccurrencesInSlice(edgeRelationships, LLRIntersects)
 	if intersectionCount == 1 {
 		return RLRIntersects
 	} else if intersectionCount > 1 {
@@ -337,34 +368,34 @@ func (r Rectangle[T]) RelationshipToLineSegment(segment LineSegment[T]) Rectangl
 	}
 
 	// Check if one endpoint is on an edge and the other is outside
-	if countOccurrencesInSlice(edgeRelationships, LSRConAB) == 1 && endRelationship == PRROutside {
+	if countOccurrencesInSlice(edgeRelationships, LLRConAB) == 1 && endRelationship == PRROutside {
 		return RLROutsideEndTouchesEdge
-	} else if countOccurrencesInSlice(edgeRelationships, LSRDonAB) == 1 && startRelationship == PRROutside {
+	} else if countOccurrencesInSlice(edgeRelationships, LLRDonAB) == 1 && startRelationship == PRROutside {
 		return RLROutsideEndTouchesEdge
 	}
 
 	// Check if one endpoint is on a vertex and the other is inside or outside
-	if countOccurrencesInSlice(edgeRelationships, LSRAeqC) == 1 && adjacentInSlice(edgeRelationships, LSRAeqC, LSRBeqC) {
+	if countOccurrencesInSlice(edgeRelationships, LLRAeqC) == 1 && adjacentInSlice(edgeRelationships, LLRAeqC, LLRBeqC) {
 		if endRelationship == PRRInside {
 			return RLRInsideEndTouchesVertex
 		}
 		return RLROutsideEndTouchesVertex
-	} else if countOccurrencesInSlice(edgeRelationships, LSRAeqD) == 1 && adjacentInSlice(edgeRelationships, LSRAeqD, LSRBeqD) {
+	} else if countOccurrencesInSlice(edgeRelationships, LLRAeqD) == 1 && adjacentInSlice(edgeRelationships, LLRAeqD, LLRBeqD) {
 		if startRelationship == PRRInside {
 			return RLRInsideEndTouchesVertex
 		}
 		return RLROutsideEndTouchesVertex
 	}
-	if countOccurrencesInSlice(edgeRelationships, LSRMiss) == 2 &&
-		adjacentInSlice(edgeRelationships, LSRAonCD, LSRBonCD) &&
+	if countOccurrencesInSlice(edgeRelationships, LLRMiss) == 2 &&
+		adjacentInSlice(edgeRelationships, LLRAonCD, LLRBonCD) &&
 		((startRelationship == PRROutside && endRelationship == PRRInside) ||
 			(startRelationship == PRRInside && endRelationship == PRROutside)) {
 		return RLRIntersects
 	}
 
-	if countOccurrencesInSlice(edgeRelationships, LSRMiss) == 2 &&
-		(adjacentInSlice(edgeRelationships, LSRAonCD, LSRCollinearBonCD) ||
-			adjacentInSlice(edgeRelationships, LSRBonCD, LSRCollinearAonCD)) &&
+	if countOccurrencesInSlice(edgeRelationships, LLRMiss) == 2 &&
+		(adjacentInSlice(edgeRelationships, LLRAonCD, LLRCollinearBonCD) ||
+			adjacentInSlice(edgeRelationships, LLRBonCD, LLRCollinearAonCD)) &&
 		((startRelationship == PRROnEdge && endRelationship == PRROutside) ||
 			(startRelationship == PRROutside && endRelationship == PRROnEdge)) {
 		return RLROutsideEndTouchesEdge
@@ -372,25 +403,60 @@ func (r Rectangle[T]) RelationshipToLineSegment(segment LineSegment[T]) Rectangl
 
 	// If both endpoints are inside
 	if startRelationship == PRRInside && endRelationship == PRRInside &&
-		countOccurrencesInSlice(edgeRelationships, LSRMiss) == len(edges) {
+		countOccurrencesInSlice(edgeRelationships, LLRMiss) == len(edges) {
 		return RLRInside
 	}
 
 	return RLROutside
 }
 
-// RelationshipToPoint determines the relationship of a point to the rectangle.
-// The relationship can be Inside, Outside, On a Vertex, or On an Edge.
+// RelationshipToPoint determines the spatial relationship of a point relative to the rectangle.
+// The relationship can be one of the following:
+//   - PRRInside: The point lies strictly within the rectangle.
+//   - PRROutside: The point lies outside the rectangle.
+//   - PRROnVertex: The point coincides with one of the rectangle’s vertices.
+//   - PRROnEdge: The point lies on one of the rectangle’s edges but not on a vertex.
 //
 // Parameters:
-//   - p: The point to check.
+//   - p: Point[T] - The point to analyze.
 //
 // Returns:
-//   - PointRectangleRelationship: The relationship of the point to the rectangle.
+//   - PointRectangleRelationship: An enum value indicating the relationship of the point to the rectangle.
+//
+// Behavior:
+//   - The function first checks if the point lies strictly inside the rectangle by comparing its coordinates
+//     to the bounds defined by the `topLeft` and `bottomRight` corners.
+//   - If not inside, it evaluates whether the point coincides with one of the rectangle’s vertices.
+//   - If the point is neither inside nor on a vertex, it checks if the point lies on any of the rectangle’s edges.
+//   - If none of the above conditions are met, the point is classified as outside the rectangle.
+//
+// Example Usage:
+//
+//	rect := NewRectangleByPoints(NewPoint(0, 10), NewPoint(10, 0))
+//
+//	// Point inside the rectangle
+//	pointInside := NewPoint(5, 5)
+//	relationshipInside := rect.RelationshipToPoint(pointInside) // Returns PRRInside
+//
+//	// Point on the edge of the rectangle
+//	pointOnEdge := NewPoint(0, 5)
+//	relationshipOnEdge := rect.RelationshipToPoint(pointOnEdge) // Returns PRROnEdge
+//
+//	// Point on a vertex of the rectangle
+//	pointOnVertex := NewPoint(0, 10)
+//	relationshipOnVertex := rect.RelationshipToPoint(pointOnVertex) // Returns PRROnVertex
+//
+//	// Point outside the rectangle
+//	pointOutside := NewPoint(-5, 15)
+//	relationshipOutside := rect.RelationshipToPoint(pointOutside) // Returns PRROutside
+//
+// Notes:
+//   - This function assumes that the rectangle is axis-aligned, meaning its sides are parallel to the coordinate axes.
+//   - Precision issues are not accounted for; all comparisons are performed using exact equality.
 func (r Rectangle[T]) RelationshipToPoint(p Point[T]) PointRectangleRelationship {
 	// Check if the point is strictly inside
 	if p.x > r.topLeft.x && p.x < r.bottomRight.x &&
-		p.y > r.topLeft.y && p.y < r.bottomRight.y {
+		p.y < r.topLeft.y && p.y > r.bottomRight.y {
 		return PRRInside
 	}
 
@@ -403,8 +469,11 @@ func (r Rectangle[T]) RelationshipToPoint(p Point[T]) PointRectangleRelationship
 	}
 
 	// Check if the point is on an edge
-	if (p.x == r.topLeft.x || p.x == r.bottomRight.x) && (p.y >= r.topLeft.y && p.y <= r.bottomRight.y) ||
-		(p.y == r.topLeft.y || p.y == r.bottomRight.y) && (p.x >= r.topLeft.x && p.x <= r.bottomRight.x) {
+	onLeft := p.x == r.topLeft.x && p.y < r.topLeft.y && p.y > r.bottomRight.y
+	onRight := p.x == r.bottomRight.x && p.y < r.topLeft.y && p.y > r.bottomRight.y
+	onTop := p.y == r.topLeft.y && p.x > r.topLeft.x && p.x < r.bottomRight.x
+	onBottom := p.y == r.bottomRight.y && p.x > r.topLeft.x && p.x < r.bottomRight.x
+	if onLeft || onRight || onTop || onBottom {
 		return PRROnEdge
 	}
 
@@ -412,23 +481,147 @@ func (r Rectangle[T]) RelationshipToPoint(p Point[T]) PointRectangleRelationship
 	return PRROutside
 }
 
-// Scale scales the rectangle by a scalar value from the top-left corner.
+// RelationshipToRectangle determines the spatial relationship between two rectangles.
 //
 // Parameters:
-//   - factor: The scaling factor. A value > 1 enlarges the rectangle; < 1 shrinks it.
+//   - other: Rectangle[T] - The rectangle to compare with.
 //
 // Returns:
-//   - Rectangle[float64]: A new Rectangle scaled by the given factor.
-func (r Rectangle[T]) Scale(factor float64) Rectangle[float64] {
-	topLeft := r.topLeft.AsFloat()
-	bottomRight := r.bottomRight.AsFloat()
-	return NewRectangleByPoints(
-		topLeft,
-		NewPoint(
-			topLeft.x+(bottomRight.x-topLeft.x)*factor,
-			topLeft.y+(bottomRight.y-topLeft.y)*factor,
-		),
-	)
+//   - RectangleRectangleRelationship: The relationship between the two rectangles.
+//
+// Possible Relationships:
+//   - RRRMiss: Rectangles are disjoint, with no overlap or touching.
+//   - RRRTouchingEdge: Rectangles share a complete edge but do not overlap.
+//   - RRRTouchingVertex: Rectangles share a single vertex but do not overlap.
+//   - RRRIntersecting: Rectangles overlap but neither is fully contained in the other.
+//   - RRRContained: One rectangle is fully contained within the other without touching edges.
+//   - RRRTouchingContained: One rectangle is fully contained within the other and touches edges.
+//   - RRREqual: Rectangles are identical in position and size.
+func (r Rectangle[T]) RelationshipToRectangle(other Rectangle[T], opts ...Option) RectangleRectangleRelationship {
+	// Apply options if necessary
+	// options := applyOptions(geomOptions{epsilon: 0}, opts...)
+
+	// Check if the rectangles are disjoint
+	disjointHorizontally := r.bottomRight.x < other.topLeft.x || other.bottomRight.x < r.topLeft.x
+	disjointVertically := r.topLeft.y < other.bottomRight.y || other.topLeft.y < r.bottomRight.y
+
+	if disjointHorizontally && disjointVertically {
+		return RRRMiss
+	}
+
+	// Check if the rectangles are equal
+	if r.topLeft.Eq(other.topLeft, opts...) && r.bottomRight.Eq(other.bottomRight, opts...) {
+		return RRREqual
+	}
+
+	// Check for containment (strictly inside or touching edges)
+	rectCorners := []Point[T]{r.topLeft, r.topRight, r.bottomLeft, r.bottomRight}
+	otherCorners := []Point[T]{other.topLeft, other.topRight, other.bottomLeft, other.bottomRight}
+
+	allOtherCornersInside := true
+	for _, corner := range otherCorners {
+		if r.RelationshipToPoint(corner) == PRROutside {
+			allOtherCornersInside = false
+			break
+		}
+	}
+
+	if allOtherCornersInside {
+		allStrictlyInside := true
+		for _, corner := range otherCorners {
+			if r.RelationshipToPoint(corner) != PRRInside {
+				allStrictlyInside = false
+				break
+			}
+		}
+		if allStrictlyInside {
+			return RRRContained
+		}
+		return RRRTouchingContained
+	}
+
+	allRectCornersInside := true
+	for _, corner := range rectCorners {
+		if other.RelationshipToPoint(corner) == PRROutside {
+			allRectCornersInside = false
+			break
+		}
+	}
+
+	if allRectCornersInside {
+		allStrictlyInside := true
+		for _, corner := range rectCorners {
+			if other.RelationshipToPoint(corner) != PRRInside {
+				allStrictlyInside = false
+				break
+			}
+		}
+		if allStrictlyInside {
+			return RRRContained
+		}
+		return RRRTouchingContained
+	}
+
+	// Check for edge touching
+	rectEdges := r.Edges()
+	otherEdges := other.Edges()
+	for _, edge := range rectEdges {
+		for _, otherEdge := range otherEdges {
+			if edge.RelationshipToLineSegment(otherEdge) == LLRCollinearEqual {
+				return RRRTouchingEdge
+			}
+		}
+	}
+
+	// Check for vertex touching
+	vertexTouch := false
+	for _, rectVertex := range rectCorners {
+		for _, otherVertex := range otherCorners {
+			if rectVertex.Eq(otherVertex, opts...) {
+				vertexTouch = true
+				break
+			}
+		}
+	}
+	if vertexTouch {
+		return RRRTouchingVertex
+	}
+
+	// If none of the above, the rectangles intersect
+	return RRRIntersecting
+}
+
+// Scale scales the rectangle relative to a specified reference point by a given scalar factor.
+//
+// Each corner of the rectangle is scaled relative to the reference point using the provided factor.
+// The resulting rectangle maintains its axis-aligned orientation.
+//
+// Parameters:
+//   - ref: Point[T] - The reference point relative to which the rectangle is scaled.
+//   - k: T - The scaling factor. A value > 1 enlarges the rectangle; < 1 shrinks it.
+//
+// Returns:
+//   - Rectangle[T]: A new rectangle with corners scaled relative to the reference point.
+//
+// Example Usage:
+//
+//	rect := NewRectangleByPoints(NewPoint(0, 10), NewPoint(10, 0))
+//	ref := NewPoint(5, 5) // Center of the rectangle
+//
+//	scaledRect := rect.ScaleFrom(ref, 2)
+//	// The rectangle is scaled relative to (5, 5), doubling its size.
+//
+// Notes:
+//   - The function delegates the scaling of each corner to the `ScaleFrom` method of the `Point` type.
+//   - The rectangle remains axis-aligned after scaling.
+//   - If the scaling factor `k` is 1, the rectangle remains unchanged.
+func (r Rectangle[T]) Scale(ref Point[T], k T) Rectangle[T] {
+	return NewRectangle([]Point[T]{
+		r.topLeft.Scale(ref, k),
+		r.topRight.Scale(ref, k),
+		r.bottomLeft.Scale(ref, k),
+		r.bottomRight.Scale(ref, k),
+	})
 }
 
 // ScaleHeight scales the height of the rectangle by a scalar value.
@@ -441,7 +634,7 @@ func (r Rectangle[T]) Scale(factor float64) Rectangle[float64] {
 func (r Rectangle[T]) ScaleHeight(factor float64) Rectangle[float64] {
 	topLeft := r.topLeft.AsFloat()
 	height := float64(r.Height()) * factor
-	return NewRectangleByPoints(
+	return NewRectangleByOppositeCorners(
 		topLeft,
 		NewPoint(r.bottomRight.AsFloat().x, topLeft.y+height),
 	)
@@ -457,7 +650,7 @@ func (r Rectangle[T]) ScaleHeight(factor float64) Rectangle[float64] {
 func (r Rectangle[T]) ScaleWidth(factor float64) Rectangle[float64] {
 	topLeft := r.topLeft.AsFloat()
 	width := float64(r.Width()) * factor
-	return NewRectangleByPoints(
+	return NewRectangleByOppositeCorners(
 		topLeft,
 		NewPoint(topLeft.x+width, r.bottomRight.AsFloat().y),
 	)
@@ -471,7 +664,7 @@ func (r Rectangle[T]) ScaleWidth(factor float64) Rectangle[float64] {
 // Returns:
 //   - Rectangle[T]: A new Rectangle with adjusted corners.
 func (r Rectangle[T]) Sub(p Point[T]) Rectangle[T] {
-	return NewRectangleByPoints(
+	return NewRectangleByOppositeCorners(
 		r.topLeft.Sub(p),
 		r.bottomRight.Sub(p),
 	)
@@ -493,6 +686,32 @@ func (r Rectangle[int]) ToImageRect() image.Rectangle {
 	return image.Rect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y)
 }
 
+// Translate moves the rectangle by a specified vector.
+//
+// This method shifts the rectangle's position in the 2D plane by translating
+// both its top-left and bottom-right corners by the given vector `p`. The
+// dimensions of the rectangle remain unchanged.
+//
+// Parameters:
+//   - p: Point[T] - The vector by which to translate the rectangle.
+//
+// Returns:
+//   - Rectangle[T]: A new Rectangle translated by the specified vector.
+//
+// Example Usage:
+//
+//	rectangle := NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(4, 4))
+//	translationVector := NewPoint(2, 3)
+//	translatedRectangle := rectangle.Translate(translationVector)
+//	// translatedRectangle has its top-left corner at (3, 4)
+//	// and bottom-right corner at (6, 7), preserving its dimensions.
+func (r Rectangle[T]) Translate(p Point[T]) Rectangle[T] {
+	return NewRectangleByOppositeCorners(
+		r.topLeft.Translate(p),
+		r.bottomRight.Translate(p),
+	)
+}
+
 // Width calculates the width of the rectangle.
 //
 // Returns:
@@ -505,49 +724,125 @@ func (r Rectangle[T]) Width() T {
 	return width
 }
 
-// NewRectangleByDimensions creates a rectangle given the top-left point, width, and height.
+// NewRectangle creates a new Rectangle from a slice of four points.
+// The points can be provided in any order, but they must form an axis-aligned rectangle.
 //
 // Parameters:
-//   - topLeft: The top-left corner of the rectangle.
-//   - width: The width of the rectangle.
-//   - height: The height of the rectangle.
+//   - points: []Point[T] - A slice of four points.
 //
 // Returns:
-//   - Rectangle[T]: A new rectangle defined by the given dimensions.
-func NewRectangleByDimensions[T SignedNumber](topLeft Point[T], width, height T) Rectangle[T] {
+//   - Rectangle[T]: A new Rectangle initialized with the correct corner points.
+//
+// Panics:
+//   - If the provided points do not form an axis-aligned rectangle, the function panics.
+//
+// Example Usage:
+//
+//	rect := NewRectangle([]Point[int]{
+//	    NewPoint(0, 10), NewPoint(10, 10), NewPoint(0, 0), NewPoint(10, 0),
+//	})
+func NewRectangle[T SignedNumber](points []Point[T]) Rectangle[T] {
+
+	fmt.Printf("Input points: %+v\n", points)
+
+	if len(points) != 4 {
+		panic("NewRectangle requires exactly four points")
+	}
+
+	// Find min and max x and y coordinates
+	minX, maxX := points[0].x, points[0].x
+	minY, maxY := points[0].y, points[0].y
+
+	for _, p := range points[1:] {
+		if p.x < minX {
+			minX = p.x
+		}
+		if p.x > maxX {
+			maxX = p.x
+		}
+		if p.y < minY {
+			minY = p.y
+		}
+		if p.y > maxY {
+			maxY = p.y
+		}
+	}
+
+	fmt.Printf("minX: %v, maxX: %v, minY: %v, maxY: %v\n", minX, maxX, minY, maxY)
+
+	// Validate that the points form an axis-aligned rectangle
+	corners := map[Point[T]]bool{
+		NewPoint(minX, maxY): false, // top-left
+		NewPoint(maxX, maxY): false, // top-right
+		NewPoint(minX, minY): false, // bottom-left
+		NewPoint(maxX, minY): false, // bottom-right
+	}
+
+	for _, p := range points {
+		if _, ok := corners[p]; ok {
+			corners[p] = true
+		} else {
+			panic("Points do not form an axis-aligned rectangle")
+		}
+	}
+
+	for _, found := range corners {
+		if !found {
+			panic("Points do not form an axis-aligned rectangle")
+		}
+	}
+
+	// Assign points to the correct fields
 	return Rectangle[T]{
-		topLeft:     topLeft,
-		bottomRight: NewPoint(topLeft.x+width, topLeft.y+height),
+		topLeft:     NewPoint(minX, maxY),
+		topRight:    NewPoint(maxX, maxY),
+		bottomLeft:  NewPoint(minX, minY),
+		bottomRight: NewPoint(maxX, minY),
 	}
 }
 
-// NewRectangleByPoints creates a rectangle given the top-left and bottom-right points.
+// NewRectangleByOppositeCorners creates a rectangle given two opposite corners.
+//
+// This function determines the top-left and bottom-right corners from the provided points,
+// regardless of their order, and ensures a valid axis-aligned rectangle.
 //
 // Parameters:
-//   - topLeft: The top-left corner of the rectangle.
-//   - bottomRight: The bottom-right corner of the rectangle.
+//   - corner: Point[T] - One corner of the rectangle.
+//   - oppositeCorner: Point[T] - The opposite corner of the rectangle.
 //
 // Returns:
-//   - Rectangle[T]: A new rectangle defined by the given points.
-func NewRectangleByPoints[T SignedNumber](topLeft, bottomRight Point[T]) Rectangle[T] {
-	return Rectangle[T]{topLeft: topLeft, bottomRight: bottomRight}
+//   - Rectangle[T]: A new rectangle defined by the determined top-left and bottom-right corners.
+func NewRectangleByOppositeCorners[T SignedNumber](corner, oppositeCorner Point[T]) Rectangle[T] {
+	return NewRectangle([]Point[T]{
+		NewPoint(min(corner.x, oppositeCorner.x), min(corner.y, oppositeCorner.y)),
+		NewPoint(min(corner.x, oppositeCorner.x), max(corner.y, oppositeCorner.y)),
+		NewPoint(max(corner.x, oppositeCorner.x), min(corner.y, oppositeCorner.y)),
+		NewPoint(max(corner.x, oppositeCorner.x), max(corner.y, oppositeCorner.y)),
+	})
 }
 
 // NewRectangleFromImageRect creates a new Rectangle[T] from an image.Rectangle.
 //
 // Parameters:
-//   - r: The image.Rectangle to convert.
+//   - r: image.Rectangle - The image.Rectangle to convert.
 //
 // Returns:
-//   - Rectangle[int]: A new Rectangle with integer coordinates matching the given image.Rectangle.
+//   - Rectangle[int]: A new rectangle with integer coordinates matching the given image.Rectangle.
+//
+// Behavior:
+//   - The function maps the minimum point of the `image.Rectangle` to the top-left corner and the
+//     maximum point to the bottom-right corner of the resulting rectangle.
 //
 // Example Usage:
 //
 //	imgRect := image.Rect(0, 0, 100, 200)
-//	rect := NewRectangleFromImageRect(imgRect) // Rectangle with same coordinates as imgRect.
+//	rect := NewRectangleFromImageRect(imgRect)
+//	// rect represents a rectangle with top-left (0, 0) and bottom-right (100, 200).
 func NewRectangleFromImageRect(r image.Rectangle) Rectangle[int] {
-	return NewRectangleByPoints(
+	return NewRectangle([]Point[int]{
 		NewPoint(r.Min.X, r.Min.Y),
 		NewPoint(r.Max.X, r.Max.Y),
-	)
+		NewPoint(r.Min.X, r.Max.Y),
+		NewPoint(r.Max.X, r.Min.Y),
+	})
 }

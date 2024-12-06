@@ -2,41 +2,10 @@ package geom2d
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"math"
 	"testing"
 )
-
-func TestCircle_Add(t *testing.T) {
-	tests := map[string]struct {
-		circle   Circle[float64]
-		vector   Point[float64]
-		expected Circle[float64]
-	}{
-		"translate circle by positive vector": {
-			circle:   Circle[float64]{center: NewPoint[float64](3, 4), radius: 5},
-			vector:   NewPoint[float64](2, 3),
-			expected: Circle[float64]{center: NewPoint[float64](5, 7), radius: 5},
-		},
-		"translate circle by negative vector": {
-			circle:   Circle[float64]{center: NewPoint[float64](3, 4), radius: 5},
-			vector:   NewPoint[float64](-1, -2),
-			expected: Circle[float64]{center: NewPoint[float64](2, 2), radius: 5},
-		},
-		"translate circle by zero vector": {
-			circle:   Circle[float64]{center: NewPoint[float64](3, 4), radius: 5},
-			vector:   NewPoint[float64](0, 0),
-			expected: Circle[float64]{center: NewPoint[float64](3, 4), radius: 5},
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			result := tt.circle.Add(tt.vector)
-			assert.Equal(t, tt.expected.center, result.center)
-			assert.Equal(t, tt.expected.radius, result.radius)
-		})
-	}
-}
 
 func TestCircle_Area(t *testing.T) {
 	tests := map[string]struct {
@@ -301,6 +270,65 @@ func TestCircle_Radius(t *testing.T) {
 	}
 }
 
+func TestCircle_RelationshipToCircle(t *testing.T) {
+	tests := map[string]struct {
+		c1       Circle[float64]
+		c2       Circle[float64]
+		epsilon  float64
+		expected CircleCircleRelationship
+	}{
+		"Disjoint Circles": {
+			c1:       NewCircle[float64](NewPoint[float64](0, 0), 5),
+			c2:       NewCircle[float64](NewPoint[float64](15, 0), 5),
+			epsilon:  1e-10,
+			expected: CCRMiss,
+		},
+		"Externally Tangent Circles": {
+			c1:       NewCircle[float64](NewPoint[float64](0, 0), 5),
+			c2:       NewCircle[float64](NewPoint[float64](10, 0), 5),
+			epsilon:  1e-10,
+			expected: CCRTouchingExternal,
+		},
+		"Overlapping Circles": {
+			c1:       NewCircle[float64](NewPoint[float64](0, 0), 5),
+			c2:       NewCircle[float64](NewPoint[float64](6, 0), 5),
+			epsilon:  1e-10,
+			expected: CCROverlapping,
+		},
+		"Internally Tangent Circles": {
+			c1:       NewCircle[float64](NewPoint[float64](0, 0), 5),
+			c2:       NewCircle[float64](NewPoint[float64](2, 0), 3),
+			epsilon:  1e-10,
+			expected: CCRTouchingInternal,
+		},
+		"Circle Fully Contained in Another": {
+			c1:       NewCircle[float64](NewPoint[float64](0, 0), 10),
+			c2:       NewCircle[float64](NewPoint[float64](2, 2), 5),
+			epsilon:  1e-10,
+			expected: CCRContained,
+		},
+		"Circle Fully Contains Another": {
+			c1:       NewCircle[float64](NewPoint[float64](2, 2), 5),
+			c2:       NewCircle[float64](NewPoint[float64](0, 0), 10),
+			epsilon:  1e-10,
+			expected: CCRContained,
+		},
+		"Equal Circles": {
+			c1:       NewCircle[float64](NewPoint[float64](0, 0), 5),
+			c2:       NewCircle[float64](NewPoint[float64](0, 0), 5),
+			epsilon:  1e-10,
+			expected: CCREqual,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := tc.c1.RelationshipToCircle(tc.c2, WithEpsilon(tc.epsilon))
+			assert.Equal(t, tc.expected, result, "Expected %v, got %v", tc.expected, result)
+		})
+	}
+}
+
 func TestCircle_RelationshipToLineSegment(t *testing.T) {
 	tests := map[string]struct {
 		segment  LineSegment[float64]
@@ -421,6 +449,53 @@ func TestCircle_RelationshipToPoint(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			result := tc.circle.RelationshipToPoint(tc.point, WithEpsilon(tc.epsilon))
 			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestCircle_RelationshipToRectangle(t *testing.T) {
+	tests := map[string]struct {
+		circle      Circle[int]
+		rectangle   Rectangle[int]
+		epsilon     float64
+		expectedRel CircleRectangleRelationship
+	}{
+		"Disjoint": {
+			circle:      NewCircle(NewPoint(50, 50), 10),
+			rectangle:   NewRectangle([]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)}),
+			epsilon:     1e-10,
+			expectedRel: CRRMiss,
+		},
+		"Circle Inside Rectangle": {
+			circle:      NewCircle(NewPoint(5, 5), 4),
+			rectangle:   NewRectangle([]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)}),
+			epsilon:     1e-10,
+			expectedRel: CRRCircleInRect,
+		},
+		"Rectangle Inside Circle": {
+			circle:      NewCircle(NewPoint(5, 5), 10),
+			rectangle:   NewRectangle([]Point[int]{NewPoint(3, 3), NewPoint(7, 3), NewPoint(7, 7), NewPoint(3, 7)}),
+			epsilon:     1e-10,
+			expectedRel: CRRRectInCircle,
+		},
+		"Circle exactly in Rect (Circle Touching Edges)": {
+			circle:      NewCircle(NewPoint(5, 5), 5),
+			rectangle:   NewRectangle([]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)}),
+			epsilon:     1e-10,
+			expectedRel: CRRCircleInRect,
+		},
+		"Intersecting (Circle Center On Edge)": {
+			circle:      NewCircle(NewPoint(5, 0), 5),
+			rectangle:   NewRectangle([]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)}),
+			epsilon:     1e-10,
+			expectedRel: CRRIntersection,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			actualRel := test.circle.RelationshipToRectangle(test.rectangle, WithEpsilon(test.epsilon))
+			require.Equal(t, test.expectedRel, actualRel, "Relationship mismatch for test: %s", name)
 		})
 	}
 }
@@ -577,6 +652,38 @@ func TestCircle_Sub(t *testing.T) {
 			result := tt.circle.Sub(tt.vector)
 			assert.Equal(t, tt.expected.center, result.center)
 			assert.Equal(t, tt.expected.radius, result.radius)
+		})
+	}
+}
+
+func TestCircle_Translate(t *testing.T) {
+	tests := map[string]struct {
+		circle   Circle[float64]
+		vector   Point[float64]
+		expected Circle[float64]
+	}{
+		"translate circle by positive vector": {
+			circle:   Circle[float64]{center: NewPoint[float64](3, 4), radius: 5},
+			vector:   NewPoint[float64](2, 3),
+			expected: Circle[float64]{center: NewPoint[float64](5, 7), radius: 5},
+		},
+		"translate circle by negative vector": {
+			circle:   Circle[float64]{center: NewPoint[float64](3, 4), radius: 5},
+			vector:   NewPoint[float64](-1, -2),
+			expected: Circle[float64]{center: NewPoint[float64](2, 2), radius: 5},
+		},
+		"translate circle by zero vector": {
+			circle:   Circle[float64]{center: NewPoint[float64](3, 4), radius: 5},
+			vector:   NewPoint[float64](0, 0),
+			expected: Circle[float64]{center: NewPoint[float64](3, 4), radius: 5},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := tc.circle.Translate(tc.vector)
+			assert.Equal(t, tc.expected.center, result.center)
+			assert.Equal(t, tc.expected.radius, result.radius)
 		})
 	}
 }

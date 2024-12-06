@@ -59,33 +59,6 @@ const (
 	BooleanSubtraction
 )
 
-// Valid values for PointPolygonRelationship
-const (
-	// PPRPointInHole indicates the point is inside a hole within the polygon.
-	// Holes are void regions within the polygon that are not part of its solid area.
-	PPRPointInHole PointPolygonRelationship = iota - 1
-
-	// PPRPointOutside indicates the point lies outside the root polygon.
-	// This includes points outside the boundary and not within any nested holes or islands.
-	PPRPointOutside
-
-	// PPRPointOnVertex indicates the point coincides with a vertex of the polygon,
-	// including vertices of its holes or nested islands.
-	PPRPointOnVertex
-
-	// PPRPointOnEdge indicates the point lies exactly on an edge of the polygon.
-	// This includes edges of the root polygon, its holes, or its nested islands.
-	PPRPointOnEdge
-
-	// PPRPointInside indicates the point is strictly inside the solid area of the polygon,
-	// excluding any holes within the polygon.
-	PPRPointInside
-
-	// PPRPointInsideIsland indicates the point lies within a nested island inside the polygon.
-	// Islands are solid regions contained within holes of the polygon.
-	PPRPointInsideIsland
-)
-
 // Valid values for PolygonType
 const (
 	// PTSolid represents a solid region of the polygon, commonly referred to as an "island."
@@ -324,18 +297,6 @@ type BooleanOperation uint8
 // of parameters in the NewPolyTree function.
 type NewPolyTreeOption[T SignedNumber] func(*PolyTree[T])
 
-// PointPolygonRelationship (PPR) defines the possible spatial relationships between a point
-// and a polygon, accounting for structures such as holes and nested islands.
-//
-// The relationships are enumerated as follows:
-//   - PPRPointInside: The point lies strictly within the boundaries of the polygon.
-//   - PPRPointOutside: The point lies outside the outermost boundary of the polygon.
-//   - PPRPointOnVertex: The point coincides with a vertex of the polygon or one of its holes/islands.
-//   - PPRPointOnEdge: The point lies exactly on an edge of the polygon or one of its holes/islands.
-//   - PPRPointInHole: The point lies inside a hole within the polygon.
-//   - PPRPointInsideIsland: The point lies inside an island nested within the polygon.
-type PointPolygonRelationship int8
-
 // PolygonType (PT) defines whether the inside of the contour of a polygon represents either a solid region (island)
 // or a void region (hole). This distinction is essential for operations involving polygons
 // with complex structures, such as those containing holes or nested islands.
@@ -430,7 +391,7 @@ type polyEdge[T SignedNumber] struct {
 	// rel specifies the relationship of this edge with a ray during point-in-polygon tests.
 	// This field is primarily used for algorithms like ray-casting to determine whether
 	// a point is inside or outside the polygon.
-	rel LineSegmentsRelationship
+	rel LineSegmentLineSegmentRelationship
 }
 
 // polyIntersectionType defines the type of intersection point in polygon operations,
@@ -913,27 +874,27 @@ func (c *contour[T]) isPointInside(point Point[T]) bool {
 		iNext := (i + 1) % len(edges)
 
 		switch edges[i].rel {
-		case LSRIntersects: // Ray intersects the edge.
+		case LLRIntersects: // Ray intersects the edge.
 			crosses++
 
-		case LSRCollinearCDinAB: // Ray is collinear with the edge and overlaps it.
+		case LLRCollinearCDinAB: // Ray is collinear with the edge and overlaps it.
 			crosses += 2
 
-		case LSRConAB: // Ray starts on the edge.
+		case LLRConAB: // Ray starts on the edge.
 			crosses++
 
 			// Handle potential overlaps with the next edge.
-			if edges[iNext].rel == LSRDonAB {
+			if edges[iNext].rel == LLRDonAB {
 				if inOrder(edges[i].lineSegment.start.y, point.y, edges[iNext].lineSegment.end.y) {
 					crosses++
 				}
 			}
 
-		case LSRDonAB: // Ray ends on the edge.
+		case LLRDonAB: // Ray ends on the edge.
 			crosses++
 
 			// Handle potential overlaps with the next edge.
-			if edges[iNext].rel == LSRConAB {
+			if edges[iNext].rel == LLRConAB {
 				if inOrder(edges[i].lineSegment.start.y, point.y, edges[iNext].lineSegment.end.y) {
 					crosses++
 				}
@@ -1124,7 +1085,7 @@ func (p *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOper
 		switch operation {
 		case BooleanUnion:
 			// Non-intersecting polygons: Add other as a sibling
-			if err := p.addSibling(other); err != nil {
+			if err := p.AddSibling(other); err != nil {
 				return nil, fmt.Errorf("failed to add sibling: %w", err)
 			}
 			return p, nil
@@ -1296,7 +1257,7 @@ func (p *PolyTree[T]) Intersects(other *PolyTree[T]) bool {
 	return false
 }
 
-// addChild adds a child PolyTree to the current PolyTree.
+// AddChild adds a child PolyTree to the current PolyTree.
 //
 // Parameters:
 // - child: A pointer to the PolyTree to be added as a child.
@@ -1304,16 +1265,10 @@ func (p *PolyTree[T]) Intersects(other *PolyTree[T]) bool {
 // Returns:
 // - error: An error if the operation fails. Possible error scenarios include:
 //   - The child is nil.
-//   - The child has the same polygonType as the parent.
-//
-// Behavior:
-//   - Validates that the child is not nil.
-//   - Ensures that the PolygonType of the child is the opposite of the parent's. A PTSolid parent can only have PTHole children. A PTHole parent can only have PTSolid children.
-//   - Sets the current PolyTree as the parent of the child.
-//   - Adds the child to the children slice and ensures proper ordering of siblings and children.
-//
-// todo: make public?
-func (p *PolyTree[T]) addChild(child *PolyTree[T]) error {
+//   - The child has the same PolygonType as the parent.
+//   - The child polygon does not fit entirely within the parent's contour.
+//   - The child polygon overlaps with existing children.
+func (p *PolyTree[T]) AddChild(child *PolyTree[T]) error {
 	// Check if the child is nil
 	if child == nil {
 		return fmt.Errorf("attempt to add nil child")
@@ -1328,6 +1283,22 @@ func (p *PolyTree[T]) addChild(child *PolyTree[T]) error {
 		)
 	}
 
+	// Check if the child fits within the parent's contour
+	if !p.contour.isContourInside(child.contour) {
+		return fmt.Errorf("child polygon does not fit entirely within the parent polygon")
+	}
+
+	// Check if the child overlaps with existing children
+	for _, sibling := range p.children {
+		for siblingEdge := range sibling.contour.iterEdges {
+			for childEdge := range child.contour.iterEdges {
+				if siblingEdge.RelationshipToLineSegment(childEdge) > LLRMiss {
+					return fmt.Errorf("child polygon overlaps with an existing sibling polygon")
+				}
+			}
+		}
+	}
+
 	// Set the parent of the child
 	child.parent = p
 
@@ -1337,28 +1308,20 @@ func (p *PolyTree[T]) addChild(child *PolyTree[T]) error {
 	// Order siblings and children for consistency
 	p.orderSiblingsAndChildren()
 
-	// Successfully added the child
 	return nil
 }
 
-// addSibling adds a sibling PolyTree to the current PolyTree.
+// AddSibling adds a sibling PolyTree to the current PolyTree.
 //
 // Parameters:
-//   - sibling: A pointer to the PolyTree to be added as a sibling.
+// - sibling: A pointer to the PolyTree to be added as a sibling.
 //
 // Returns:
-//
-// error: An error if the operation fails. Possible error scenarios include:
+// - error: An error if the operation fails. Possible error scenarios include:
 //   - The sibling is nil.
 //   - The sibling has a different PolygonType than the current PolyTree.
-//
-// Behavior:
-//   - Validates that the sibling is not nil.
-//   - Ensures that the PolygonType of the sibling matches the current PolyTree.
-//   - Establishes sibling relationships between the current PolyTree and the new sibling,
-//     as well as among existing siblings, ensuring a consistent sibling list across all related PolyTree nodes.
-//   - Calls orderSiblingsAndChildren on all affected nodes to maintain consistent ordering.
-func (p *PolyTree[T]) addSibling(sibling *PolyTree[T]) error {
+//   - The sibling polygon overlaps with existing siblings.
+func (p *PolyTree[T]) AddSibling(sibling *PolyTree[T]) error {
 	// Check if the sibling is nil
 	if sibling == nil {
 		return fmt.Errorf("attempt to add nil sibling")
@@ -1366,7 +1329,18 @@ func (p *PolyTree[T]) addSibling(sibling *PolyTree[T]) error {
 
 	// Ensure the polygon types match
 	if p.polygonType != sibling.polygonType {
-		return fmt.Errorf("cannot add sibling as polygonType is mismatched")
+		return fmt.Errorf("cannot add sibling: mismatched polygon types")
+	}
+
+	// Check if the sibling overlaps with existing siblings
+	for _, existingSibling := range p.siblings {
+		for existingSiblingEdge := range existingSibling.contour.iterEdges {
+			for siblingEdge := range sibling.contour.iterEdges {
+				if siblingEdge.RelationshipToLineSegment(existingSiblingEdge) > LLRMiss {
+					return fmt.Errorf("child polygon overlaps with an existing sibling polygon")
+				}
+			}
+		}
 	}
 
 	// Add the new sibling to the sibling lists of existing siblings
@@ -1814,6 +1788,10 @@ func (p *PolyTree[T]) orderSiblingsAndChildren() {
 	})
 }
 
+func (p *PolyTree[T]) RelationshipToPoint(point Point[T], opts ...Option) PointPolyTreeRelationship {
+	return point.RelationshipToPolyTree(p, opts...)
+}
+
 // resetIntersectionMetadataAndReorder removes intersection-related metadata from the PolyTree
 // and reorders the contour points to ensure a consistent starting point.
 //
@@ -2002,7 +1980,7 @@ func nestPointsToPolyTrees[T SignedNumber](contours [][]Point[T]) (*PolyTree[T],
 		parent := rootTree.findParentPolygon(polyToNest)
 		if parent == nil {
 			// No parent found: Add as a sibling to the root
-			if err := rootTree.addSibling(polyToNest); err != nil {
+			if err := rootTree.AddSibling(polyToNest); err != nil {
 				return nil, fmt.Errorf("failed to add sibling: %w", err)
 			}
 		} else {
@@ -2013,7 +1991,7 @@ func nestPointsToPolyTrees[T SignedNumber](contours [][]Point[T]) (*PolyTree[T],
 			} else {
 				polyToNest.polygonType = PTSolid
 			}
-			if err := parent.addChild(polyToNest); err != nil {
+			if err := parent.AddChild(polyToNest); err != nil {
 				return nil, fmt.Errorf("failed to add child to parent polygon: %w", err)
 			}
 		}

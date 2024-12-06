@@ -22,17 +22,6 @@ type Circle[T SignedNumber] struct {
 	radius T        // The radius of the circle
 }
 
-// Add translates the circle's center by adding a vector.
-//
-// Parameters:
-//   - v: Point[T] - The vector to add to the circle's center.
-//
-// Returns:
-//   - Circle[T]: A new circle with the center moved by the specified vector.
-func (c Circle[T]) Add(v Point[T]) Circle[T] {
-	return Circle[T]{center: c.center.Add(v), radius: c.radius}
-}
-
 // Area calculates the area of the circle.
 //
 // Returns:
@@ -193,6 +182,58 @@ func (c Circle[T]) Radius() T {
 	return c.radius
 }
 
+// RelationshipToCircle determines the relationship between the calling circle
+// and another circle.
+//
+// This method calculates the distance between the centers of the two circles
+// and compares it with their radii to determine their spatial relationship.
+//
+// Parameters:
+//   - other: Circle[T] - The circle to compare with the calling circle.
+//
+// Returns:
+//   - CircleCircleRelationship: The relationship between the two circles.
+//
+// Possible Relationships:
+//   - CCRMiss: The circles are completely disjoint.
+//   - CCRTouchingExternal: The circles are externally tangent, touching at exactly one point.
+//   - CCROverlapping: The circles intersect at two points, forming an overlap like a Venn diagram.
+//   - CCRTouchingInternal: The circles are internally tangent, touching at exactly one point.
+//   - CCRContained: One circle is fully contained within the other.
+//   - CCREqual: The circles are identical in size and position.
+func (c Circle[T]) RelationshipToCircle(other Circle[T], opts ...Option) CircleCircleRelationship {
+	options := applyOptions(geomOptions{epsilon: 0}, opts...)
+
+	// Calculate the distance between the centers of the two circles
+	centerDistance := c.center.DistanceToPoint(other.center, opts...)
+
+	// Calculate the sum and absolute difference of the radii
+	sumRadii := float64(c.radius) + float64(other.radius)
+	diffRadii := math.Abs(float64(c.radius) - float64(other.radius))
+
+	absCenterDistanceSubRadiiSub := math.Abs(centerDistance - sumRadii)
+	absCenterDistanceSubDiffRadii := math.Abs(centerDistance - diffRadii)
+
+	// Determine the relationship
+	switch {
+	case centerDistance == 0 && c.radius == other.radius:
+		return CCREqual // Circles are identical
+	case absCenterDistanceSubRadiiSub < options.epsilon:
+		return CCRTouchingExternal // Circles are externally tangent
+	case absCenterDistanceSubDiffRadii < options.epsilon:
+		return CCRTouchingInternal // Circles are internally tangent
+	case centerDistance > sumRadii:
+		return CCRMiss // Circles are disjoint
+	case centerDistance < diffRadii:
+		return CCRContained // One circle is fully contained within the other
+	case centerDistance < sumRadii:
+		return CCROverlapping // Circles overlap
+	}
+
+	// Fallback (should not happen)
+	return CCRMiss
+}
+
 // RelationshipToLineSegment determines the spatial relationship of a line segment
 // to the circle. It returns one of several possible relationships, such as whether
 // the segment is inside, outside, tangent to, or intersects the circle.
@@ -338,6 +379,81 @@ func (c Circle[T]) RelationshipToPoint(p Point[T], opts ...Option) PointCircleRe
 	}
 }
 
+// RelationshipToRectangle determines the spatial relationship between the circle
+// and a rectangle.
+//
+// This method evaluates whether the circle and rectangle are disjoint, tangent,
+// intersecting, or whether one is fully contained within the other.
+//
+// Parameters:
+//   - rect: Rectangle[T] - The rectangle to compare with the circle.
+//
+// Returns:
+//   - CircleRectangleRelationship: The relationship between the circle and the rectangle.
+//
+// Possible Relationships:
+//   - CRRMiss: Circle and rectangle are disjoint.
+//   - CRRCircleInRect: Circle is fully contained within the rectangle.
+//   - CRRRectInCircle: Rectangle is fully contained within the circle.
+//   - CRRIntersection: Circle and rectangle intersect but are not fully contained.
+func (c Circle[T]) RelationshipToRectangle(rect Rectangle[T], opts ...Option) CircleRectangleRelationship {
+
+	// Calculate the bounding box of the circle
+	circleBounds := NewRectangle(
+		[]Point[T]{
+			NewPoint(c.center.x-T(c.radius), c.center.y-T(c.radius)),
+			NewPoint(c.center.x+T(c.radius), c.center.y-T(c.radius)),
+			NewPoint(c.center.x+T(c.radius), c.center.y+T(c.radius)),
+			NewPoint(c.center.x-T(c.radius), c.center.y+T(c.radius)),
+		},
+	)
+
+	// Check if bounding boxes are disjoint
+	if circleBounds.RelationshipToRectangle(rect, opts...) == RRRMiss {
+		return CRRMiss
+	}
+
+	// Check if the circle is fully contained within the rectangle
+	circlePoints := []Point[T]{
+		NewPoint(c.center.x-T(c.radius), c.center.y-T(c.radius)),
+		NewPoint(c.center.x+T(c.radius), c.center.y+T(c.radius)),
+	}
+	allCirclePointsInRect := true
+	for _, p := range circlePoints {
+		if rect.RelationshipToPoint(p) == PRROutside {
+			allCirclePointsInRect = false
+			break
+		}
+	}
+	if allCirclePointsInRect {
+		return CRRCircleInRect
+	}
+
+	// Check if the rectangle is fully contained within the circle
+	rectVertices := []Point[T]{rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight}
+	allVerticesInCircle := true
+	for _, vertex := range rectVertices {
+		if c.center.DistanceToPoint(vertex, opts...) > float64(c.radius) {
+			allVerticesInCircle = false
+			break
+		}
+	}
+	if allVerticesInCircle {
+		return CRRRectInCircle
+	}
+
+	// Check if the circle intersects the rectangle
+	rectEdges := rect.Edges()
+	for _, edge := range rectEdges {
+		if c.RelationshipToLineSegment(edge, opts...) == CLRIntersecting {
+			return CRRIntersection
+		}
+	}
+
+	// Fallback case: intersection
+	return CRRIntersection
+}
+
 // Rotate rotates the Circle's center around a specified pivot point by a given angle in radians,
 // while keeping the radius unchanged. Optionally, an epsilon threshold can be applied to adjust
 // the precision of the resulting coordinates.
@@ -391,6 +507,8 @@ func (c Circle[T]) Rotate(pivot Point[T], radians float64, opts ...Option) Circl
 //
 // Returns:
 //   - Circle[float64]: A new circle with the radius scaled by the specified factor.
+//
+// todo: review whether or not we should implement ScaleFrom as-per other types
 func (c Circle[T]) Scale(factor T) Circle[float64] {
 	return Circle[float64]{center: c.center.AsFloat(), radius: float64(c.radius) * float64(factor)}
 }
@@ -418,6 +536,28 @@ func (c Circle[T]) String() string {
 //   - Circle[T]: A new circle with the center moved by the specified vector.
 func (c Circle[T]) Sub(v Point[T]) Circle[T] {
 	return Circle[T]{center: c.center.Sub(v), radius: c.radius}
+}
+
+// Translate moves the circle by a specified vector.
+//
+// This method shifts the circle's center by the given vector `v`, effectively
+// translating the circle's position in the 2D plane. The radius of the circle
+// remains unchanged.
+//
+// Parameters:
+//   - v: Point[T] - The vector by which to translate the circle's center.
+//
+// Returns:
+//   - Circle[T]: A new Circle translated by the specified vector.
+//
+// Example Usage:
+//
+//	circle := NewCircle(NewPoint(3, 4), 5)
+//	translationVector := NewPoint(2, 3)
+//	translatedCircle := circle.Translate(translationVector)
+//	// translatedCircle has its center at (5, 7) and the same radius of 5
+func (c Circle[T]) Translate(v Point[T]) Circle[T] {
+	return Circle[T]{center: c.center.Translate(v), radius: c.radius}
 }
 
 // NewCircle creates a new Circle with the specified center point and radius.

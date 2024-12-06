@@ -1,6 +1,7 @@
 package geom2d
 
 import (
+	"github.com/stretchr/testify/require"
 	"image"
 	"math"
 	"testing"
@@ -22,66 +23,6 @@ func BenchmarkConvexHull(b *testing.B) {
 	// Run the benchmark loop
 	for i := 0; i < b.N; i++ {
 		_ = ConvexHull(points)
-	}
-}
-
-func TestPoint_Add(t *testing.T) {
-	tests := []struct {
-		name     string
-		p, q     any // Use 'any' to support different Point types
-		expected any
-	}{
-		// Integer points
-		{
-			name:     "int: (1,2)+(0,0)",
-			p:        NewPoint(1, 2),
-			q:        NewPoint(0, 0),
-			expected: NewPoint(1, 2),
-		},
-		{
-			name:     "int: (1,2)+(3,4)",
-			p:        NewPoint(1, 2),
-			q:        NewPoint(3, 4),
-			expected: NewPoint(4, 6),
-		},
-		{
-			name:     "int: (-1,-2)+(3,4)",
-			p:        NewPoint(-1, -2),
-			q:        NewPoint(3, 4),
-			expected: NewPoint(2, 2),
-		},
-
-		// Float64 points
-		{
-			name:     "float64: (1.0,2.0)+(3.0,4.0)",
-			p:        NewPoint(1.0, 2.0),
-			q:        NewPoint(3.0, 4.0),
-			expected: NewPoint(4.0, 6.0),
-		},
-		{
-			name:     "float64: (-1.5,-2.5)+(3.5,4.5)",
-			p:        NewPoint(-1.5, -2.5),
-			q:        NewPoint(3.5, 4.5),
-			expected: NewPoint(2.0, 2.0),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			switch p := tt.p.(type) {
-			case Point[int]:
-				q := tt.q.(Point[int])
-				expected := tt.expected.(Point[int])
-				actual := p.Add(q)
-				assert.Equal(t, expected, actual)
-
-			case Point[float64]:
-				q := tt.q.(Point[float64])
-				expected := tt.expected.(Point[float64])
-				actual := p.Add(q)
-				assert.Equal(t, expected, actual)
-			}
-		})
 	}
 }
 
@@ -769,6 +710,209 @@ func TestPoint_Reflect(t *testing.T) {
 	})
 }
 
+func TestPoint_RelationshipToLineSegment(t *testing.T) {
+	tests := map[string]struct {
+		point       Point[int]
+		segment     LineSegment[int]
+		epsilon     float64
+		expectedRel PointLineSegmentRelationship
+	}{
+		"Point equals start of segment": {
+			point:       NewPoint(0, 0),
+			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
+			expectedRel: PLRPointEqStart,
+		},
+		"Point equals end of segment": {
+			point:       NewPoint(10, 10),
+			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
+			expectedRel: PLRPointEqEnd,
+		},
+		"Point on the segment": {
+			point:       NewPoint(5, 5),
+			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
+			expectedRel: PLRPointOnLineSegment,
+		},
+		"Point outside bounding box but collinear": {
+			point:       NewPoint(-5, -5),
+			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
+			expectedRel: PLRPointOnLine,
+		},
+		"Point not on line": {
+			point:       NewPoint(5, 6),
+			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
+			expectedRel: PLRMiss,
+		},
+		"Point on the segment with epsilon": {
+			point:       NewPoint(5, 5),
+			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
+			epsilon:     1e-10,
+			expectedRel: PLRPointOnLineSegment,
+		},
+		"Point just outside segment with small epsilon": {
+			point:       NewPoint(5, 5),
+			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
+			epsilon:     -1e-10, // No tolerance
+			expectedRel: PLRPointOnLineSegment,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			opts := []Option{}
+			if test.epsilon != 0 {
+				opts = append(opts, WithEpsilon(test.epsilon))
+			}
+
+			rel := test.point.RelationshipToLineSegment(test.segment, opts...)
+			require.Equal(t, test.expectedRel, rel, "Relationship mismatch for test: %s", name)
+		})
+	}
+}
+
+func TestPoint_RelationshipToPolyTree(t *testing.T) {
+	tests := map[string]struct {
+		point        Point[int]
+		polyTreeFunc func() (*PolyTree[int], error)
+		epsilon      float64
+		expectedRel  PointPolyTreeRelationship
+	}{
+		"Point Outside": {
+			point: NewPoint(15, 15),
+			polyTreeFunc: func() (*PolyTree[int], error) {
+				return NewPolyTree(
+					[]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)},
+					PTSolid,
+				)
+			},
+			epsilon:     1e-10,
+			expectedRel: PPTRPointOutside,
+		},
+		"Point Inside Solid Polygon": {
+			point: NewPoint(5, 5),
+			polyTreeFunc: func() (*PolyTree[int], error) {
+				return NewPolyTree(
+					[]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)},
+					PTSolid,
+				)
+			},
+			epsilon:     1e-10,
+			expectedRel: PPTRPointInside,
+		},
+		"Point Inside Hole": {
+			point: NewPoint(5, 5),
+			polyTreeFunc: func() (*PolyTree[int], error) {
+				root, err := NewPolyTree(
+					[]Point[int]{NewPoint(0, 0), NewPoint(20, 0), NewPoint(20, 20), NewPoint(0, 20)},
+					PTSolid,
+				)
+				if err != nil {
+					return nil, err
+				}
+				child, err := NewPolyTree(
+					[]Point[int]{NewPoint(4, 4), NewPoint(16, 4), NewPoint(16, 16), NewPoint(4, 16)},
+					PTHole,
+				)
+				if err != nil {
+					return nil, err
+				}
+				err = root.AddChild(child)
+				if err != nil {
+					return nil, err
+				}
+				return root, nil
+			},
+			epsilon:     1e-10,
+			expectedRel: PPTRPointInHole,
+		},
+		"Point on Vertex (PLRPointEqStart)": {
+			point: NewPoint(0, 0), // Coincides with the start of an edge in the root polygon
+			polyTreeFunc: func() (*PolyTree[int], error) {
+				return NewPolyTree([]Point[int]{
+					NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10),
+				}, PTSolid)
+			},
+			expectedRel: PPTRPointOnVertex,
+		},
+		"Point on Vertex (PLRPointEqEnd)": {
+			point: NewPoint(10, 0), // Coincides with the end of an edge in the root polygon
+			polyTreeFunc: func() (*PolyTree[int], error) {
+				return NewPolyTree([]Point[int]{
+					NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10),
+				}, PTSolid)
+			},
+			expectedRel: PPTRPointOnVertex,
+		},
+		"Point on Edge": {
+			point: NewPoint(5, 0), // Lies exactly on the top edge of the root polygon
+			polyTreeFunc: func() (*PolyTree[int], error) {
+				return NewPolyTree([]Point[int]{
+					NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10),
+				}, PTSolid)
+			},
+			expectedRel: PPTRPointOnEdge,
+		},
+		"Point Inside Island": {
+			point: NewPoint(12, 12), // Inside the island polygon
+			polyTreeFunc: func() (*PolyTree[int], error) {
+				root, err := NewPolyTree([]Point[int]{
+					NewPoint(0, 0), NewPoint(20, 0), NewPoint(20, 20), NewPoint(0, 20),
+				}, PTSolid)
+				if err != nil {
+					return nil, err
+				}
+				hole, err := NewPolyTree([]Point[int]{
+					NewPoint(5, 5), NewPoint(15, 5), NewPoint(15, 15), NewPoint(5, 15),
+				}, PTHole)
+				if err != nil {
+					return nil, err
+				}
+				require.NoError(t, root.AddChild(hole))
+				island, err := NewPolyTree([]Point[int]{
+					NewPoint(10, 10), NewPoint(14, 10), NewPoint(14, 14), NewPoint(10, 14),
+				}, PTSolid)
+				require.NoError(t, hole.AddChild(island))
+				return root, nil
+			},
+			expectedRel: PPTRPointInsideIsland,
+		},
+		"Point Inside Island but on Hole Edge": {
+			point: NewPoint(15, 10), // Lies on the top edge of the hole inside the island
+			polyTreeFunc: func() (*PolyTree[int], error) {
+				root, err := NewPolyTree([]Point[int]{
+					NewPoint(0, 0), NewPoint(20, 0), NewPoint(20, 20), NewPoint(0, 20),
+				}, PTSolid)
+				if err != nil {
+					return nil, err
+				}
+				hole, err := NewPolyTree([]Point[int]{
+					NewPoint(5, 5), NewPoint(15, 5), NewPoint(15, 15), NewPoint(5, 15),
+				}, PTHole)
+				if err != nil {
+					return nil, err
+				}
+				require.NoError(t, root.AddChild(hole))
+				island, err := NewPolyTree([]Point[int]{
+					NewPoint(10, 10), NewPoint(14, 10), NewPoint(14, 14), NewPoint(10, 14),
+				}, PTSolid)
+				require.NoError(t, hole.AddChild(island))
+				return root, nil
+			},
+			expectedRel: PPTRPointOnEdge,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			polyTree, err := test.polyTreeFunc()
+			require.NoError(t, err, "Error creating PolyTree for test: %s", name)
+			require.NotNil(t, polyTree, "PolyTree is nil for test: %s", name)
+
+			actualRel := test.point.RelationshipToPolyTree(polyTree, WithEpsilon(test.epsilon))
+			require.Equal(t, test.expectedRel, actualRel, "Relationship mismatch for test: %s", name)
+		})
+	}
+}
+
 func TestPoint_Rotate(t *testing.T) {
 	tests := map[string]struct {
 		point    Point[float64] // The point to rotate
@@ -812,61 +956,6 @@ func TestPoint_Rotate(t *testing.T) {
 }
 
 func TestPoint_Scale(t *testing.T) {
-	tests := []struct {
-		name     string
-		p        any // Supports different Point types with `any`
-		k        any // Scale factor, either int or float64
-		expected any // Expected scaled result as either int or float64
-	}{
-		// Integer points
-		{
-			name:     "int: (2,3) * 2",
-			p:        NewPoint(2, 3),
-			k:        2,
-			expected: NewPoint(4, 6),
-		},
-		{
-			name:     "int: (3,4) * -1",
-			p:        NewPoint(3, 4),
-			k:        -1,
-			expected: NewPoint(-3, -4),
-		},
-
-		// Float64 points
-		{
-			name:     "float64: (2.0,3.0) * 2.0",
-			p:        NewPoint(2.0, 3.0),
-			k:        2.0,
-			expected: NewPoint(4.0, 6.0),
-		},
-		{
-			name:     "float64: (1.5,2.5) * 0.5",
-			p:        NewPoint(1.5, 2.5),
-			k:        0.5,
-			expected: NewPoint(0.75, 1.25),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			switch p := tt.p.(type) {
-			case Point[int]:
-				k := tt.k.(int)
-				expected := tt.expected.(Point[int])
-				actual := p.Scale(k)
-				assert.Equal(t, expected, actual)
-
-			case Point[float64]:
-				k := tt.k.(float64)
-				expected := tt.expected.(Point[float64])
-				actual := p.Scale(k)
-				assert.Equal(t, expected, actual)
-			}
-		})
-	}
-}
-
-func TestPoint_ScaleFrom(t *testing.T) {
 	tests := map[string]struct {
 		point    any            // Point to be scaled (can be int or float64)
 		refPoint any            // Reference point for scaling (can be int or float64)
@@ -907,13 +996,13 @@ func TestPoint_ScaleFrom(t *testing.T) {
 			switch point := tt.point.(type) {
 			case Point[int]:
 				ref := tt.refPoint.(Point[int])
-				result := point.AsFloat().ScaleFrom(ref.AsFloat(), tt.scale)
+				result := point.AsFloat().Scale(ref.AsFloat(), tt.scale)
 				assert.InDelta(t, tt.expected.x, result.x, 0.001)
 				assert.InDelta(t, tt.expected.y, result.y, 0.001)
 
 			case Point[float64]:
 				ref := tt.refPoint.(Point[float64])
-				result := point.ScaleFrom(ref, tt.scale)
+				result := point.Scale(ref, tt.scale)
 				assert.InDelta(t, tt.expected.x, result.x, 0.001)
 				assert.InDelta(t, tt.expected.y, result.y, 0.001)
 			}
@@ -1021,6 +1110,66 @@ func TestPoint_Sub(t *testing.T) {
 				q := tt.q.(Point[float64])
 				expected := tt.expected.(Point[float64])
 				actual := p.Sub(q)
+				assert.Equal(t, expected, actual)
+			}
+		})
+	}
+}
+
+func TestPoint_Translate(t *testing.T) {
+	tests := []struct {
+		name     string
+		p, q     any // Use 'any' to support different Point types
+		expected any
+	}{
+		// Integer points
+		{
+			name:     "int: (1,2)+(0,0)",
+			p:        NewPoint(1, 2),
+			q:        NewPoint(0, 0),
+			expected: NewPoint(1, 2),
+		},
+		{
+			name:     "int: (1,2)+(3,4)",
+			p:        NewPoint(1, 2),
+			q:        NewPoint(3, 4),
+			expected: NewPoint(4, 6),
+		},
+		{
+			name:     "int: (-1,-2)+(3,4)",
+			p:        NewPoint(-1, -2),
+			q:        NewPoint(3, 4),
+			expected: NewPoint(2, 2),
+		},
+
+		// Float64 points
+		{
+			name:     "float64: (1.0,2.0)+(3.0,4.0)",
+			p:        NewPoint(1.0, 2.0),
+			q:        NewPoint(3.0, 4.0),
+			expected: NewPoint(4.0, 6.0),
+		},
+		{
+			name:     "float64: (-1.5,-2.5)+(3.5,4.5)",
+			p:        NewPoint(-1.5, -2.5),
+			q:        NewPoint(3.5, 4.5),
+			expected: NewPoint(2.0, 2.0),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			switch p := tc.p.(type) {
+			case Point[int]:
+				q := tc.q.(Point[int])
+				expected := tc.expected.(Point[int])
+				actual := p.Translate(q)
+				assert.Equal(t, expected, actual)
+
+			case Point[float64]:
+				q := tc.q.(Point[float64])
+				expected := tc.expected.(Point[float64])
+				actual := p.Translate(q)
 				assert.Equal(t, expected, actual)
 			}
 		})
