@@ -1,10 +1,3 @@
-// This file defines the Circle type, which represents a circle specified by a center point and a radius.
-// The Circle type includes methods for geometric computations such as circumference, area, and checking
-// relationships like containment and intersection with other shapes.
-//
-// The Circle type integrates seamlessly with the geom2d package, allowing it to be used in combination
-// with other geometric primitives, including points, line segments, and polygons.
-
 package geom2d
 
 import (
@@ -15,11 +8,26 @@ import (
 // Circle represents a circle in 2D space with a center point and a radius.
 //
 // The Circle type provides methods for calculating its circumference and area,
-// determining if a point lies within the circle, and checking if a line segment
-// intersects the circle.
+// determining if a point lies within the circle, checking if a line segment
+// intersects the circle, and checking the relationship between the circle and other geometric shapes.
 type Circle[T SignedNumber] struct {
 	center Point[T] // The center point of the circle
 	radius T        // The radius of the circle
+}
+
+// NewCircle creates a new [Circle] with the specified center point and radius.
+//
+// Parameters:
+//   - center ([Point][T]): The center [Point] of the [Circle].
+//   - radius (T): The radius of the circle, of generic type T, which must satisfy the [SignedNumber] constraint.
+//
+// Returns:
+//   - Circle[T]: A new Circle with the specified center and radius.
+func NewCircle[T SignedNumber](center Point[T], radius T) Circle[T] {
+	return Circle[T]{
+		center: center,
+		radius: radius,
+	}
 }
 
 // Area calculates the area of the circle.
@@ -35,11 +43,6 @@ func (c Circle[T]) Area() float64 {
 //
 // Returns:
 //   - Circle[float64]: A new Circle with the center coordinates and radius converted to float64.
-//
-// Example Usage:
-//
-//	c := NewCircle(NewPoint(3, 4), 5)
-//	floatCircle := c.AsFloat() // floatCircle is a Circle[float64] with center (3.0, 4.0) and radius 5.0
 func (c Circle[T]) AsFloat() Circle[float64] {
 	return Circle[float64]{
 		center: c.center.AsFloat(),
@@ -52,11 +55,6 @@ func (c Circle[T]) AsFloat() Circle[float64] {
 //
 // Returns:
 //   - Circle[int]: A new Circle with center coordinates and radius converted to int by truncating any decimal portion.
-//
-// Example Usage:
-//
-//	c := NewCircle(NewPoint(3.7, 4.9), 5.6)
-//	intCircle := c.AsInt() // intCircle is a Circle[int] with center (3, 4) and radius 5
 func (c Circle[T]) AsInt() Circle[int] {
 	return Circle[int]{
 		center: c.center.AsInt(),
@@ -70,11 +68,6 @@ func (c Circle[T]) AsInt() Circle[int] {
 //
 // Returns:
 //   - Circle[int]: A new Circle with center coordinates and radius converted to int by rounding to the nearest integer.
-//
-// Example Usage:
-//
-//	c := NewCircle(NewPoint(3.7, 4.2), 5.6)
-//	roundedCircle := c.AsIntRounded() // roundedCircle is a Circle[int] with center (4, 4) and radius 6
 func (c Circle[T]) AsIntRounded() Circle[int] {
 	return Circle[int]{
 		center: c.center.AsIntRounded(),
@@ -82,10 +75,10 @@ func (c Circle[T]) AsIntRounded() Circle[int] {
 	}
 }
 
-// Center returns the center point of the Circle.
+// Center returns the center [Point] of the Circle.
 //
 // Returns:
-//   - Point[T]: The center point of the Circle.
+//   - Point[T]: The center [Point] of the Circle.
 func (c Circle[T]) Center() Point[T] {
 	return c.center
 }
@@ -98,62 +91,24 @@ func (c Circle[T]) Circumference() float64 {
 	return 2 * math.Pi * float64(c.radius)
 }
 
-// Div scales down the radius of the circle by dividing by a scalar factor.
-// Optionally, an epsilon threshold can be applied to adjust the precision of the resulting radius.
-//
-// Parameters:
-//   - divisor: T - The factor by which to divide the radius.
-//   - opts: A variadic slice of Option functions to customize the behavior of the division.
-//     WithEpsilon(epsilon float64): Specifies a tolerance for snapping the resulting radius
-//     to cleaner values, improving robustness in floating-point calculations.
-//
-// Returns:
-//   - Circle[float64]: A new circle with the radius scaled down by the specified factor.
-func (c Circle[T]) Div(divisor T, opts ...Option) Circle[float64] {
-	// Apply options with defaults
-	options := applyOptions(geomOptions{epsilon: 0}, opts...)
-
-	// Scale the radius
-	scaledRadius := float64(c.radius) / float64(divisor)
-
-	// Apply epsilon if specified
-	if options.epsilon > 0 {
-		scaledRadius = applyEpsilon(scaledRadius, options.epsilon)
-	}
-
-	return Circle[float64]{center: c.center.AsFloat(), radius: scaledRadius}
-}
-
 // Eq determines whether the calling Circle is equal to another Circle, either exactly (default)
 // or approximately using an epsilon threshold.
 //
-// Parameters:
+// Parameters
 //   - c2: The Circle to compare with the calling Circle.
 //   - opts: A variadic slice of Option functions to customize the equality check.
 //   - WithEpsilon(epsilon float64): Specifies a tolerance for comparing the center coordinates
 //     and radii of the circles, allowing for robust handling of floating-point precision errors.
 //
-// Behavior:
-//   - The function checks whether the center points of the two circles are equal (using the `Eq` method
-//     of the `Point` type) and whether their radii are equal.
-//   - If `WithEpsilon` is provided, the comparison allows for small differences in the radius values
+// Behavior
+//   - The function checks whether the center points of the two circles are equal (using the [Point.Eq] method
+//     of the [Point] type) and whether their radii are equal.
+//   - If [WithEpsilon] is provided, the comparison allows for small differences in the radius values
 //     and center coordinates within the epsilon threshold.
 //
-// Returns:
-//   - bool: `true` if the center coordinates and radius of the two circles are equal (or approximately equal
-//     within epsilon); otherwise, `false`.
-//
-// Example Usage:
-//
-//	c1 := NewCircle(NewPoint(3, 4), 5)
-//	c2 := NewCircle(NewPoint(3, 4), 5)
-//
-//	// Default behavior (exact equality)
-//	isEqual := c1.Eq(c2) // isEqual is true
-//
-//	// Approximate equality with epsilon
-//	c3 := NewCircle(NewPoint(3.0001, 4.0001), 5.0001)
-//	isApproximatelyEqual := c1.Eq(c3, WithEpsilon(1e-3)) // isApproximatelyEqual is true
+// Returns
+//   - bool: true if the center coordinates and radius of the two circles are equal (or approximately equal
+//     within epsilon); otherwise, false.
 //
 // Notes:
 //   - Approximate equality is particularly useful when comparing circles with floating-point
@@ -189,18 +144,10 @@ func (c Circle[T]) Radius() T {
 // and compares it with their radii to determine their spatial relationship.
 //
 // Parameters:
-//   - other: Circle[T] - The circle to compare with the calling circle.
+//   - other (Circle[T]): The circle to compare with the calling circle.
 //
 // Returns:
-//   - CircleCircleRelationship: The relationship between the two circles.
-//
-// Possible Relationships:
-//   - CCRMiss: The circles are completely disjoint.
-//   - CCRTouchingExternal: The circles are externally tangent, touching at exactly one point.
-//   - CCROverlapping: The circles intersect at two points, forming an overlap like a Venn diagram.
-//   - CCRTouchingInternal: The circles are internally tangent, touching at exactly one point.
-//   - CCRContained: One circle is fully contained within the other.
-//   - CCREqual: The circles are identical in size and position.
+//   - [CircleCircleRelationship]: The relationship between the two circles.
 func (c Circle[T]) RelationshipToCircle(other Circle[T], opts ...Option) CircleCircleRelationship {
 	options := applyOptions(geomOptions{epsilon: 0}, opts...)
 
@@ -234,38 +181,18 @@ func (c Circle[T]) RelationshipToCircle(other Circle[T], opts ...Option) CircleC
 	return CCRMiss
 }
 
-// RelationshipToLineSegment determines the spatial relationship of a line segment
+// RelationshipToLineSegment determines the spatial relationship of a [LineSegment]
 // to the circle. It returns one of several possible relationships, such as whether
 // the segment is inside, outside, tangent to, or intersects the circle.
 //
 // Parameters:
-//   - AB: The line segment to analyze.
-//   - opts: A variadic slice of Option functions to customize the behavior of the relationship check.
-//   - WithEpsilon(epsilon float64): Specifies a tolerance for comparing distances to the circle's radius,
+//   - AB ([LineSegment][T]): The [LineSegment] to analyze.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing distances to the circle's radius,
 //     improving robustness against floating-point precision errors.
 //
 // Returns:
-//   - CircleLineSegmentRelationship: An enum value indicating the relationship.
-//
-// Possible Relationships:
-//   - CLROutside: The segment lies entirely outside the circle.
-//   - CLRInside: The segment lies entirely within the circle.
-//   - CLRIntersecting: The segment intersects the circle at two points.
-//   - CLRTangent: The segment is tangent to the circle, touching it at exactly one point.
-//   - CLROneEndOnCircumferenceOutside: One endpoint is on the circle's boundary, and the other is outside.
-//   - CLROneEndOnCircumferenceInside: One endpoint is on the circle's boundary, and the other is inside.
-//   - CLRBothEndsOnCircumference: Both endpoints lie on the circle's boundary.
-//
-// Example Usage:
-//
-//	c := NewCircle(NewPoint(0, 0), 5)
-//	segment := NewLineSegment(NewPoint(0, -6), NewPoint(0, 6))
-//
-//	// Default behavior (no epsilon adjustment)
-//	relationship := c.RelationshipToLineSegment(segment)
-//
-//	// With epsilon adjustment
-//	relationshipWithEpsilon := c.RelationshipToLineSegment(segment, WithEpsilon(1e-4))
+//   - [CircleLineSegmentRelationship]: An enum value indicating the relationship.
 //
 // Notes:
 //   - Epsilon adjustment is particularly useful for floating-point coordinates, where small precision
@@ -327,39 +254,26 @@ func (c Circle[T]) RelationshipToLineSegment(AB LineSegment[T], opts ...Option) 
 	return CLROutside
 }
 
-// RelationshipToPoint determines the relationship of a given point to the circle.
+// RelationshipToPoint determines the relationship of a given [Point] to the circle.
 // It returns whether the point is Outside, OnCircumference, or Inside the circle.
 //
 // Parameters:
-//   - p: The point to check, of type Point[T].
+//   - p ([Point][T]): The [Point] to check.
 //   - opts: A variadic slice of Option functions to customize the behavior of the relationship check.
-//   - WithEpsilon(epsilon float64): Specifies a tolerance for comparing the distance of the point
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the distance of the point
 //     to the circle's radius, improving robustness against floating-point precision errors.
 //
 // Returns:
-//   - PointCircleRelationship: The relationship of the point to the circle, indicating whether it
+//   - [PointCircleRelationship]: The relationship of the [Point] to the circle, indicating whether it
 //     is outside, on the circumference, or inside the circle.
 //
 // Behavior:
-//   - The function calculates the Euclidean distance between the point `p` and the circle's center.
+//   - The function calculates the Euclidean distance between the [Point] p and the circle's center.
 //   - It compares this distance to the circle's radius:
-//   - `PCRInside`: The point lies inside the circle (distance < radius).
-//   - `PCROnCircumference`: The point lies on the circumference of the circle (distance ≈ radius).
-//   - `PCROutside`: The point lies outside the circle (distance > radius).
-//   - If `WithEpsilon` is provided, epsilon adjustments are applied to the comparison with the radius.
-//
-// Example Usage:
-//
-//	c := NewCircle(NewPoint(0.0, 0.0), 5.0)
-//	point := NewPoint(3.0, 4.0)
-//
-//	// Default behavior (no epsilon adjustment)
-//	relationship := c.RelationshipToPoint(point) // Returns PCRInside since (3, 4) is within radius 5
-//
-//	// With epsilon adjustment
-//	point2 := NewPoint(5.000001, 0.0)
-//	relationshipWithEpsilon := c.RelationshipToPoint(point2, WithEpsilon(1e-4))
-//	// Returns PCROnCircumference because (5.000001, 0.0) is close enough to the circumference.
+//   - [PCRInside]: The point lies inside the circle (distance < radius).
+//   - [PCROnCircumference]: The point lies on the circumference of the circle (distance ≈ radius).
+//   - [PCROutside]: The point lies outside the circle (distance > radius).
+//   - If [WithEpsilon] is provided, epsilon adjustments are applied to the comparison with the radius.
 //
 // Notes:
 //   - Epsilon adjustment is particularly useful when working with floating-point coordinates, where small
@@ -380,22 +294,16 @@ func (c Circle[T]) RelationshipToPoint(p Point[T], opts ...Option) PointCircleRe
 }
 
 // RelationshipToRectangle determines the spatial relationship between the circle
-// and a rectangle.
+// and a [Rectangle].
 //
-// This method evaluates whether the circle and rectangle are disjoint, tangent,
+// This method evaluates whether the circle and [Rectangle] are disjoint, tangent,
 // intersecting, or whether one is fully contained within the other.
 //
 // Parameters:
-//   - rect: Rectangle[T] - The rectangle to compare with the circle.
+//   - rect ([Rectangle][T]): The rectangle to compare with the circle.
 //
 // Returns:
-//   - CircleRectangleRelationship: The relationship between the circle and the rectangle.
-//
-// Possible Relationships:
-//   - CRRMiss: Circle and rectangle are disjoint.
-//   - CRRCircleInRect: Circle is fully contained within the rectangle.
-//   - CRRRectInCircle: Rectangle is fully contained within the circle.
-//   - CRRIntersection: Circle and rectangle intersect but are not fully contained.
+//   - [CircleRectangleRelationship]: The relationship between the circle and the [Rectangle].
 func (c Circle[T]) RelationshipToRectangle(rect Rectangle[T], opts ...Option) CircleRectangleRelationship {
 
 	// Calculate the bounding box of the circle
@@ -445,54 +353,44 @@ func (c Circle[T]) RelationshipToRectangle(rect Rectangle[T], opts ...Option) Ci
 	// Check if the circle intersects the rectangle
 	rectEdges := rect.Edges()
 	for _, edge := range rectEdges {
-		if c.RelationshipToLineSegment(edge, opts...) == CLRIntersecting {
+		if c.RelationshipToLineSegment(edge, opts...) >= CLRIntersecting {
 			return CRRIntersection
 		}
 	}
 
-	// Fallback case: intersection
-	return CRRIntersection
+	return CRRMiss
 }
 
-// Rotate rotates the Circle's center around a specified pivot point by a given angle in radians,
-// while keeping the radius unchanged. Optionally, an epsilon threshold can be applied to adjust
-// the precision of the resulting coordinates.
+// Rotate rotates the Circle's center around a specified pivot [Point] by a given angle in radians
+// counterclockwise, while keeping the radius unchanged. Optionally, an epsilon threshold can be applied
+// to adjust the precision of the resulting coordinates.
 //
 // Parameters:
-//   - pivot: The point around which to rotate the circle's center.
-//   - radians: The rotation angle in radians.
-//   - opts: A variadic slice of Option functions to customize the behavior of the rotation.
-//     WithEpsilon(epsilon float64): Specifies a tolerance for snapping the resulting center coordinates
+//   - pivot ([Point][T]): The [Point] around which to rotate the circle's center.
+//   - radians: The rotation angle in radians (counterclockwise).
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the rotation.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for snapping the resulting center coordinates
 //     to cleaner values, improving robustness in floating-point calculations.
 //
 // Returns:
-//   - Circle[float64]: A new Circle with the center rotated around the pivot point by the specified angle,
+//   - [Circle][float64]: A new [Circle] with the center rotated around the pivot [Point] by the specified angle,
 //     and with the radius unchanged.
 //
 // Behavior:
 //   - The function rotates the circle's center point around the given pivot by the specified angle using
-//     the `Point.Rotate` method.
-//   - The radius remains unchanged in the resulting Circle.
-//   - If `WithEpsilon` is provided, epsilon adjustments are applied to the rotated coordinates to handle
+//     the [Point.Rotate] method.
+//   - The rotation is performed in a counterclockwise direction relative to the pivot point.
+//   - The radius remains unchanged in the resulting [Circle].
+//   - If [WithEpsilon] is provided, epsilon adjustments are applied to the rotated coordinates to handle
 //     floating-point precision errors.
-//
-// Example Usage:
-//
-//	pivot := NewPoint(1.0, 1.0)
-//	circle := NewCircle(NewPoint(3.0, 3.0), 5.0)
-//	angle := math.Pi / 2 // Rotate 90 degrees
-//
-//	// Default behavior (no epsilon adjustment)
-//	rotatedCircle := circle.Rotate(pivot, angle)
-//
-//	// With epsilon adjustment
-//	rotatedCircleWithEpsilon := circle.Rotate(pivot, angle, WithEpsilon(1e-10))
 //
 // Notes:
 //   - Epsilon adjustment is particularly useful when the rotation involves floating-point calculations
 //     that could result in minor inaccuracies.
-//   - The returned Circle always has a center with `float64` coordinates, ensuring precision regardless
-//     of the coordinate type of the original Circle.
+//   - The returned [Circle] always has a center with float64 coordinates, ensuring precision regardless
+//     of the coordinate type of the original [Circle].
+//
+// todo: ensure other Rotate functions specify directionality.
 func (c Circle[T]) Rotate(pivot Point[T], radians float64, opts ...Option) Circle[float64] {
 	return NewCircle[float64](
 		c.center.Rotate(pivot, radians, opts...),
@@ -503,14 +401,12 @@ func (c Circle[T]) Rotate(pivot Point[T], radians float64, opts ...Option) Circl
 // Scale scales the radius of the circle by a scalar factor.
 //
 // Parameters:
-//   - factor: T - The factor by which to scale the radius.
+//   - factor (T): The factor by which to scale the radius.
 //
 // Returns:
-//   - Circle[float64]: A new circle with the radius scaled by the specified factor.
-//
-// todo: review whether or not we should implement ScaleFrom as-per other types
-func (c Circle[T]) Scale(factor T) Circle[float64] {
-	return Circle[float64]{center: c.center.AsFloat(), radius: float64(c.radius) * float64(factor)}
+//   - Circle[T]: A new circle with the radius scaled by the specified factor.
+func (c Circle[T]) Scale(factor T) Circle[T] {
+	return Circle[T]{center: c.center, radius: c.radius * factor}
 }
 
 // String returns a string representation of the Circle, including its center coordinates and radius.
@@ -518,65 +414,21 @@ func (c Circle[T]) Scale(factor T) Circle[float64] {
 //
 // Returns:
 //   - string: A string representation of the Circle in the format "Circle[center=(x, y), radius=r]".
-//
-// Example Usage:
-//
-//	c := NewCircle(NewPoint(3, 4), 5)
-//	fmt.Println(c.String()) // Output: "Circle[center=(3, 4), radius=5]"
 func (c Circle[T]) String() string {
 	return fmt.Sprintf("Circle[center=(%v, %v), radius=%v]", c.center.x, c.center.y, c.radius)
 }
 
-// Sub translates the circle's center by subtracting a vector.
+// Translate moves the circle by a specified vector (given as a [Point]).
 //
-// Parameters:
-//   - v: Point[T] - The vector to subtract from the circle's center.
-//
-// Returns:
-//   - Circle[T]: A new circle with the center moved by the specified vector.
-func (c Circle[T]) Sub(v Point[T]) Circle[T] {
-	return Circle[T]{center: c.center.Sub(v), radius: c.radius}
-}
-
-// Translate moves the circle by a specified vector.
-//
-// This method shifts the circle's center by the given vector `v`, effectively
+// This method shifts the circle's center by the given vector v, effectively
 // translating the circle's position in the 2D plane. The radius of the circle
 // remains unchanged.
 //
 // Parameters:
-//   - v: Point[T] - The vector by which to translate the circle's center.
+//   - v ([Point][T]): The vector by which to translate the circle's center.
 //
 // Returns:
 //   - Circle[T]: A new Circle translated by the specified vector.
-//
-// Example Usage:
-//
-//	circle := NewCircle(NewPoint(3, 4), 5)
-//	translationVector := NewPoint(2, 3)
-//	translatedCircle := circle.Translate(translationVector)
-//	// translatedCircle has its center at (5, 7) and the same radius of 5
 func (c Circle[T]) Translate(v Point[T]) Circle[T] {
 	return Circle[T]{center: c.center.Translate(v), radius: c.radius}
-}
-
-// NewCircle creates a new Circle with the specified center point and radius.
-//
-// Parameters:
-//   - center: The center point of the circle, of type Point[T].
-//   - radius: The radius of the circle, of generic type T, which must satisfy the SignedNumber constraint.
-//
-// Returns:
-//   - Circle[T]: A new Circle with the specified center and radius.
-//
-// Example Usage:
-//
-//	center := NewPoint(3, 4)
-//	radius := 5
-//	circle := NewCircle(center, radius) // Creates a Circle with center (3, 4) and radius 5
-func NewCircle[T SignedNumber](center Point[T], radius T) Circle[T] {
-	return Circle[T]{
-		center: center,
-		radius: radius,
-	}
 }

@@ -1,30 +1,3 @@
-// The `linesegment.go` file defines the `LineSegment` type and its associated methods,
-// providing foundational tools for working with line segments in 2D geometry.
-//
-// A `LineSegment` represents a finite, straight line connecting two points in 2D space.
-// It is defined by its start and end points and supports operations such as:
-// - Calculating distances to other points or geometric primitives.
-// - Determining relationships with other line segments (e.g., intersection points).
-// - Performing transformations like scaling, translating, and reflection.
-// - Querying properties such as midpoint, length, or bounding box.
-//
-// ### Core Concepts
-//
-// - **Precision Handling**: Many methods use generics to accept various numeric types (`T`),
-//   but results are often returned as `float64` to preserve precision when performing geometric calculations.
-// - **Point Operations**: A `LineSegment` integrates seamlessly with `Point` types for operations like
-//   projection, reflection, and determining relative positions.
-//
-// ### Key Functionality
-//
-// The methods in this file are grouped into areas such as:
-// - **Properties**: Querying properties of the `LineSegment`, such as its length, midpoint, or bounding box.
-// - **Relationships**: Determining geometric relationships with other entities, like intersection points.
-// - **Transformations**: Applying geometric transformations like scaling, reflection, and translation.
-//
-// This file complements other geometric types in the `geom2d` package, ensuring consistent
-// support for Boolean operations, relationships, and transformations across different 2D primitives.
-
 package geom2d
 
 import (
@@ -53,23 +26,38 @@ const (
 	ScaleFromMidpoint
 )
 
-// LineSegment represents a line segment in a 2D space, defined by two endpoints, A and End.
+// LineSegment represents a line segment in a 2D space, defined by two endpoints, the start [Point] and end [Point].
 //
-// The generic type parameter T must satisfy the SignedNumber constraint, allowing the segment
+// The generic type parameter T must satisfy the [SignedNumber] constraint, allowing the segment
 // to use various numeric types such as int or float64 for its coordinates.
-//
-// Fields:
-//   - start: Point[T] - The starting point of the line segment.
-//   - end: Point[T] - The ending point of the line segment.
 type LineSegment[T SignedNumber] struct {
 	start Point[T]
 	end   Point[T]
 }
 
+// NewLineSegment creates a new line segment from two endpoints, a start [Point] and end [Point].
+//
+// This constructor function initializes a LineSegment with the specified starting and ending points.
+// The generic type parameter `T` must satisfy the [SignedNumber] constraint, allowing various numeric types
+// (such as `int` or `float64`) to be used for the segment’s coordinates.
+//
+// Parameters:
+//   - start ([Point][T]): The starting [Point] of the LineSegment.
+//   - end ([Point][T]): The ending [Point] of the LineSegment.
+//
+// Returns:
+//   - LineSegment[T] - A new line segment defined by the start and end points.
+func NewLineSegment[T SignedNumber](start, end Point[T]) LineSegment[T] {
+	return LineSegment[T]{
+		start: start,
+		end:   end,
+	}
+}
+
 // AddLineSegment adds the start and end points of another line segment to this one.
 //
-// This method performs an element-wise addition, where the `start` and `end` points
-// of the `other` line segment are added to the corresponding `start` and `end` points
+// This method performs an element-wise addition, where the start and end points
+// of the other line segment are added to the corresponding start and end points
 // of the current line segment.
 //
 // Parameters:
@@ -77,13 +65,6 @@ type LineSegment[T SignedNumber] struct {
 //
 // Returns:
 //   - LineSegment[T] - A new line segment where each endpoint is the sum of the corresponding endpoints.
-//
-// Example usage:
-//
-//	segment1 := NewLineSegment(NewPoint(1, 1), NewPoint(4, 5))
-//	segment2 := NewLineSegment(NewPoint(2, 3), NewPoint(1, 2))
-//	result := segment1.AddLineSegment(segment2)
-//	// `result` will be a new segment from (3, 4) to (5, 7)
 func (AB LineSegment[T]) AddLineSegment(CD LineSegment[T]) LineSegment[T] {
 	return NewLineSegment(
 		AB.start.Translate(CD.start),
@@ -91,13 +72,25 @@ func (AB LineSegment[T]) AddLineSegment(CD LineSegment[T]) LineSegment[T] {
 	)
 }
 
+// Area returns the area of the line segment, which is always 0.
+//
+// This is because a line segment is a one-dimensional geometric entity
+// and does not enclose any space in two dimensions.
+//
+// Note:
+//   - This method exists to satisfy the [Measurable] interface. It is not here
+//     to insult your intelligence. Rest assured, we know you understand that
+//     line segments don't have area. 😊
+//
+// Returns:
+//   - float64: The area of the line segment, which is 0.
 func (AB LineSegment[T]) Area() float64 {
 	return 0
 }
 
 // AsFloat converts the line segment to a LineSegment[float64] type.
 //
-// This function converts both endpoints of the line segment `AB` to `Point[float64]`
+// This function converts both endpoints of the LineSegment AB to [Point][float64]
 // values, creating a new line segment with floating-point coordinates.
 // It is useful for precise calculations where floating-point accuracy is needed.
 //
@@ -109,7 +102,7 @@ func (AB LineSegment[T]) AsFloat() LineSegment[float64] {
 
 // AsInt converts the line segment to a LineSegment[int] type.
 //
-// This function converts both endpoints of the line segment `AB` to `Point[int]`
+// This function converts both endpoints of the line segment AB to [Point][int]
 // by truncating any decimal places. It is useful for converting a floating-point
 // line segment to integer coordinates without rounding.
 //
@@ -121,7 +114,7 @@ func (AB LineSegment[T]) AsInt() LineSegment[int] {
 
 // AsIntRounded converts the line segment to a LineSegment[int] type with rounded coordinates.
 //
-// This function converts both endpoints of the line segment `AB` to `Point[int]`
+// This function converts both endpoints of the line segment AB to [Point][int]
 // by rounding each coordinate to the nearest integer. It is useful when you need to
 // approximate the segment’s position with integer coordinates while minimizing the
 // rounding error.
@@ -132,8 +125,69 @@ func (AB LineSegment[T]) AsIntRounded() LineSegment[int] {
 	return NewLineSegment(AB.start.AsIntRounded(), AB.end.AsIntRounded())
 }
 
+// BoundingBox computes the smallest axis-aligned rectangle that fully contains the LineSegment.
+//
+// Returns:
+//   - [Rectangle][T]: A rectangle defined by the opposite corners of the LineSegment.
+//
+// Behavior:
+//   - The rectangle's top-left corner corresponds to the minimum x and y coordinates
+//     of the LineSegment's start and end points.
+//   - The rectangle's bottom-right corner corresponds to the maximum x and y coordinates
+//     of the LineSegment's start and end points.
+//
+// Notes:
+//   - This method is useful for spatial queries, collision detection, or visual rendering.
 func (AB LineSegment[T]) BoundingBox() Rectangle[T] {
-	return NewRectangleByOppositeCorners(AB.start, AB.end)
+	points := []Point[T]{
+		AB.start,
+		NewPoint(AB.start.x, AB.end.y),
+		NewPoint(AB.end.x, AB.start.y),
+		AB.end,
+	}
+	return NewRectangle(points)
+}
+
+// Center calculates the midpoint of the line segment, optionally applying an epsilon
+// threshold to adjust the precision of the result.
+//
+// Parameters:
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the calculation.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for snapping near-integer or
+//     near-zero results to cleaner values, improving robustness in floating-point calculations.
+//
+// Behavior:
+//   - The midpoint is calculated by averaging the x and y coordinates of the start and end
+//     points of the line segment.
+//   - If [WithEpsilon] is provided, the resulting midpoint coordinates are adjusted such that
+//     small deviations due to floating-point precision errors are corrected.
+//
+// Returns:
+//   - [Point][float64]: The midpoint of the line segment as a point with floating-point coordinates,
+//     optionally adjusted based on epsilon.
+//
+// Notes:
+//   - Epsilon adjustment is particularly useful when working with floating-point coordinates
+//     where minor imprecision could affect the midpoint calculation.
+//   - The midpoint is always returned as [Point][float64], ensuring precision regardless of the
+//     coordinate type of the original line segment.
+func (AB LineSegment[T]) Center(opts ...Option) Point[float64] {
+	// Apply geomOptions with defaults
+	options := applyOptions(geomOptions{epsilon: 0}, opts...)
+
+	start := AB.start.AsFloat()
+	end := AB.end.AsFloat()
+
+	midX := (start.x + end.x) / 2
+	midY := (start.y + end.y) / 2
+
+	// Apply epsilon if specified
+	if options.epsilon > 0 {
+		midX = applyEpsilon(midX, options.epsilon)
+		midY = applyEpsilon(midY, options.epsilon)
+	}
+
+	return NewPoint[float64](midX, midY)
 }
 
 func (AB LineSegment[T]) ContainsPoint(p Point[T]) bool {
@@ -427,59 +481,6 @@ func (AB LineSegment[T]) Length(opts ...Option) float64 {
 
 func (AB LineSegment[T]) Perimeter(opts ...Option) float64 {
 	return AB.Length(opts...)
-}
-
-// Midpoint calculates the midpoint of the line segment, optionally applying an epsilon
-// threshold to adjust the precision of the result.
-//
-// Parameters:
-//   - opts: A variadic slice of Option functions to customize the behavior of the calculation.
-//     WithEpsilon(epsilon float64): Specifies a tolerance for snapping near-integer or
-//     near-zero results to cleaner values, improving robustness in floating-point calculations.
-//
-// Behavior:
-//   - The midpoint is calculated by averaging the x and y coordinates of the `start` and `end`
-//     points of the line segment.
-//   - If `WithEpsilon` is provided, the resulting midpoint coordinates are adjusted such that
-//     small deviations due to floating-point precision errors are corrected.
-//
-// Returns:
-//   - Point[float64]: The midpoint of the line segment as a point with floating-point coordinates,
-//     optionally adjusted based on epsilon.
-//
-// Example Usage:
-//
-//	segment := NewLineSegment(NewPoint(0, 0), NewPoint(4, 4))
-//
-//	// Default behavior (no epsilon adjustment)
-//	midpoint := segment.Midpoint() // midpoint will be (2.0, 2.0)
-//
-// Notes:
-//   - Epsilon adjustment is particularly useful when working with floating-point coordinates
-//     where minor imprecisions could affect the midpoint calculation.
-//   - The midpoint is always returned as `Point[float64]`, ensuring precision regardless of the
-//     coordinate type of the original line segment.
-func (AB LineSegment[T]) Midpoint(opts ...Option) Point[float64] {
-	// Apply geomOptions with defaults
-	options := applyOptions(geomOptions{epsilon: 0}, opts...)
-
-	start := AB.start.AsFloat()
-	end := AB.end.AsFloat()
-
-	midX := (start.x + end.x) / 2
-	midY := (start.y + end.y) / 2
-
-	// Apply epsilon if specified
-	if options.epsilon > 0 {
-		midX = applyEpsilon(midX, options.epsilon)
-		midY = applyEpsilon(midY, options.epsilon)
-	}
-
-	return NewPoint[float64](midX, midY)
-}
-
-func (AB LineSegment[T]) Center(opts ...Option) Point[float64] {
-	return AB.Midpoint(opts...)
 }
 
 // Points returns the two endpoints of the line segment as a slice of Points.
@@ -924,29 +925,4 @@ func (AB LineSegment[T]) Translate(delta Point[T]) LineSegment[T] {
 		AB.start.Translate(delta),
 		AB.end.Translate(delta),
 	)
-}
-
-// NewLineSegment creates a new line segment from two endpoints, `start` and `end`.
-//
-// This constructor function initializes a `LineSegment` with the specified starting and ending points.
-// The generic type parameter `T` must satisfy the `SignedNumber` constraint, allowing various numeric types
-// (such as `int` or `float64`) to be used for the segment’s coordinates.
-//
-// Parameters:
-//   - start: Point[T] - The starting point of the line segment.
-//   - end: Point[T] - The ending point of the line segment.
-//
-// Returns:
-//   - LineSegment[T] - A new line segment defined by the `start` and `end` points.
-//
-// Example usage:
-//
-//	segment := NewLineSegment(NewPoint(0, 0), NewPoint(3, 4))
-//
-// Creates a line segment with generic type parameter int, from (0,0) to (3,4).
-func NewLineSegment[T SignedNumber](start, end Point[T]) LineSegment[T] {
-	return LineSegment[T]{
-		start: start,
-		end:   end,
-	}
 }

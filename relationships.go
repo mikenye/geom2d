@@ -8,16 +8,9 @@ import "fmt"
 // This enumeration categorizes how two circles relate to each other based on
 // their positions and radii. It covers scenarios such as being disjoint, touching,
 // overlapping, or one circle being contained within the other.
-//
-// Values:
-//   - CCRMiss (0): The circles are completely disjoint and do not touch or overlap.
-//   - CCRTouchingExternal (1): The circles are externally tangent, touching at exactly one point on their circumferences.
-//   - CCROverlapping (2): The circles overlap, intersecting at two distinct points.
-//   - CCRTouchingInternal (3): The circles are internally tangent, touching at exactly one point, with one circle inside the other.
-//   - CCRContained (4): One circle is entirely contained within the other, without their boundaries touching.
-//   - CCREqual (5): The circles are identical, sharing the same center and radius.
 type CircleCircleRelationship uint8
 
+// Valid values for CircleCircleRelationship
 const (
 	CCRMiss             CircleCircleRelationship = iota // Circles are disjoint
 	CCRTouchingExternal                                 // Circles are externally tangent
@@ -27,22 +20,43 @@ const (
 	CCREqual                                            // Circles are identical
 )
 
+// String returns the string representation of a [CircleCircleRelationship].
+//
+// The function converts the [CircleCircleRelationship] enum value into its
+// corresponding string representation for readability and debugging purposes.
+//
+// Panics:
+//   - If the [CircleCircleRelationship] has an unsupported or undefined value, the function will panic with a descriptive error.
+//
+// Returns:
+//   - string: The name of the [CircleCircleRelationship] enum value.
+func (r *CircleCircleRelationship) String() string {
+	switch *r {
+	case CCRMiss:
+		return "CCRMiss"
+	case CCRTouchingExternal:
+		return "CCRTouchingExternal"
+	case CCROverlapping:
+		return "CCROverlapping"
+	case CCRTouchingInternal:
+		return "CCRTouchingInternal"
+	case CCRContained:
+		return "CCRContained"
+	case CCREqual:
+		return "CCREqual"
+	default:
+		panic(fmt.Errorf("unsupported CircleCircleRelationship"))
+	}
+}
+
 // CircleLineSegmentRelationship defines the possible spatial relationships
-// between a circle and a line segment in a 2D plane.
+// between a [Circle] and a [LineSegment] in a 2D plane.
 //
-// This enumeration categorizes how a line segment relates to a circle based on
+// This enumeration categorizes how a [LineSegment] relates to a [Circle] based on
 // its position, intersection, and tangency.
-//
-// Values:
-//   - CLROutside (0): The line segment lies completely outside the circle, with no intersection or tangency.
-//   - CLRInside (1): The line segment lies completely within the circle, with both endpoints inside the circle's boundary.
-//   - CLRIntersecting (2): The line segment intersects the circle at exactly two distinct points.
-//   - CLRTangent (3): The line segment is tangent to the circle, touching it at exactly one point where the tangent forms a 90-degree angle with the circle's radius.
-//   - CLROneEndOnCircumferenceOutside (4): One endpoint of the line segment lies on the circle's boundary, while the other endpoint lies outside the circle.
-//   - CLROneEndOnCircumferenceInside (5): One endpoint of the line segment lies on the circle's boundary, while the other endpoint lies inside the circle.
-//   - CLRBothEndsOnCircumference (6): Both endpoints of the line segment lie exactly on the circle's boundary. The line segment does not extend inside or outside the circle.
 type CircleLineSegmentRelationship uint8
 
+// Valid values for CircleLineSegmentRelationship
 const (
 	// CLROutside indicates that the line segment lies completely outside the circle,
 	// with no intersection or tangency.
@@ -74,6 +88,17 @@ const (
 	CLRBothEndsOnCircumference
 )
 
+// String returns the string representation of a [CircleLineSegmentRelationship].
+//
+// This function converts the [CircleLineSegmentRelationship] enum value into a
+// corresponding string for improved readability and debugging.
+//
+// Panics:
+//   - If the [CircleLineSegmentRelationship] has an unsupported or undefined value,
+//     the function will panic.
+//
+// Returns:
+//   - string: The name of the [CircleLineSegmentRelationship] enum value.
 func (r *CircleLineSegmentRelationship) String() string {
 	switch *r {
 	case CLROutside:
@@ -96,27 +121,15 @@ func (r *CircleLineSegmentRelationship) String() string {
 }
 
 // CirclePolyTreeRelationship defines the possible spatial relationships
-// between a circle and a PolyTree, which is a hierarchical structure of polygons
+// between a [Circle] and a [PolyTree], which is a hierarchical structure of polygons
 // with holes and nested islands.
 //
-// This enumeration categorizes how a circle relates to the PolyTree, based on
-// whether the circle is inside, outside, intersecting, or touching the solid
-// and hole regions of the PolyTree.
-//
-// Values:
-//   - CPTRMiss (0): The circle lies entirely outside the PolyTree, without touching or intersecting any polygons or holes.
-//   - CPTRTouchesSolidBoundary (1): The circle touches the boundary of a solid polygon in the PolyTree without crossing it.
-//   - CPTRTouchesHoleBoundary (2): The circle touches the boundary of a hole in the PolyTree without crossing it.
-//   - CPTRIntersectsSolid (3): The circle intersects one or more solid polygons in the PolyTree, crossing their boundaries.
-//   - CPTRIntersectsHole (4): The circle intersects one or more holes in the PolyTree, crossing their boundaries.
-//   - CPTRCircleInSolid (5): The circle is fully contained within a solid polygon in the PolyTree, without touching its boundary or intersecting any holes.
-//   - CPTRCircleInHole (6): The circle is fully contained within a hole in the PolyTree, without touching its boundary or intersecting any solid polygons.
-//   - CPTRSolidInCircle (7): A solid polygon from the PolyTree is fully contained within the circle, with no part of the polygon extending outside the circle.
-//   - CPTRHoleInCircle (8): A hole from the PolyTree is fully contained within the circle, with no part of the hole extending outside the circle.
-//   - CPTRSpansSolid (9): The circle spans across multiple solid polygons in the PolyTree, intersecting their boundaries or interiors.
-//   - CPTRSpansHole (10): The circle spans across multiple holes in the PolyTree, intersecting their boundaries or interiors.
+// This enumeration categorizes how a [Circle] relates to the [PolyTree], based on
+// whether the [Circle] is inside, outside, intersecting, or touching the solid
+// and hole regions of the [PolyTree].
 type CirclePolyTreeRelationship uint8
 
+// Valid values for CirclePolyTreeRelationship
 const (
 	CPTRMiss                 CirclePolyTreeRelationship = iota // Circle lies entirely outside the PolyTree
 	CPTRTouchesSolidBoundary                                   // Circle touches the boundary of a solid polygon
@@ -132,21 +145,11 @@ const (
 )
 
 // CircleRectangleRelationship defines the possible spatial relationships
-// between a circle and a rectangle in a 2D plane.
+// between a [Circle] and a [Rectangle] in a 2D plane.
 //
-// This enumeration categorizes how a circle relates to a rectangle based on
-// their positions, intersections, and tangencies. It can distinguish whether
-// the circle is fully inside, outside, touching, intersecting, or centered on
-// specific parts of the rectangle.
-//
-// Values:
-//   - CRRMiss: The circle and rectangle are completely disjoint, with no overlap or tangency.
-//   - CRRTangentialCircleOutside: The circle is tangent to the rectangle from the outside, touching it at exactly one point.
-//   - CRRTangentialCircleInside: The circle is tangent to the rectangle from the inside, touching it at exactly one point.
-//   - CRRCircleInRect: The circle is fully contained within the rectangle without touching its edges.
-//   - CRRRectInCircle: The rectangle is fully contained within the circle without touching its boundary.
-//   - CRRRectVertexOnCircleCircumference: One of the rectangle's vertices lies exactly on the circle's circumference.
-//   - CRRIntersection: The circle and rectangle intersect without full containment, sharing overlapping areas.
+// This enumeration categorizes how a [Circle] relates to a [Rectangle] based on
+// their positions and intersections. It can distinguish whether
+// the [Circle] is fully inside, outside or intersecting the rectangle.
 type CircleRectangleRelationship uint8
 
 // Valid values for CircleRectangleRelationship
@@ -156,6 +159,32 @@ const (
 	CRRRectInCircle                                    // Rectangle is fully contained within the circle
 	CRRIntersection                                    // Circle and rectangle intersect but are not fully contained
 )
+
+// String returns the string representation of a [CircleRectangleRelationship].
+//
+// This function converts the [CircleRectangleRelationship] enum value into a
+// corresponding string for improved readability and debugging.
+//
+// Panics:
+//   - If the [CircleRectangleRelationship] has an unsupported or undefined value,
+//     the function will panic.
+//
+// Returns:
+//   - string: The name of the [CircleRectangleRelationship] enum value.
+func (r *CircleRectangleRelationship) String() string {
+	switch *r {
+	case CRRMiss:
+		return "CRRMiss"
+	case CRRCircleInRect:
+		return "CRRCircleInRect"
+	case CRRRectInCircle:
+		return "CRRRectInCircle"
+	case CRRIntersection:
+		return "CRRIntersection"
+	default:
+		panic(fmt.Errorf("unsupported CircleRectangleRelationship"))
+	}
+}
 
 // LineSegmentLineSegmentRelationship defines the possible spatial relationships
 // between two line segments in a 2D plane.

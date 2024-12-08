@@ -537,11 +537,11 @@ func TestLineSegment_Midpoint(t *testing.T) {
 			case Point[int]:
 				end := tt.end.(Point[int])
 				ls := NewLineSegment(start, end)
-				assert.Equal(t, tt.expectedMidpoint, ls.Midpoint())
+				assert.Equal(t, tt.expectedMidpoint, ls.Center())
 			case Point[float64]:
 				end := tt.end.(Point[float64])
 				ls := NewLineSegment(start, end)
-				assert.Equal(t, tt.expectedMidpoint, ls.Midpoint())
+				assert.Equal(t, tt.expectedMidpoint, ls.Center())
 			}
 		})
 	}
@@ -1019,7 +1019,7 @@ func TestLineSegment_Scale_Int(t *testing.T) {
 		},
 		//"int: Scale from midpoint by 2": { // todo: fix test
 		//	segment:  NewLineSegment[int](NewPoint(1, 1), NewPoint(4, 5)),
-		//	origin:   NewLineSegment[int](NewPoint(1, 1), NewPoint(4, 5)).Midpoint(),
+		//	origin:   NewLineSegment[int](NewPoint(1, 1), NewPoint(4, 5)).Center(),
 		//	factor:   1.5,
 		//	expected: NewLineSegment[float64](NewPoint[float64](0.25, 0), NewPoint[float64](4.75, 6)),
 		//},

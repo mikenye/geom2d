@@ -1,47 +1,13 @@
-// The polytree.go file defines the PolyTree type, a hierarchical representation
-// of polygons that supports complex geometric operations such as unions, intersections,
-// and subtractions. A PolyTree can represent solid polygons, holes, and nested structures,
-// making it suitable for a wide range of computational geometry tasks.
-//
-// Key Features:
-// - Boolean Operations: Perform union, intersection, and subtraction between polygons.
-// - Hierarchical Representation: Support for nested polygons, where solid polygons
-//   can contain hole polygons and vice versa.
-// - Traversal Utilities: Methods for efficiently traversing and manipulating the hierarchy.
-// - Intersection Detection: Robust handling of polygon edge intersections with metadata
-//   for entry/exit relationships.
-//
-// The PolyTree type and its associated methods are designed to be flexible and performant,
-// leveraging generic types to support various numeric types while maintaining precision.
-//
-// Usage Example:
-// A PolyTree can be constructed, manipulated, and queried to perform advanced operations:
-//
-//     poly1 := []Point[int]{
-//    		NewPoint(0, 0),
-//   		NewPoint(10, 0),
-//  		NewPoint(10, 10),
-// 			NewPoint(0, 10),
-//	   }
-//     poly2 := []Point[int]{
-//    		NewPoint(5, 5),
-//   		NewPoint(15, 5),
-//  		NewPoint(15, 15),
-// 			NewPoint(5, 15),
-//	   }
-//     tree1, _ := NewPolyTree(poly1, PTSolid)
-//     tree2, _ := NewPolyTree(poly2, PTSolid)
-//     result, _ := tree1.BooleanOperation(tree2, BooleanUnion)
-//
-// This file also includes helper functions for sorting, relationship checking,
-// and traversal to support the primary functionality of the PolyTree type.
-
 package geom2d
 
 import (
 	"fmt"
 	"slices"
 )
+
+// BooleanOperation defines the types of Boolean operations that can be performed on polygons.
+// These operations are fundamental in computational geometry for combining or modifying shapes.
+type BooleanOperation uint8
 
 // Valid values for BooleanOperation
 const (
@@ -262,15 +228,6 @@ var entryExitPointLookUpTable = map[BooleanOperation]map[PolygonType]map[Polygon
 		},
 	},
 }
-
-// BooleanOperation defines the types of Boolean operations that can be performed on polygons.
-// These operations are fundamental in computational geometry for combining or modifying shapes.
-//
-// The supported operations are:
-// - Union: Combines two polygons into one, merging their areas.
-// - Intersection: Finds the overlapping region between two polygons.
-// - Subtraction: Subtracts one polygon's area from another.
-type BooleanOperation uint8
 
 // NewPolyTreeOption defines a functional option type for configuring a new PolyTree during creation.
 //
@@ -1713,7 +1670,7 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 							// Determine if `poly1` is entering or exiting `poly2` using a midpoint test
 							mid := NewLineSegment(
 								poly1Point1.point,
-								poly1.contour[poly1Point2Index].point).Midpoint()
+								poly1.contour[poly1Point2Index].point).Center()
 							midT := NewPoint[T](T(mid.x), T(mid.y))
 							poly1EnteringPoly2 := poly2.contour.isPointInside(midT)
 
@@ -1730,7 +1687,7 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 							//}
 							//fmt.Printf("Poly1 [%d]: %v -> Poly2 [%d]: %v\n",
 							//	poly1Point1Index, poly1Point1.point, poly2PointIndex, poly2Point.point)
-							//fmt.Printf("Midpoint: %v, Inside Poly2: %t\n", midT, poly1EnteringPoly2)
+							//fmt.Printf("Center: %v, Inside Poly2: %t\n", midT, poly1EnteringPoly2)
 
 							// Use the lookup table to determine and set entry/exit points
 							poly1.contour[poly1Point1Index].entryExit =

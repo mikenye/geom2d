@@ -1,11 +1,3 @@
-// This file contains the implementation of the Point type, which represents a point in 2D space.
-// It includes methods for basic arithmetic operations, transformations, relationships with other types,
-// and utilities like equality checks and conversions between numeric types.
-//
-// The Point type is designed to be flexible and efficient, leveraging generics to support various numeric
-// types (e.g., int, float64). It serves as a building block for more complex geometric types like LineSegment,
-// Circle, and Rectangle.
-
 package geom2d
 
 import (
@@ -24,7 +16,7 @@ type PointOrientation uint8
 // Valid values for PointOrientation.
 const (
 	// PointsCollinear indicates that the points are collinear, meaning they lie on a single straight line.
-	PointsCollinear = PointOrientation(iota)
+	PointsCollinear PointOrientation = iota
 
 	// PointsClockwise indicates that the points are arranged in a clockwise orientation.
 	PointsClockwise
@@ -900,31 +892,17 @@ func ConvexHull[T SignedNumber](points []Point[T]) []Point[T] {
 // the order of the points (in-place) to make them clockwise. If the points are already clockwise, no changes are made.
 //
 // Parameters:
-//   - points []Point[T]: A slice of points representing the vertices of a polygon. The points are assumed
+//   - points ([][Point][T]): A slice of points representing the vertices of a polygon. The points are assumed
 //     to form a closed loop or define a valid polygon.
 //
 // Behavior:
-//   - Calculates the signed area of the polygon using SignedArea2X.
+//   - Calculates the signed area of the polygon using [SignedArea2X].
 //   - If the signed area is positive (counterclockwise orientation), reverses the order of the points.
 //   - If the signed area is negative or zero (already clockwise or degenerate polygon), does nothing.
 //
 // Notes:
 //   - This function modifies the input slice of points in place.
 //   - A zero area polygon is considered already clockwise and is left unchanged.
-//
-// Example:
-//
-//	points := []Point[float64]{
-//		NewPoint(0, 0),
-//		NewPoint(4, 0),
-//		NewPoint(4, 4),
-//	}
-//	EnsureClockwise(points)
-//	// points is now ordered in a clockwise direction.
-//
-// Dependencies:
-//   - This function uses SignedArea2X to compute the signed area of the polygon.
-//   - The slices.Reverse function is used to reverse the order of the points.
 func EnsureClockwise[T SignedNumber](points []Point[T]) {
 	if SignedArea2X(points) < 0 {
 		return // Already clockwise
@@ -940,31 +918,20 @@ func EnsureClockwise[T SignedNumber](points []Point[T]) {
 // no changes are made.
 //
 // Parameters:
-//   - points []Point[T]: A slice of points representing the vertices of a polygon. The points are assumed
+//
+//   - points ([][Point][T]): A slice of points representing the vertices of a polygon. The points are assumed
 //     to form a closed loop or define a valid polygon.
 //
 // Behavior:
-//   - Calculates the signed area of the polygon using SignedArea2X.
+//
+//   - Calculates the signed area of the polygon using [SignedArea2X].
 //   - If the signed area is negative (clockwise orientation), reverses the order of the points.
 //   - If the signed area is positive or zero (already counterclockwise or degenerate polygon), does nothing.
 //
 // Notes:
+//
 //   - This function modifies the input slice of points in place.
 //   - A zero area polygon is considered already counterclockwise and is left unchanged.
-//
-// Example:
-//
-//		points := []Point[float64]{
-//			NewPoint(0, 0),
-//			NewPoint(4, 4),
-//	     	NewPoint(4, 0),
-//		}
-//		EnsureCounterClockwise(points)
-//		// points is now ordered in a counterclockwise direction.
-//
-// Dependencies:
-//   - This function uses SignedArea2X to compute the signed area of the polygon.
-//   - The slices.Reverse function is used to reverse the order of the points.
 func EnsureCounterClockwise[T SignedNumber](points []Point[T]) {
 	if SignedArea2X(points) > 0 {
 		return // Already counterclockwise
@@ -1037,50 +1004,80 @@ func Orientation[T SignedNumber](p0, p1, p2 Point[T]) PointOrientation {
 	}
 }
 
-// RelativeAngle calculates the angle in radians between two points, A and B, relative to an optional origin Point O.
+// RelativeAngle calculates the angle in radians between two points, A and B, relative to an optional origin [Point] O.
 // This angle is measured from the origin to the line segments connecting A and B.
 // If no origin is provided, the function defaults to using the point (0, 0) as the origin.
 //
 // Parameters:
-//   - A: The first point forming one side of the angle.
-//   - B: The second point forming the other side of the angle.
-//   - O: An optional origin Point. If not provided, the origin defaults to (0, 0).
+//
+//   - A: The first [Point] forming one side of the angle.
+//   - B: The second [Point] forming the other side of the angle.
+//   - O: An optional origin [Point]. If not provided, the origin defaults to (0, 0).
 //
 // Returns:
+//
 //   - radians (float64): The angle between points A and B relative to the origin, in radians.
-//
-// Example Usage:
-//
-//	A := NewPoint(1, 0)
-//	B := NewPoint(0, 1)
-//	radians := RelativeAngle(A, B) // radians is π/2 (90 degrees) for a right angle
 func RelativeAngle[T SignedNumber](A, B Point[T], O ...Point[T]) (radians float64) {
 	return math.Acos(RelativeCosineOfAngle(A, B, O...))
 }
 
-// RelativeCosineOfAngle calculates the cosine of the angle between two points, A and B, relative to an optional origin Point O.
-// This function returns the cosine of the angle directly, avoiding the costly acos calculation, which can improve performance
+// RelativeCosineOfAngle calculates the cosine of the angle between two points, A and B, relative to an optional origin [Point] O.
+// This function returns the cosine of the angle directly, avoiding the costly [math.Acos] calculation, which can improve performance
 // in applications where only the cosine value is needed.
 //
 // If no origin is provided, the function defaults to using the point (0, 0) as the origin.
 //
 // Parameters:
-//   - A: The first point forming one side of the angle.
-//   - B: The second point forming the other side of the angle.
-//   - O: An optional origin Point. If not provided, the origin defaults to (0, 0).
+//   - A ([Point][T]): The first [Point] forming one side of the angle.
+//   - B ([Point][T]): The second [Point] forming the other side of the angle.
+//   - O ([Point][T]): An optional origin [Point]. If not provided, the origin defaults to (0, 0).
 //
 // Returns:
 //   - float64: The cosine of the angle between points A and B relative to the origin.
 //
-// Example Usage:
-//
-//	A := NewPoint(1, 0)
-//	B := NewPoint(0, 1)
-//	cosine := RelativeCosineOfAngle(A, B) // cosine is 0 for a 90-degree angle
-//
 // Note:
 //   - This function does not currently handle division by zero errors. If either vector OA or OB has zero length,
 //     a division by zero could occur. Consider adding validation if needed in such cases.
+//
+// Why Would Anyone Just Need The Cosine?
+//
+// By using the cosine of the angle, you can determine not just the relative angle but also its directionality and
+// magnitude in terms of alignment. Here's why someone might want this:
+//
+// 1. Efficient Angle Comparison
+//
+// Instead of calculating the actual angle using trigonometric functions (which are computationally expensive), you can
+// compare the cosine of angles directly. Since the cosine function is monotonic between 0 and π, you can use the cosine
+// values to determine:
+//   - If the vectors are pointing in the same direction (cos(θ) ≈ 1).
+//   - If the vectors are orthogonal (cos(θ) ≈ 0).
+//   - If the vectors are pointing in opposite directions (cos(θ) ≈ -1).
+//
+// 2. Avoiding Floating-Point Inaccuracies
+//
+// Computing the cosine of the angle avoids potential inaccuracies associated with computing the angle itself
+// (e.g., due to limited precision when converting radians to degrees or vice versa).
+//
+// 3. Applications in Sorting
+//
+// If you are sorting points or vectors relative to a reference direction, you can use [RelativeCosineOfAngle] to order
+// them based on their angular relationship. This is particularly useful in computational geometry tasks like:
+//   - Constructing a convex hull.
+//   - Ordering vertices for polygon operations.
+//
+// 4. Determining Vector Orientation
+//
+// You can use the cosine value to determine the degree of alignment between two vectors, which is helpful in:
+//   - Physics simulations (e.g., checking if a force vector aligns with a velocity vector).
+//   - Rendering graphics (e.g., checking the alignment of a surface normal with a light source).
+//
+// 5. Geometric Insight
+//
+// In geometry, understanding the relative cosine helps in:
+//   - Classifying angles (acute, obtuse, or right) without explicitly calculating them.
+//   - Performing dot product-based calculations indirectly, as cos(θ) is derived from the dot product normalized by the vectors' magnitudes.
+//
+// [math.Acos]: https://pkg.go.dev/math#Acos
 func RelativeCosineOfAngle[T SignedNumber](A, B Point[T], O ...Point[T]) float64 {
 	// Set origin point to (0,0) if not provided
 	origin := NewPoint[T](0, 0)
@@ -1107,7 +1104,7 @@ func RelativeCosineOfAngle[T SignedNumber](A, B Point[T], O ...Point[T]) float64
 
 // SignedArea2X computes twice the signed area of a polygon defined by the given points.
 //
-// The function calculates the signed area of the polygon using the Shoelace formula,
+// The function calculates the signed area of the polygon using the [Shoelace Formula],
 // adapted to sum the areas of triangles formed by consecutive points. The result is
 // twice the actual signed area, which avoids introducing fractional values and simplifies
 // calculations with integer-based coordinate types.
@@ -1117,28 +1114,19 @@ func RelativeCosineOfAngle[T SignedNumber](A, B Point[T], O ...Point[T]) float64
 // used to determine the orientation of a polygon or to compute its area efficiently.
 //
 // Parameters:
-//   - points: A slice of Point values representing the vertices of the polygon in order.
-//     The polygon is assumed to be closed, meaning the first point connects
-//     to the last point.
+//   - points ([][Point][T]): A slice of [Point] values representing the vertices of the polygon in order.
+//     The polygon is assumed to be closed, meaning the first [Point] connects to the last [Point].
 //
 // Returns:
 //   - The signed area multiplied by 2 (hence "2X").
 //     Returns 0 if the number of points is fewer than 3, as a valid polygon cannot be formed.
 //
-// Example Usage:
-//
-//	points := []Point[int]{
-//		NewPoint(0, 0),
-//		NewPoint(4, 0),
-//		NewPoint(4, 3),
-//	}
-//	signedArea := SignedArea2X(points)
-//	fmt.Println(signedArea) // Output: 12 (twice the signed area)
-//
 // Notes:
 //   - The function assumes the input points form a simple polygon (no self-intersections).
 //   - If the points are not in order, the result may not represent the true orientation
 //     or area of the intended polygon.
+//
+// [Shoelace Formula]: https://en.wikipedia.org/wiki/Shoelace_formula
 func SignedArea2X[T SignedNumber](points []Point[T]) T {
 	var area T
 	n := len(points)

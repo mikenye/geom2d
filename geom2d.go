@@ -1,15 +1,63 @@
 // Package geom2d provides a comprehensive set of tools for computational geometry in two dimensions.
 //
-// This file serves as the entry point for the package and contains utility functions and foundational
-// concepts shared across all geometric types. These include global constants, enums for relationships,
-// and generic helper functions.
-//
-// The geom2d package is built around core types like Point, LineSegment, Circle, Rectangle, and PolyTree,
+// The geom2d package is built around core types like [Point], [LineSegment], [Circle], [Rectangle], and [PolyTree],
 // supporting a wide range of operations including transformations, boolean geometry, and spatial relationships.
 //
 // Designed for both performance and clarity, geom2d leverages Go generics to handle various numeric types
 // and provides intuitive APIs for working with 2D geometric data.
-
+//
+// # Coordinate System
+//
+// This library assumes a standard Cartesian coordinate system where the x-axis increases to the right and the y-axis
+// increases upward. This system is commonly referred to as a right-handed Cartesian coordinate system.
+// All geometric operations and relationships (e.g., clockwise or counterclockwise points) are based on this convention.
+//
+// # Core Geometric Types
+//
+// The library includes support for the following 2D geometric types:
+//
+//   - [Point]: Represents a single coordinate in 2D space.
+//   - [LineSegment]: Represents a straight line segment defined by two endpoints.
+//   - [Rectangle]: Represents an axis-aligned rectangle, defined by its corners.
+//   - [Circle]: Represents a circle defined by a center point and radius.
+//   - [PolyTree]: Represents a hierarchical structure of polygons, supporting sibling polygons,
+//     nested holes and nested islands.
+//
+// # Support for Generics
+//
+// geom2d leverages Go’s generics, allowing you to use the library with different numeric types
+// (int, float32, float64, etc.). This flexibility ensures the library can adapt to various applications,
+// from integer-based grids to floating-point precision computations.
+//
+// # Precision Control with Epsilon
+//
+// geom2d incorporates an epsilon parameter in many of its relationship methods to handle floating-point
+// precision issues. This allows you to control the tolerance for comparisons, making the library robust
+// for real-world applications where precision errors can occur.
+//
+// # Relationships Between Types
+//
+// The library provides methods to compute relationships between geometric types, including:
+//
+//   - [Point]-to-Geometry Relationships: Determine whether a [Point] is inside, outside, or on the edge of a geometry.
+//   - [LineSegment]-to-Geometry Relationships: Check if a [LineSegment] intersects, touches, or is entirely inside or outside another geometry.
+//   - Geometry-to-Geometry Relationships: Explore relationships between shapes, such as overlap, containment, tangency, and intersection.
+//
+// # Acknowledgments
+//
+// geom2d builds upon the work of others and is grateful for the foundations they have laid. Specifically:
+//
+//   - Martínez et al.: Their paper on Boolean operations on polygons has been instrumental in the implementation of
+//     the Martínez algorithm in this library. See [A simple algorithm for Boolean operations on polygons].
+//   - Tom Wright: The inspiration for starting this library came from Tom Wright’s repository
+//     [Provably Correct Polygon Algorithms] and his accompanying paper. While geom2d follows its own approach,
+//     certain ideas have been influenced by his work.
+//   - This project is a collaborative effort, with assistance from [OpenAI's Assistant] for brainstorming, debugging,
+//     and refining implementations.
+//
+// [A simple algorithm for Boolean operations on polygons]: https://web.archive.org/web/20230514184409/https://www.sciencedirect.com/science/article/abs/pii/S0925772199000124
+// [Provably Correct Polygon Algorithms]: https://github.com/TooOldCoder/Provably-Correct-Polygon-Algorithms
+// [OpenAI's Assistant]: https://openai.com/
 package geom2d
 
 import (
@@ -33,27 +81,52 @@ type SignedNumber interface {
 	int | int32 | int64 | float32 | float64
 }
 
+// GeometricType is a type constraint for generic programming, representing all geometric types
+// supported in this library. It allows functions and methods to operate on any of the included
+// geometric types in a type-safe manner.
+//
+// Supported Types:
+//   - [Point]: Represents a 2D point with x and y coordinates.
+//   - [LineSegment]: Represents a line segment defined by two endpoints.
+//   - [Rectangle]: Represents an axis-aligned rectangle defined by its corner points.
+//   - [Circle]: Represents a circle defined by its center point and radius.
+//   - [PolyTree]: Represents a hierarchical polygon structure, supporting holes and islands.
+//
+// Type Parameter:
+//   - T: A type that satisfies the [SignedNumber] constraint, representing the numeric type
+//     used for the coordinates and dimensions (e.g., int, float64).
+//
+// Notes:
+//   - This interface is used purely as a type constraint for generic functions and methods.
+//   - It does not define methods that the types must implement, but rather ensures that
+//     only valid geometric types are used.
+//
+// todo: consider making private
 type GeometricType[T SignedNumber] interface {
 	Point[T] | LineSegment[T] | Rectangle[T] | Circle[T] | PolyTree[T]
 }
 
+// todo: consider making private
 type Measurable[T SignedNumber] interface {
 	Area() float64
 	Center(opts ...Option) Point[T]
 	Perimeter(opts ...Option) float64
 }
 
+// todo: consider making private
 type Spatial[T SignedNumber] interface {
 	BoundingBox() Rectangle[T]
 	ContainsPoint(p Point[T]) bool
 }
 
+// todo: consider making private
 type Transformable[T SignedNumber, R GeometricType[T]] interface {
 	Rotate(pivot Point[T], radians float64, opts ...Option) R
 	Scale(ref Point[T], k T) R
 	Translate(delta Point[T]) R
 }
 
+// todo: consider making private
 type Geometry[T SignedNumber, R GeometricType[T]] interface {
 	Measurable[T]
 	Spatial[T]

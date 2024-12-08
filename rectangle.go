@@ -1,16 +1,3 @@
-// File rectangle.go defines the Rectangle type and implements methods for operations on axis-aligned rectangles in 2D space.
-//
-// This file includes the definition of the Rectangle type, which represents a rectangular region aligned with the
-// coordinate axes. It provides methods for common operations such as calculating area and perimeter,
-// determining if a point lies within the rectangle, and testing intersections with other geometric shapes.
-//
-// Functions and methods in this file support:
-// - Calculating properties of rectangles, such as area, perimeter, and corners.
-// - Testing spatial relationships, such as containment and intersection, with points and other rectangles.
-// - Performing geometric transformations, such as translation and scaling, on rectangles.
-//
-// The Rectangle type is a key geometric primitive in the geom2d package, optimized for axis-aligned operations.
-
 package geom2d
 
 import (
@@ -656,6 +643,10 @@ func (r Rectangle[T]) ScaleWidth(factor float64) Rectangle[float64] {
 	)
 }
 
+func (r Rectangle[T]) String() string {
+	return fmt.Sprintf("Rectangle[(%v, %v), (%v, %v), (%v, %v), (%v, %v)]", r.bottomLeft.x, r.bottomLeft.y, r.bottomRight.x, r.bottomRight.y, r.topRight.x, r.topRight.y, r.topLeft.x, r.topLeft.y)
+}
+
 // Sub subtracts a vector (Point[T]) or another Rectangle[T] from the current rectangle.
 //
 // Parameters:
@@ -743,8 +734,6 @@ func (r Rectangle[T]) Width() T {
 //	})
 func NewRectangle[T SignedNumber](points []Point[T]) Rectangle[T] {
 
-	fmt.Printf("Input points: %+v\n", points)
-
 	if len(points) != 4 {
 		panic("NewRectangle requires exactly four points")
 	}
@@ -768,7 +757,7 @@ func NewRectangle[T SignedNumber](points []Point[T]) Rectangle[T] {
 		}
 	}
 
-	fmt.Printf("minX: %v, maxX: %v, minY: %v, maxY: %v\n", minX, maxX, minY, maxY)
+	//fmt.Printf("minX: %v, maxX: %v, minY: %v, maxY: %v\n", minX, maxX, minY, maxY)
 
 	// Validate that the points form an axis-aligned rectangle
 	corners := map[Point[T]]bool{

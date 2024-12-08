@@ -160,49 +160,6 @@ func TestCircle_Circumference(t *testing.T) {
 	}
 }
 
-func TestCircle_Div(t *testing.T) {
-	tests := map[string]struct {
-		circle   Circle[float64]
-		divisor  float64
-		expected Circle[float64]
-	}{
-		"positive radius divided by 2": {
-			circle:   Circle[float64]{center: NewPoint[float64](3, 4), radius: 10},
-			divisor:  2,
-			expected: Circle[float64]{center: NewPoint[float64](3, 4), radius: 5},
-		},
-		"positive radius divided by non-integer": {
-			circle:   Circle[float64]{center: NewPoint[float64](3, 4), radius: 9},
-			divisor:  2.5,
-			expected: Circle[float64]{center: NewPoint[float64](3, 4), radius: 3.6},
-		},
-		"radius divided by 1 (no change)": {
-			circle:   Circle[float64]{center: NewPoint[float64](3, 4), radius: 7},
-			divisor:  1,
-			expected: Circle[float64]{center: NewPoint[float64](3, 4), radius: 7},
-		},
-		"zero radius divided by positive divisor": {
-			circle:   Circle[float64]{center: NewPoint[float64](3, 4), radius: 0},
-			divisor:  2,
-			expected: Circle[float64]{center: NewPoint[float64](3, 4), radius: 0},
-		},
-		"large divisor reduces radius close to zero": {
-			circle:   Circle[float64]{center: NewPoint[float64](3, 4), radius: 10},
-			divisor:  1000,
-			expected: Circle[float64]{center: NewPoint[float64](3, 4), radius: 0.01},
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			result := tt.circle.Div(tt.divisor)
-			assert.InDelta(t, tt.expected.center.x, result.center.x, 0.001)
-			assert.InDelta(t, tt.expected.center.y, result.center.y, 0.001)
-			assert.InDelta(t, tt.expected.radius, result.radius, 0.001)
-		})
-	}
-}
-
 func TestCircle_Eq(t *testing.T) {
 	tests := map[string]struct {
 		circle1  Circle[float64]
@@ -620,38 +577,6 @@ func TestCircle_String(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			result := tt.circle.String()
 			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestCircle_Sub(t *testing.T) {
-	tests := map[string]struct {
-		circle   Circle[float64]
-		vector   Point[float64]
-		expected Circle[float64]
-	}{
-		"subtract positive vector from circle center": {
-			circle:   Circle[float64]{center: NewPoint[float64](5, 5), radius: 3},
-			vector:   NewPoint[float64](2, 3),
-			expected: Circle[float64]{center: NewPoint[float64](3, 2), radius: 3},
-		},
-		"subtract negative vector from circle center": {
-			circle:   Circle[float64]{center: NewPoint[float64](5, 5), radius: 3},
-			vector:   NewPoint[float64](-1, -2),
-			expected: Circle[float64]{center: NewPoint[float64](6, 7), radius: 3},
-		},
-		"subtract zero vector from circle center": {
-			circle:   Circle[float64]{center: NewPoint[float64](5, 5), radius: 3},
-			vector:   NewPoint[float64](0, 0),
-			expected: Circle[float64]{center: NewPoint[float64](5, 5), radius: 3},
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			result := tt.circle.Sub(tt.vector)
-			assert.Equal(t, tt.expected.center, result.center)
-			assert.Equal(t, tt.expected.radius, result.radius)
 		})
 	}
 }
