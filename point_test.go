@@ -488,7 +488,8 @@ func TestPoint_Eq(t *testing.T) {
 	}
 }
 
-func TestPoint_IsOnLineSegment(t *testing.T) {
+// todo: move to linesegment_test.go
+func TestLineSegment_ContainsPoint(t *testing.T) {
 	tests := map[string]struct {
 		point    any
 		segment  any
@@ -551,11 +552,11 @@ func TestPoint_IsOnLineSegment(t *testing.T) {
 			switch point := tt.point.(type) {
 			case Point[int]:
 				segment := tt.segment.(LineSegment[int])
-				result := point.IsOnLineSegment(segment)
+				result := segment.ContainsPoint(point)
 				assert.Equal(t, tt.expected, result, "Test %s failed", name)
 			case Point[float64]:
 				segment := tt.segment.(LineSegment[float64])
-				result := point.IsOnLineSegment(segment)
+				result := segment.ContainsPoint(point)
 				assert.Equal(t, tt.expected, result, "Test %s failed", name)
 			default:
 				t.Errorf("Unsupported point type in test %s", name)

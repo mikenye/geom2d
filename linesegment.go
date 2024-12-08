@@ -190,8 +190,33 @@ func (AB LineSegment[T]) Center(opts ...Option) Point[float64] {
 	return NewPoint[float64](midX, midY)
 }
 
+// ContainsPoint determines whether the given [Point] lies on the LineSegment.
+//
+// This method first checks if the [Point] is collinear with the endpoints of the
+// [LineSegment] using an [Orientation]. If the [Point] is not collinear, it
+// cannot be on the segment. If the [Point] is collinear, the function then verifies
+// if the [Point] lies within the bounding box defined by the segment's endpoints.
+//
+// Parameters:
+//   - l: LineSegment[T], the line segment against which the Point's position is tested.
+//
+// Returns:
+//   - bool: true if the [Point] lies on the LineSegment, false otherwise.
+//
+// Example usage:
+//
+//	p := NewPoint[float64](1, 1)
+//	segment := NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2))
+//	onSegment := p.IsOnLineSegment(segment)  // true as p lies on segment
 func (AB LineSegment[T]) ContainsPoint(p Point[T]) bool {
-	return p.IsOnLineSegment(AB)
+	// Check collinearity first; if not collinear, point is not on the line segment
+	if Orientation(p, AB.start, AB.end) != PointsCollinear {
+		return false
+	}
+
+	// Check if the point lies within the bounding box defined by A and End
+	return p.x >= min(AB.start.x, AB.end.x) && p.x <= max(AB.start.x, AB.end.x) &&
+		p.y >= min(AB.start.y, AB.end.y) && p.y <= max(AB.start.y, AB.end.y)
 }
 
 // DistanceToLineSegment calculates the minimum distance between two line segments, AB and CD.
@@ -671,19 +696,19 @@ func (AB LineSegment[T]) RelationshipToLineSegment(CD LineSegment[T], opts ...Op
 		switch {
 
 		// Check if A lies on CD
-		case AB.start.IsOnLineSegment(CD) && !AB.end.IsOnLineSegment(CD):
+		case CD.ContainsPoint(AB.start) && !CD.ContainsPoint(AB.end):
 			return LLRAonCD
 
 		// Check if End lies on CD
-		case !AB.start.IsOnLineSegment(CD) && AB.end.IsOnLineSegment(CD):
+		case !CD.ContainsPoint(AB.start) && CD.ContainsPoint(AB.end):
 			return LLRBonCD
 
 		// Check if C lies on AB
-		case CD.start.IsOnLineSegment(AB) && !CD.end.IsOnLineSegment(AB):
+		case AB.ContainsPoint(CD.start) && !AB.ContainsPoint(CD.end):
 			return LLRConAB
 
 		// Check if D lies on AB
-		case !CD.start.IsOnLineSegment(AB) && CD.end.IsOnLineSegment(AB):
+		case !AB.ContainsPoint(CD.start) && AB.ContainsPoint(CD.end):
 			return LLRDonAB
 
 		// Default case that lines intersect without any "edge cases"
@@ -695,23 +720,23 @@ func (AB LineSegment[T]) RelationshipToLineSegment(CD LineSegment[T], opts ...Op
 	// PointsCollinear cases: All orientations are zero
 	if o1 == 0 && o2 == 0 && o3 == 0 && o4 == 0 {
 		// Check if segments are collinear and disjoint
-		if !AB.start.IsOnLineSegment(CD) && !AB.end.IsOnLineSegment(CD) &&
-			!CD.start.IsOnLineSegment(AB) && !CD.end.IsOnLineSegment(AB) {
+		if !CD.ContainsPoint(AB.start) && !CD.ContainsPoint(AB.end) &&
+			!AB.ContainsPoint(CD.start) && !AB.ContainsPoint(CD.end) {
 			return LLRCollinearDisjoint
 		}
 		// Check if AB is fully contained within CD
-		if AB.start.IsOnLineSegment(CD) && AB.end.IsOnLineSegment(CD) {
+		if CD.ContainsPoint(AB.start) && CD.ContainsPoint(AB.end) {
 			return LLRCollinearABinCD
 		}
 		// Check if CD is fully contained within AB
-		if CD.start.IsOnLineSegment(AB) && CD.end.IsOnLineSegment(AB) {
+		if AB.ContainsPoint(CD.start) && AB.ContainsPoint(CD.end) {
 			return LLRCollinearCDinAB
 		}
 		// Check specific collinear partial overlaps
-		if AB.start.IsOnLineSegment(CD) {
+		if CD.ContainsPoint(AB.start) {
 			return LLRCollinearAonCD
 		}
-		if AB.end.IsOnLineSegment(CD) {
+		if CD.ContainsPoint(AB.end) {
 			return LLRCollinearBonCD
 		}
 	}

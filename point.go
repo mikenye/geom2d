@@ -348,36 +348,6 @@ func (p Point[T]) Eq(q Point[T], opts ...Option) bool {
 	return p.x == q.x && p.y == q.y
 }
 
-// IsOnLineSegment determines whether a Point lies on a given LineSegment.
-//
-// This method first checks if the point is collinear with the endpoints of the
-// line segment using an orientation check. If the point is not collinear, it
-// cannot be on the segment. If the point is collinear, the function then verifies
-// if the point lies within the bounding box defined by the segment's endpoints.
-//
-// Parameters:
-//   - l: LineSegment[T], the line segment against which the Point's position is tested.
-//
-// Returns:
-//   - bool: true if the Point lies on the LineSegment, false otherwise.
-//
-// Example usage:
-//
-//	p := NewPoint[float64](1, 1)
-//	segment := NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2))
-//	onSegment := p.IsOnLineSegment(segment)  // true as p lies on segment
-func (p Point[T]) IsOnLineSegment(l LineSegment[T]) bool {
-
-	// Check collinearity first; if not collinear, point is not on the line segment
-	if Orientation(p, l.start, l.end) != PointsCollinear {
-		return false
-	}
-
-	// Check if the point lies within the bounding box defined by A and End
-	return p.x >= min(l.start.x, l.end.x) && p.x <= max(l.start.x, l.end.x) &&
-		p.y >= min(l.start.y, l.end.y) && p.y <= max(l.start.y, l.end.y)
-}
-
 // ProjectOntoLineSegment projects the Point p onto a given LineSegment l.
 //
 // The function calculates the closest point on the LineSegment defined by

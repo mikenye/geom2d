@@ -19,7 +19,7 @@ func intersects[T SignedNumber](a, b any, opts ...Option) bool {
 		case Point[T]:
 			return a.Eq(b, opts...)
 		case LineSegment[T]:
-			return a.IsOnLineSegment(b) // todo: implement epsilon?
+			return b.ContainsPoint(a) // todo: implement epsilon?
 		case Rectangle[T]:
 			return intersectsPointRectangle(a, b) // todo: implement epsilon?
 		case Circle[T]:
@@ -33,7 +33,7 @@ func intersects[T SignedNumber](a, b any, opts ...Option) bool {
 	case LineSegment[T]:
 		switch b := b.(type) {
 		case Point[T]:
-			return b.IsOnLineSegment(a) // todo: implement epsilon?
+			return a.ContainsPoint(b) // todo: implement epsilon?
 		case LineSegment[T]:
 			return a.IntersectsLineSegment(b) // todo: implement epsilon?
 		case Rectangle[T]:

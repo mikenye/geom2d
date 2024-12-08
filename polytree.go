@@ -817,7 +817,7 @@ func (c *contour[T]) isPointInside(point Point[T]) bool {
 	// Determine the relationship of each edge to the ray.
 	for i := range edges {
 		// If the point lies directly on the edge, consider it inside.
-		if point.IsOnLineSegment(edges[i].lineSegment) {
+		if edges[i].lineSegment.ContainsPoint(point) {
 			return true
 		}
 
