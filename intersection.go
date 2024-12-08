@@ -11,6 +11,8 @@ import "log"
 //
 // Returns:
 //   - bool: True if the objects intersect, false otherwise.
+//
+// todo: use the Relationship* functions
 func intersects[T SignedNumber](a, b any, opts ...Option) bool {
 
 	switch a := a.(type) {
@@ -105,7 +107,7 @@ func intersects[T SignedNumber](a, b any, opts ...Option) bool {
 
 func intersectsPointRectangle[T SignedNumber](p Point[T], r Rectangle[T]) bool {
 	rel := r.RelationshipToPoint(p) // todo: implement epsilon?
-	if rel == PRROnEdge || rel == PRROnVertex {
+	if rel == RelationshipPointRectanglePointOnEdge || rel == RelationshipPointRectanglePointOnVertex {
 		return true
 	}
 	return false
@@ -113,7 +115,7 @@ func intersectsPointRectangle[T SignedNumber](p Point[T], r Rectangle[T]) bool {
 
 func intersectsPointCircle[T SignedNumber](p Point[T], c Circle[T], opts ...Option) bool {
 	rel := c.RelationshipToPoint(p, opts...)
-	if rel == PCROnCircumference {
+	if rel == RelationshipPointCircleOnCircumference {
 		return true
 	}
 	return false
@@ -122,7 +124,7 @@ func intersectsPointCircle[T SignedNumber](p Point[T], c Circle[T], opts ...Opti
 func intersectsLineSegmentRectangle[T SignedNumber](l LineSegment[T], r Rectangle[T], opts ...Option) bool {
 	rel := r.RelationshipToLineSegment(l)
 	switch rel {
-	case RLROutsideEndTouchesEdge, RLROutsideEndTouchesVertex, RLRInsideEndTouchesEdge, RLRInsideEndTouchesVertex, RLROnEdge, RLROnEdgeEndTouchesVertex, RLRIntersects, RLREntersAndExits:
+	case RelationshipLineSegmentRectangleEndTouchesEdgeExternally, RelationshipLineSegmentRectangleEndTouchesVertexExternally, RelationshipLineSegmentRectangleEndTouchesEdgeInternally, RelationshipLineSegmentRectangleEndTouchesVertexInternally, RelationshipLineSegmentRectangleEdgeCollinear, RelationshipLineSegmentRectangleEdgeCollinearTouchingVertex, RelationshipLineSegmentRectangleIntersects, RelationshipLineSegmentRectangleEntersAndExits:
 		return true
 	default:
 		return false
@@ -132,7 +134,7 @@ func intersectsLineSegmentRectangle[T SignedNumber](l LineSegment[T], r Rectangl
 func intersectsLineSegmentCircle[T SignedNumber](l LineSegment[T], c Circle[T], opts ...Option) bool {
 	rel := c.RelationshipToLineSegment(l, opts...)
 	switch rel {
-	case CLRIntersecting, CLRTangent, CLROneEndOnCircumferenceOutside, CLROneEndOnCircumferenceInside, CLRBothEndsOnCircumference:
+	case RelationshipLineSegmentCircleIntersecting, RelationshipLineSegmentCircleTangentToCircle, RelationshipLineSegmentCircleEndOnCircumferenceOutside, RelationshipLineSegmentCircleEndOnCircumferenceInside, RelationshipLineSegmentCircleBothEndsOnCircumference:
 		return true
 	default:
 		return false

@@ -329,59 +329,6 @@ func TestPoint_DistanceToPoint(t *testing.T) {
 	}
 }
 
-func TestPoint_Div(t *testing.T) {
-	tests := []struct {
-		name     string
-		p        any            // Use `any` to handle different Point types
-		k        any            // The divisor, which can be int or float64
-		expected Point[float64] // Expected result as a Point[float64] since division produces float results
-	}{
-		// Integer division cases
-		{
-			name:     "int: (2,3)/2",
-			p:        NewPoint(2, 3),
-			k:        2,
-			expected: NewPoint(1.0, 1.5),
-		},
-		{
-			name:     "int: (4,6)/2",
-			p:        NewPoint(4, 6),
-			k:        2,
-			expected: NewPoint(2.0, 3.0),
-		},
-
-		// Float64 division cases
-		{
-			name:     "float64: (2.0,3.0)/2.0",
-			p:        NewPoint(2.0, 3.0),
-			k:        2.0,
-			expected: NewPoint(1.0, 1.5),
-		},
-		{
-			name:     "float64: (4.5,6.0)/1.5",
-			p:        NewPoint(4.5, 6.0),
-			k:        1.5,
-			expected: NewPoint(3.0, 4.0),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			switch p := tt.p.(type) {
-			case Point[int]:
-				k := tt.k.(int)
-				actual := p.Div(k)
-				assert.Equal(t, tt.expected, actual)
-
-			case Point[float64]:
-				k := tt.k.(float64)
-				actual := p.Div(k)
-				assert.Equal(t, tt.expected, actual)
-			}
-		})
-	}
-}
-
 func TestPoint_DotProduct(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -716,44 +663,44 @@ func TestPoint_RelationshipToLineSegment(t *testing.T) {
 		point       Point[int]
 		segment     LineSegment[int]
 		epsilon     float64
-		expectedRel PointLineSegmentRelationship
+		expectedRel RelationshipPointLineSegment
 	}{
 		"Point equals start of segment": {
 			point:       NewPoint(0, 0),
 			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
-			expectedRel: PLRPointEqStart,
+			expectedRel: RelationshipPointLineSegmentPointEqStart,
 		},
 		"Point equals end of segment": {
 			point:       NewPoint(10, 10),
 			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
-			expectedRel: PLRPointEqEnd,
+			expectedRel: RelationshipPointLineSegmentPointEqEnd,
 		},
 		"Point on the segment": {
 			point:       NewPoint(5, 5),
 			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
-			expectedRel: PLRPointOnLineSegment,
+			expectedRel: RelationshipPointLineSegmentPointOnLineSegment,
 		},
 		"Point outside bounding box but collinear": {
 			point:       NewPoint(-5, -5),
 			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
-			expectedRel: PLRPointOnLine,
+			expectedRel: RelationshipPointLineSegmentCollinearDisjoint,
 		},
 		"Point not on line": {
 			point:       NewPoint(5, 6),
 			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
-			expectedRel: PLRMiss,
+			expectedRel: RelationshipPointLineSegmentMiss,
 		},
 		"Point on the segment with epsilon": {
 			point:       NewPoint(5, 5),
 			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
 			epsilon:     1e-10,
-			expectedRel: PLRPointOnLineSegment,
+			expectedRel: RelationshipPointLineSegmentPointOnLineSegment,
 		},
 		"Point just outside segment with small epsilon": {
 			point:       NewPoint(5, 5),
 			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
 			epsilon:     -1e-10, // No tolerance
-			expectedRel: PLRPointOnLineSegment,
+			expectedRel: RelationshipPointLineSegmentPointOnLineSegment,
 		},
 	}
 
@@ -775,7 +722,7 @@ func TestPoint_RelationshipToPolyTree(t *testing.T) {
 		point        Point[int]
 		polyTreeFunc func() (*PolyTree[int], error)
 		epsilon      float64
-		expectedRel  PointPolyTreeRelationship
+		expectedRel  RelationshipPointPolyTree
 	}{
 		"Point Outside": {
 			point: NewPoint(15, 15),
@@ -825,7 +772,7 @@ func TestPoint_RelationshipToPolyTree(t *testing.T) {
 			epsilon:     1e-10,
 			expectedRel: PPTRPointInHole,
 		},
-		"Point on Vertex (PLRPointEqStart)": {
+		"Point on Vertex (RelationshipPointLineSegmentPointEqStart)": {
 			point: NewPoint(0, 0), // Coincides with the start of an edge in the root polygon
 			polyTreeFunc: func() (*PolyTree[int], error) {
 				return NewPolyTree([]Point[int]{
@@ -834,7 +781,7 @@ func TestPoint_RelationshipToPolyTree(t *testing.T) {
 			},
 			expectedRel: PPTRPointOnVertex,
 		},
-		"Point on Vertex (PLRPointEqEnd)": {
+		"Point on Vertex (RelationshipPointLineSegmentPointEqEnd)": {
 			point: NewPoint(10, 0), // Coincides with the end of an edge in the root polygon
 			polyTreeFunc: func() (*PolyTree[int], error) {
 				return NewPolyTree([]Point[int]{
@@ -1052,66 +999,6 @@ func TestPoint_String(t *testing.T) {
 			case Point[float64]:
 				actual := p.String()
 				assert.Equal(t, tt.expected, actual)
-			}
-		})
-	}
-}
-
-func TestPoint_Sub(t *testing.T) {
-	tests := []struct {
-		name     string
-		p, q     any // Supports different Point types with `any`
-		expected any // Expected result after subtraction
-	}{
-		// Integer points
-		{
-			name:     "int: (1,2) - (3,4)",
-			p:        NewPoint(1, 2),
-			q:        NewPoint(3, 4),
-			expected: NewPoint(-2, -2),
-		},
-		{
-			name:     "int: (5,5) - (2,3)",
-			p:        NewPoint(5, 5),
-			q:        NewPoint(2, 3),
-			expected: NewPoint(3, 2),
-		},
-		{
-			name:     "int: (3,4) - (0,0)",
-			p:        NewPoint(3, 4),
-			q:        NewPoint(0, 0),
-			expected: NewPoint(3, 4),
-		},
-
-		// Float64 points
-		{
-			name:     "float64: (1.0,2.0) - (3.0,4.0)",
-			p:        NewPoint(1.0, 2.0),
-			q:        NewPoint(3.0, 4.0),
-			expected: NewPoint(-2.0, -2.0),
-		},
-		{
-			name:     "float64: (5.5,5.5) - (2.0,3.0)",
-			p:        NewPoint(5.5, 5.5),
-			q:        NewPoint(2.0, 3.0),
-			expected: NewPoint(3.5, 2.5),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			switch p := tt.p.(type) {
-			case Point[int]:
-				q := tt.q.(Point[int])
-				expected := tt.expected.(Point[int])
-				actual := p.Sub(q)
-				assert.Equal(t, expected, actual)
-
-			case Point[float64]:
-				q := tt.q.(Point[float64])
-				expected := tt.expected.(Point[float64])
-				actual := p.Sub(q)
-				assert.Equal(t, expected, actual)
 			}
 		})
 	}

@@ -101,7 +101,7 @@ func ExampleCircle_RelationshipToCircle_ccrmiss() {
 	c1 := geom2d.NewCircle(geom2d.NewPoint(-6, 0), 5)
 	c2 := geom2d.NewCircle(geom2d.NewPoint(6, 0), 5)
 	rel := c1.RelationshipToCircle(c2, geom2d.WithEpsilon(1e-10))
-	fmt.Println(rel == geom2d.CCRMiss)
+	fmt.Println(rel == geom2d.RelationshipCircleCircleMiss)
 	// Output:
 	// true
 }
@@ -110,7 +110,7 @@ func ExampleCircle_RelationshipToCircle_ccrtouchingexternal() {
 	c1 := geom2d.NewCircle(geom2d.NewPoint(-5, 0), 5)
 	c2 := geom2d.NewCircle(geom2d.NewPoint(5, 0), 5)
 	rel := c1.RelationshipToCircle(c2, geom2d.WithEpsilon(1e-10))
-	fmt.Println(rel == geom2d.CCRTouchingExternal)
+	fmt.Println(rel == geom2d.RelationshipCircleCircleExternallyTangent)
 	// Output:
 	// true
 }
@@ -119,7 +119,7 @@ func ExampleCircle_RelationshipToCircle_ccroverlapping() {
 	c1 := geom2d.NewCircle(geom2d.NewPoint(-4, 0), 5)
 	c2 := geom2d.NewCircle(geom2d.NewPoint(4, 0), 5)
 	rel := c1.RelationshipToCircle(c2, geom2d.WithEpsilon(1e-10))
-	fmt.Println(rel == geom2d.CCROverlapping)
+	fmt.Println(rel == geom2d.RelationshipCircleCircleIntersection)
 	// Output:
 	// true
 }
@@ -128,7 +128,7 @@ func ExampleCircle_RelationshipToCircle_ccrtouchinginternal() {
 	c1 := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
 	c2 := geom2d.NewCircle(geom2d.NewPoint(3, 0), 2)
 	rel := c1.RelationshipToCircle(c2, geom2d.WithEpsilon(1e-10))
-	fmt.Println(rel == geom2d.CCRTouchingInternal)
+	fmt.Println(rel == geom2d.RelationshipCircleCircleInternallyTangent)
 	// Output:
 	// true
 }
@@ -137,7 +137,7 @@ func ExampleCircle_RelationshipToCircle_ccrcontained() {
 	c1 := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
 	c2 := geom2d.NewCircle(geom2d.NewPoint(0, 0), 2)
 	rel := c1.RelationshipToCircle(c2, geom2d.WithEpsilon(1e-10))
-	fmt.Println(rel == geom2d.CCRContained)
+	fmt.Println(rel == geom2d.RelationshipCircleCircleContained)
 	// Output:
 	// true
 }
@@ -146,7 +146,7 @@ func ExampleCircle_RelationshipToCircle_ccrequal() {
 	c1 := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
 	c2 := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
 	rel := c1.RelationshipToCircle(c2, geom2d.WithEpsilon(1e-10))
-	fmt.Println(rel == geom2d.CCREqual)
+	fmt.Println(rel == geom2d.RelationshipCircleCircleEqual)
 	// Output:
 	// true
 }
@@ -157,7 +157,7 @@ func ExampleCircle_RelationshipToLineSegment_clroutside() {
 	relationship := circle.RelationshipToLineSegment(lineSeg, geom2d.WithEpsilon(1e-10))
 	fmt.Println(relationship.String())
 	// Output:
-	// CLROutside
+	// RelationshipLineSegmentCircleMiss
 }
 
 func ExampleCircle_RelationshipToLineSegment_clrinside() {
@@ -166,7 +166,7 @@ func ExampleCircle_RelationshipToLineSegment_clrinside() {
 	relationship := circle.RelationshipToLineSegment(lineSeg, geom2d.WithEpsilon(1e-10))
 	fmt.Println(relationship.String())
 	// Output:
-	// CLRInside
+	// RelationshipLineSegmentCircleContainedByCircle
 }
 
 func ExampleCircle_RelationshipToLineSegment_clrintersecting() {
@@ -175,7 +175,7 @@ func ExampleCircle_RelationshipToLineSegment_clrintersecting() {
 	relationship := circle.RelationshipToLineSegment(lineSeg, geom2d.WithEpsilon(1e-10))
 	fmt.Println(relationship.String())
 	// Output:
-	// CLRIntersecting
+	// RelationshipLineSegmentCircleIntersecting
 }
 
 func ExampleCircle_RelationshipToLineSegment_clrtangent() {
@@ -184,7 +184,7 @@ func ExampleCircle_RelationshipToLineSegment_clrtangent() {
 	relationship := circle.RelationshipToLineSegment(lineSeg, geom2d.WithEpsilon(1e-10))
 	fmt.Println(relationship.String())
 	// Output:
-	// CLRTangent
+	// RelationshipLineSegmentCircleTangentToCircle
 }
 
 func ExampleCircle_RelationshipToLineSegment_clroneendoncircumferenceoutside() {
@@ -193,7 +193,7 @@ func ExampleCircle_RelationshipToLineSegment_clroneendoncircumferenceoutside() {
 	relationship := circle.RelationshipToLineSegment(lineSeg, geom2d.WithEpsilon(1e-10))
 	fmt.Println(relationship.String())
 	// Output:
-	// CLROneEndOnCircumferenceOutside
+	// RelationshipLineSegmentCircleEndOnCircumferenceOutside
 }
 
 func ExampleCircle_RelationshipToLineSegment_clroneendoncircumferenceinside() {
@@ -202,7 +202,7 @@ func ExampleCircle_RelationshipToLineSegment_clroneendoncircumferenceinside() {
 	relationship := circle.RelationshipToLineSegment(lineSeg, geom2d.WithEpsilon(1e-10))
 	fmt.Println(relationship.String())
 	// Output:
-	// CLROneEndOnCircumferenceInside
+	// RelationshipLineSegmentCircleEndOnCircumferenceInside
 }
 
 func ExampleCircle_RelationshipToLineSegment_clrbothendsoncircumference() {
@@ -211,7 +211,7 @@ func ExampleCircle_RelationshipToLineSegment_clrbothendsoncircumference() {
 	relationship := circle.RelationshipToLineSegment(lineSeg, geom2d.WithEpsilon(1e-10))
 	fmt.Println(relationship.String())
 	// Output:
-	// CLRBothEndsOnCircumference
+	// RelationshipLineSegmentCircleBothEndsOnCircumference
 }
 
 func ExampleCircle_RelationshipToPoint_pcroutside() {
@@ -220,7 +220,7 @@ func ExampleCircle_RelationshipToPoint_pcroutside() {
 	relationship := circle.RelationshipToPoint(point, geom2d.WithEpsilon(1e-10))
 	fmt.Println(relationship.String())
 	// Output:
-	// PCROutside
+	// RelationshipPointCircleMiss
 }
 
 func ExampleCircle_RelationshipToPoint_pcroncircumference() {
@@ -229,7 +229,7 @@ func ExampleCircle_RelationshipToPoint_pcroncircumference() {
 	relationship := circle.RelationshipToPoint(point, geom2d.WithEpsilon(1e-10))
 	fmt.Println(relationship.String())
 	// Output:
-	// PCROnCircumference
+	// RelationshipPointCircleOnCircumference
 }
 
 func ExampleCircle_RelationshipToPoint_pcrinside() {
@@ -238,7 +238,7 @@ func ExampleCircle_RelationshipToPoint_pcrinside() {
 	relationship := circle.RelationshipToPoint(point, geom2d.WithEpsilon(1e-10))
 	fmt.Println(relationship.String())
 	// Output:
-	// PCRInside
+	// RelationshipPointCircleContainedByCircle
 }
 
 func ExampleCircle_RelationshipToRectangle_crrmiss() {
@@ -252,7 +252,7 @@ func ExampleCircle_RelationshipToRectangle_crrmiss() {
 	relationship := circle.RelationshipToRectangle(rectangle)
 	fmt.Println(relationship.String())
 	// Output:
-	// CRRMiss
+	// RelationshipRectangleCircleMiss
 }
 
 func ExampleCircle_RelationshipToRectangle_crrcircleinrect() {
@@ -266,7 +266,7 @@ func ExampleCircle_RelationshipToRectangle_crrcircleinrect() {
 	relationship := circle.RelationshipToRectangle(rectangle)
 	fmt.Println(relationship.String())
 	// Output:
-	// CRRCircleInRect
+	// RelationshipRectangleCircleContainedByRectangle
 }
 
 func ExampleCircle_RelationshipToRectangle_crrrectincircle() {
@@ -280,7 +280,7 @@ func ExampleCircle_RelationshipToRectangle_crrrectincircle() {
 	relationship := circle.RelationshipToRectangle(rectangle)
 	fmt.Println(relationship.String())
 	// Output:
-	// CRRRectInCircle
+	// RelationshipRectangleCircleContainedByCircle
 }
 
 func ExampleCircle_RelationshipToRectangle_crrintersection() {
@@ -294,7 +294,7 @@ func ExampleCircle_RelationshipToRectangle_crrintersection() {
 	relationship := circle.RelationshipToRectangle(rectangle)
 	fmt.Println(relationship.String())
 	// Output:
-	// CRRIntersection
+	// RelationshipRectangleCircleIntersection
 }
 
 func ExampleCircle_Rotate() {

@@ -403,82 +403,82 @@ func TestRectangle_RelationshipToLineSegment(t *testing.T) {
 	tests := map[string]struct {
 		rect     Rectangle[int]
 		segment  LineSegment[int]
-		expected RectangleLineSegmentRelationship
+		expected RelationshipLineSegmentRectangle
 	}{
 		"segment completely outside": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(6, 6), NewPoint(7, 7)),
-			expected: RLROutside,
+			expected: RelationshipLineSegmentRectangleMiss,
 		},
 		"segment outside with one end touching edge": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(0, 3), NewPoint(1, 3)),
-			expected: RLROutsideEndTouchesEdge,
+			expected: RelationshipLineSegmentRectangleEndTouchesEdgeExternally,
 		},
 		"segment outside with one end touching vertex": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(0, 0), NewPoint(1, 1)),
-			expected: RLROutsideEndTouchesVertex,
+			expected: RelationshipLineSegmentRectangleEndTouchesVertexExternally,
 		},
 		"segment completely inside": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(2, 2), NewPoint(3, 3)),
-			expected: RLRInside,
+			expected: RelationshipLineSegmentRectangleContainedByRectangle,
 		},
 		"segment inside with one end touching edge": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(2, 2), NewPoint(1, 3)),
-			expected: RLRInsideEndTouchesEdge,
+			expected: RelationshipLineSegmentRectangleEndTouchesEdgeInternally,
 		},
 		"segment inside with one end touching vertex": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(3, 3), NewPoint(1, 1)),
-			expected: RLRInsideEndTouchesVertex,
+			expected: RelationshipLineSegmentRectangleEndTouchesVertexInternally,
 		},
 		"segment lying on edge": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(2, 1), NewPoint(4, 1)),
-			expected: RLROnEdge,
+			expected: RelationshipLineSegmentRectangleEdgeCollinear,
 		},
 		"segment on edge with end touching vertex": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(1, 1), NewPoint(1, 5)),
-			expected: RLROnEdgeEndTouchesVertex,
+			expected: RelationshipLineSegmentRectangleEdgeCollinearTouchingVertex,
 		},
 		"segment intersecting through one edge diagonally": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(0, 0), NewPoint(3, 3)),
-			expected: RLRIntersects,
+			expected: RelationshipLineSegmentRectangleIntersects,
 		},
 		"segment entering through edge": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(0, 3), NewPoint(3, 3)),
-			expected: RLRIntersects,
+			expected: RelationshipLineSegmentRectangleIntersects,
 		},
 		"segment intersecting through two edges diagonally": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(0, 0), NewPoint(6, 6)),
-			expected: RLREntersAndExits,
+			expected: RelationshipLineSegmentRectangleEntersAndExits,
 		},
 		"segment entering and exiting through different edges": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(0, 3), NewPoint(6, 3)),
-			expected: RLREntersAndExits,
+			expected: RelationshipLineSegmentRectangleEntersAndExits,
 		},
 		"degenerate segment on vertex": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(1, 1), NewPoint(1, 1)),
-			expected: RLROutsideEndTouchesVertex,
+			expected: RelationshipLineSegmentRectangleEndTouchesVertexExternally,
 		},
 		"segment through opposite vertices": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(1, 1), NewPoint(5, 5)),
-			expected: RLRInsideEndTouchesVertex,
+			expected: RelationshipLineSegmentRectangleEndTouchesVertexInternally,
 		},
 		"partially collinear segment on one edge": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(5, 5)),
 			segment:  NewLineSegment(NewPoint(1, 2), NewPoint(1, 0)),
-			expected: RLROutsideEndTouchesEdge,
+			expected: RelationshipLineSegmentRectangleEndTouchesEdgeExternally,
 		},
 	}
 
@@ -499,57 +499,57 @@ func TestRectangle_RelationshipToPoint(t *testing.T) {
 	tests := map[string]struct {
 		rect     Rectangle[int]
 		point    Point[int]
-		expected PointRectangleRelationship
+		expected RelationshipPointRectangle
 	}{
 		"point inside rectangle": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(5, 10),
-			expected: PRRInside,
+			expected: RelationshipPointRectangleContainedByRectangle,
 		},
 		"point outside rectangle": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(15, 10),
-			expected: PRROutside,
+			expected: RelationshipPointRectangleMiss,
 		},
 		"point on top-left vertex": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(0, 0),
-			expected: PRROnVertex,
+			expected: RelationshipPointRectanglePointOnVertex,
 		},
 		"point on bottom-right vertex": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(10, 20),
-			expected: PRROnVertex,
+			expected: RelationshipPointRectanglePointOnVertex,
 		},
 		"point on bottom-left vertex": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(0, 20),
-			expected: PRROnVertex,
+			expected: RelationshipPointRectanglePointOnVertex,
 		},
 		"point on top-right vertex": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(10, 0),
-			expected: PRROnVertex,
+			expected: RelationshipPointRectanglePointOnVertex,
 		},
 		"point on top edge": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(5, 0),
-			expected: PRROnEdge,
+			expected: RelationshipPointRectanglePointOnEdge,
 		},
 		"point on left edge": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(0, 10),
-			expected: PRROnEdge,
+			expected: RelationshipPointRectanglePointOnEdge,
 		},
 		"point on bottom edge": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(5, 20),
-			expected: PRROnEdge,
+			expected: RelationshipPointRectanglePointOnEdge,
 		},
 		"point on right edge": {
 			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(10, 10),
-			expected: PRROnEdge,
+			expected: RelationshipPointRectanglePointOnEdge,
 		},
 	}
 
@@ -565,7 +565,7 @@ func TestRectangleRelationshipToRectangle(t *testing.T) {
 	tests := map[string]struct {
 		rect1       Rectangle[int]
 		rect2       Rectangle[int]
-		expectedRel RectangleRectangleRelationship
+		expectedRel RelationshipRectangleRectangle
 	}{
 		"Disjoint Rectangles": {
 			rect1: NewRectangle([]Point[int]{
@@ -580,7 +580,7 @@ func TestRectangleRelationshipToRectangle(t *testing.T) {
 				NewPoint(30, 30),
 				NewPoint(20, 30),
 			}),
-			expectedRel: RRRMiss,
+			expectedRel: RelationshipRectangleRectangleMiss,
 		},
 		"Touching Edge": {
 			rect1: NewRectangle([]Point[int]{
@@ -595,7 +595,7 @@ func TestRectangleRelationshipToRectangle(t *testing.T) {
 				NewPoint(20, 10),
 				NewPoint(10, 10),
 			}),
-			expectedRel: RRRTouchingEdge,
+			expectedRel: RelationshipRectangleRectangleSharedEdge,
 		},
 		"Touching Vertex": {
 			rect1: NewRectangle([]Point[int]{
@@ -610,7 +610,7 @@ func TestRectangleRelationshipToRectangle(t *testing.T) {
 				NewPoint(20, 20),
 				NewPoint(10, 20),
 			}),
-			expectedRel: RRRTouchingVertex,
+			expectedRel: RelationshipRectangleRectangleSharedVertex,
 		},
 		"Intersecting Rectangles": {
 			rect1: NewRectangle([]Point[int]{
@@ -625,7 +625,7 @@ func TestRectangleRelationshipToRectangle(t *testing.T) {
 				NewPoint(15, 15),
 				NewPoint(5, 15),
 			}),
-			expectedRel: RRRIntersecting,
+			expectedRel: RelationshipRectangleRectangleIntersection,
 		},
 		"Contained Rectangles": {
 			rect1: NewRectangle([]Point[int]{
@@ -640,7 +640,7 @@ func TestRectangleRelationshipToRectangle(t *testing.T) {
 				NewPoint(15, 15),
 				NewPoint(5, 15),
 			}),
-			expectedRel: RRRContained,
+			expectedRel: RelationshipRectangleRectangleContained,
 		},
 		"Touching Contained Rectangles": {
 			rect1: NewRectangle([]Point[int]{
@@ -655,7 +655,7 @@ func TestRectangleRelationshipToRectangle(t *testing.T) {
 				NewPoint(20, 20),
 				NewPoint(0, 20),
 			}),
-			expectedRel: RRREqual, // Adjusted from RRRTouchingContained to RRREqual
+			expectedRel: RelationshipRectangleRectangleEqual, // Adjusted from RelationshipRectangleRectangleContainedTouching to RelationshipRectangleRectangleEqual
 		},
 		"Equal Rectangles": {
 			rect1: NewRectangle([]Point[int]{
@@ -670,7 +670,7 @@ func TestRectangleRelationshipToRectangle(t *testing.T) {
 				NewPoint(10, 10),
 				NewPoint(0, 10),
 			}),
-			expectedRel: RRREqual,
+			expectedRel: RelationshipRectangleRectangleEqual,
 		},
 	}
 

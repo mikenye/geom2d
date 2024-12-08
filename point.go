@@ -7,41 +7,110 @@ import (
 	"slices"
 )
 
-// PointOrientation represents the relative orientation of three points in a two-dimensional plane.
-// It describes whether the points are collinear, form a clockwise turn, or form a counterclockwise turn.
-// This type is commonly used in computational geometry algorithms to determine the spatial relationship
-// between points in relation to each other.
-type PointOrientation uint8
-
-// Valid values for PointOrientation.
-const (
-	// PointsCollinear indicates that the points are collinear, meaning they lie on a single straight line.
-	PointsCollinear PointOrientation = iota
-
-	// PointsClockwise indicates that the points are arranged in a clockwise orientation.
-	PointsClockwise
-
-	// PointsCounterClockwise indicates that the points are arranged in a counterclockwise orientation.
-	PointsCounterClockwise
-)
-
 // Point represents a point in two-dimensional space with x and y coordinates of a generic numeric type T.
 // The Point struct provides methods for common vector operations such as addition, subtraction, and distance
 // calculations, making it versatile for computational geometry and graphics applications.
 //
 // Type Parameter:
-//   - T: The numeric type for the coordinates, constrained to signed number types by the SignedNumber interface.
-//
-// Usage:
-//   - To create a new Point, use the NewPoint constructor: p := NewPoint(3, 4)
-//   - To create from an image.Point, use NewPointFromImagePoint: p := NewPointFromImagePoint(imagePoint)
-//
-// Accessor Methods:
-//   - p.X(): Returns the x-coordinate of the point.
-//   - p.Y(): Returns the y-coordinate of the point.
+//   - T: The numeric type for the coordinates, constrained to signed number types by the [SignedNumber] interface.
 type Point[T SignedNumber] struct {
 	x T
 	y T
+}
+
+// ConvexHull computes the [convex hull] of a finite set of points using the [Graham Scan] algorithm.
+// The convex hull is the smallest convex polygon that encloses all points in the input set. This function is
+// particularly useful in computational geometry applications where the outer boundary of a set of points is needed.
+//
+// This implementation finds the point with the lowest y-coordinate to serve as a reference for sorting points by their
+// angle relative to this point. Starting from this reference, it orders the points counterclockwise, removing any
+// points that cause a clockwise turn to ensure a convex boundary.
+//
+// Parameters:
+//   - points ([Point][T]): A variable number of instances representing the set of points for which the
+//     convex hull is to be computed.
+//
+// Returns:
+//   - [][Point][T]: A slice of points representing the vertices of the convex hull in counterclockwise order.
+//     The returned slice includes only the points that form the outer boundary of the input set.
+//
+// Note:
+//   - If the points parameter is empty or has fewer than three points, the function returns the input points
+//     unchanged, as a convex hull cannot be formed.
+//
+// [Graham Scan]: https://en.wikipedia.org/wiki/Graham_scan
+// [convex hull]: https://en.wikipedia.org/wiki/Convex_hull
+func ConvexHull[T SignedNumber](points []Point[T]) []Point[T] {
+
+	var (
+		pt0Index, pt1Index, pt2Index int
+		pt0, pt1, pt2                Point[T]
+	)
+
+	// Copy points into a new slice, to prevent modifying input slice
+	output := make([]Point[T], len(points))
+	_ = copy(output, points)
+
+	// Find the point with the lowest y-coordinate.
+	// If the lowest y-coordinate exists in more than one point in the set,
+	// the point with the lowest x-coordinate out of the candidates should be chosen.
+	_, lowestPoint := findLowestLeftestPoint(output...)
+
+	// Order the points by angle about the lowest point
+	orderPointsByAngleAboutLowestPoint(lowestPoint, output)
+
+	// Starting with the lowest point, work through points, popping off
+	// any that cause a clockwise turn, to maintain convexity.
+	for pt0Index = 0; pt0Index < len(output); pt0Index++ {
+		pt1Index = (pt0Index + 1) % len(output)
+		pt2Index = (pt1Index + 1) % len(output)
+		pt0 = output[pt0Index]
+		pt1 = output[pt1Index]
+		pt2 = output[pt2Index]
+		o := Orientation(pt0, pt1, pt2)
+		if o == PointsClockwise {
+			output = slices.Delete(output, pt1Index, pt1Index+1)
+			pt0Index -= 3
+			if pt0Index < 0 {
+				pt0Index = 0
+			}
+		}
+	}
+
+	return output
+}
+
+// NewPoint creates a new Point with the specified x and y coordinates.
+//
+// This function is generic and requires the x and y values to satisfy the [SignedNumber] constraint.
+//
+// Parameters:
+//   - x (T): The x-coordinate of the point.
+//   - y (T): The y-coordinate of the point.
+//
+// Returns:
+//   - Point[T]: A new Point instance with the given coordinates.
+func NewPoint[T SignedNumber](x, y T) Point[T] {
+	return Point[T]{
+		x: x,
+		y: y,
+	}
+}
+
+// NewPointFromImagePoint creates and returns a new Point with integer x and y coordinates
+// based on an [image.Point]. This function is useful for converting between graphics and
+// computational geometry representations of points.
+//
+// Parameters:
+//   - q ([image.Point]): An [image.Point] representing the source coordinates for the new point.
+//
+// Returns:
+//   - Point[int]: A new Point with coordinates corresponding to the x and y values of the provided [image.Point].
+func NewPointFromImagePoint(q image.Point) Point[int] {
+	return Point[int]{
+		x: q.X,
+		y: q.Y,
+	}
 }
 
 // AsFloat converts the Point's x and y coordinates to the float64 type, returning a new Point[float64].
@@ -49,11 +118,6 @@ type Point[T SignedNumber] struct {
 //
 // Returns:
 //   - Point[float64]: A new Point with x and y coordinates converted to float64.
-//
-// Example Usage:
-//
-//	p := NewPoint(3, 4)
-//	floatPoint := p.AsFloat() // floatPoint is a Point[float64] with coordinates (3.0, 4.0)
 func (p Point[T]) AsFloat() Point[float64] {
 	return Point[float64]{
 		x: float64(p.x),
@@ -67,11 +131,6 @@ func (p Point[T]) AsFloat() Point[float64] {
 //
 // Returns:
 //   - Point[int]: A new Point with x and y coordinates converted to int by truncating any decimal portion.
-//
-// Example Usage:
-//
-//	p := NewPoint(3.7, 4.9)
-//	intPoint := p.AsInt() // intPoint is a Point[int] with coordinates (3, 4)
 func (p Point[T]) AsInt() Point[int] {
 	return Point[int]{
 		x: int(p.x),
@@ -85,11 +144,6 @@ func (p Point[T]) AsInt() Point[int] {
 //
 // Returns:
 //   - Point[int]: A new Point with x and y coordinates converted to int by rounding to the nearest integer.
-//
-// Example Usage:
-//
-//	p := NewPoint(3.7, 4.2)
-//	roundedPoint := p.AsIntRounded() // roundedPoint is a Point[int] with coordinates (4, 4)
 func (p Point[T]) AsIntRounded() Point[int] {
 	return Point[int]{
 		x: int(math.Round(float64(p.x))),
@@ -97,57 +151,53 @@ func (p Point[T]) AsIntRounded() Point[int] {
 	}
 }
 
-// CrossProduct calculates the cross product of the vector from the origin to Point p and the vector from the origin to Point q.
-// The result is useful in determining the relative orientation of two vectors:
+// CrossProduct calculates the cross product of the vector from the origin to Point p and the vector from the origin
+// to Point q. The result is useful in determining the relative orientation of two vectors:
 //   - A positive result indicates a counterclockwise turn (left turn),
 //   - A negative result indicates a clockwise turn (right turn),
 //   - A result of zero indicates that the points are collinear.
 //
 // Parameters:
-//   - q: The Point with which to compute the cross product relative to the calling Point.
+//   - q (Point[T]): The Point with which to compute the cross product relative to the calling Point.
 //
 // Returns:
 //   - T: The cross product of the vectors from the origin to p and q, indicating their relative orientation.
-//
-// Example Usage:
-//
-//	p := NewPoint(1, 2)
-//	q := NewPoint(3, 4)
-//	cross := p.CrossProduct(q) // cross > 0 means p and q form a counterclockwise turn
 func (p Point[T]) CrossProduct(q Point[T]) T {
 	return (p.x * q.y) - (p.y * q.x)
 }
 
+// DistanceSquaredToPoint calculates the squared Euclidean distance between Point p and another Point q.
+// This method returns the squared distance, which avoids the computational cost of a square root calculation
+// and is useful in cases where only distance comparisons are needed.
+//
+// Parameters:
+//   - q (Point[T]): The Point to which the squared distance is calculated from the calling Point.
+//
+// Returns:
+//   - T: The squared Euclidean distance between p and q.
+func (p Point[T]) DistanceSquaredToPoint(q Point[T]) T {
+	return (q.x-p.x)*(q.x-p.x) + (q.y-p.y)*(q.y-p.y)
+}
+
 // DistanceToLineSegment calculates the orthogonal (shortest) distance from the current Point p
-// to a specified LineSegment l. This distance is the length of the perpendicular line segment
+// to a specified [LineSegment] l. This distance is the length of the perpendicular line segment
 // from p to the closest point on l.
 //
 // Parameters:
-//   - l: The LineSegment to which the distance is calculated.
-//   - opts: A variadic slice of Option functions to customize the calculation behavior.
-//     WithEpsilon(epsilon float64): Adjusts the result by snapping small floating-point
+//   - l ([LineSegment][T]): The [LineSegment] to which the distance is calculated.
+//   - opts: A variadic slice of [Option] functions to customize the calculation behavior.
+//     [WithEpsilon](epsilon float64): Adjusts the result by snapping small floating-point
 //     deviations to cleaner values based on the specified epsilon threshold.
 //
 // Behavior:
-//   - The function first computes the projection of p onto the given line segment l. This is
+//   - The function first computes the projection of p onto the given [LineSegment] l. This is
 //     the closest point on l to p, whether it falls within the line segment or on one of its endpoints.
 //   - The distance is then calculated as the Euclidean distance from p to the projected point,
-//     using the DistanceToPoint method for precision.
+//     using the [Point.DistanceToPoint] method for precision.
 //
 // Returns:
 //   - float64: The shortest distance between the point p and the line segment l, optionally
 //     adjusted based on epsilon if provided.
-//
-// Example Usage:
-//
-//	p := NewPoint(3, 4)
-//	l := NewLineSegment(NewPoint(0, 0), NewPoint(6, 8))
-//
-//	// Default behavior (no epsilon adjustment)
-//	distance := p.DistanceToLineSegment(l)
-//
-//	// With epsilon adjustment
-//	distanceWithEpsilon := p.DistanceToLineSegment(l, WithEpsilon(1e-4))
 //
 // Notes:
 //   - If the point p lies exactly on the line segment, the distance will be zero (or adjusted
@@ -164,32 +214,20 @@ func (p Point[T]) DistanceToLineSegment(l LineSegment[T], opts ...Option) float6
 // of the straight-line separation between the two points.
 //
 // Parameters:
-//   - q: The Point to which the distance is calculated.
-//   - opts: A variadic slice of Option functions to customize the behavior of the calculation.
-//     WithEpsilon(epsilon float64): Adjusts the result by snapping near-zero distances
+//   - q ([Point][T]): The Point to which the distance is calculated.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the calculation.
+//     [WithEpsilon](epsilon float64): Adjusts the result by snapping near-zero distances
 //     (or distances close to clean values like integers) to a more precise value based
 //     on the specified epsilon threshold.
 //
 // Behavior:
 //   - The function computes the Euclidean distance using the formula:
 //     distance = sqrt((p.x - q.x)^2 + (p.y - q.y)^2)
-//   - If the `WithEpsilon` option is provided, the computed distance is adjusted such that
+//   - If the [WithEpsilon] option is provided, the computed distance is adjusted such that
 //     deviations within the epsilon range are snapped to a clean value.
 //
 // Returns:
 //   - float64: The Euclidean distance between the two points, optionally adjusted based on epsilon.
-//
-// Example Usage:
-//
-//	p := NewPoint(3, 4)
-//	q := NewPoint(6, 8)
-//
-//	// Default behavior (no epsilon adjustment)
-//	distance := p.DistanceToPoint(q) // Straight-line distance between p and q
-//
-//	// With epsilon adjustment
-//	distanceWithEpsilon := p.DistanceToPoint(q, WithEpsilon(1e-4))
-//	// Adjusts small floating-point deviations based on epsilon
 //
 // Notes:
 //   - Epsilon adjustment is useful for snapping results to clean values, particularly when
@@ -210,92 +248,15 @@ func (p Point[T]) DistanceToPoint(q Point[T], opts ...Option) float64 {
 	return distance
 }
 
-// DistanceSquaredToPoint calculates the squared Euclidean distance between Point p and another Point q.
-// This method returns the squared distance, which avoids the computational cost of a square root calculation
-// and is useful in cases where only distance comparisons are needed.
-//
-// Parameters:
-//   - q: The Point to which the squared distance is calculated from the calling Point.
-//
-// Returns:
-//   - T: The squared Euclidean distance between p and q.
-//
-// Example Usage:
-//
-//	p := NewPoint(3, 4)
-//	q := NewPoint(6, 8)
-//	distanceSquared := p.DistanceSquaredToPoint(q) // distanceSquared is the squared distance between p and q
-func (p Point[T]) DistanceSquaredToPoint(q Point[T]) T {
-	return (q.x-p.x)*(q.x-p.x) + (q.y-p.y)*(q.y-p.y)
-}
-
-// Div scales the calling Point p by dividing each of its coordinates by a scalar value k.
-// The method returns a new Point of type Point[float64], ensuring that fractional values
-// are preserved. This is particularly useful for applications where precise scaling is required.
-//
-// Parameters:
-//   - k: The scalar value by which to divide the x and y coordinates of Point p.
-//   - opts: A variadic slice of Option functions to customize the behavior of the division.
-//     WithEpsilon(epsilon float64): Adjusts the result by snapping small floating-point
-//     deviations to cleaner values based on the specified epsilon threshold.
-//
-// Behavior:
-//   - Each coordinate of the Point is divided by k, resulting in fractional values where appropriate.
-//   - If the `WithEpsilon` option is provided, the resulting coordinates are adjusted such that
-//     deviations within the epsilon range are snapped to clean values (e.g., rounding near-zero values to zero).
-//
-// Returns:
-//   - Point[float64]: A new Point with coordinates scaled by the division and optionally adjusted based on epsilon.
-//
-// Example Usage:
-//
-//	p := NewPoint(10, 20)
-//
-//	// Default behavior (no epsilon adjustment)
-//	scaledPoint := p.Div(2) // scaledPoint is a Point[float64] with coordinates (5.0, 10.0)
-//
-//	// With epsilon adjustment
-//	scaledPointWithEpsilon := p.Div(2, WithEpsilon(1e-4))
-//	// Adjusts small floating-point deviations in the result based on epsilon
-//
-// Notes:
-//   - If k is zero, this function will cause a runtime panic due to division by zero.
-//     Ensure that k is non-zero before calling this method.
-//   - Epsilon adjustment is particularly useful when dividing by values that might introduce
-//     floating-point imprecisions in the resulting coordinates.
-func (p Point[T]) Div(k T, opts ...Option) Point[float64] {
-
-	// Apply options with defaults
-	options := applyOptions(geomOptions{epsilon: 0}, opts...)
-
-	divided := Point[float64]{
-		x: float64(p.x) / float64(k),
-		y: float64(p.y) / float64(k),
-	}
-
-	if options.epsilon > 0 {
-		divided.x = applyEpsilon(divided.x, options.epsilon)
-		divided.y = applyEpsilon(divided.y, options.epsilon)
-	}
-
-	return divided
-}
-
 // DotProduct calculates the dot product of the vector represented by Point p with the vector represented by Point q.
 // The dot product is defined as p.x*q.x + p.y*q.y and is widely used in geometry for angle calculations,
 // projection operations, and determining the relationship between two vectors.
 //
 // Parameters:
-//   - q: The Point with which to calculate the dot product relative to the calling Point.
+//   - q (Point[T]): The Point with which to calculate the dot product relative to the calling Point.
 //
 // Returns:
 //   - T: The dot product of the vectors represented by p and q.
-//
-// Example Usage:
-//
-//	p := NewPoint(1, 2)
-//	q := NewPoint(3, 4)
-//	dot := p.DotProduct(q) // dot is the dot product of p and q
 func (p Point[T]) DotProduct(q Point[T]) T {
 	return (p.x * q.x) + (p.y * q.y)
 }
@@ -304,33 +265,21 @@ func (p Point[T]) DotProduct(q Point[T]) T {
 // Equality can be evaluated either exactly (default) or approximately using an epsilon threshold.
 //
 // Parameters:
-//   - q: The Point to compare with the calling Point.
-//   - opts: A variadic slice of Option functions to customize the equality check.
-//     WithEpsilon(epsilon float64): Specifies a tolerance for comparing the coordinates
+//   - q (Point[T]): The Point to compare with the calling Point.
+//   - opts: A variadic slice of [Option] functions to customize the equality check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the coordinates
 //     of p and q. If the absolute difference between the coordinates of p and q is less
 //     than epsilon, they are considered equal.
 //
 // Behavior:
 //   - By default, the function performs an exact equality check, returning true only if
 //     the x and y coordinates of p and q are identical.
-//   - If the `WithEpsilon` option is provided, the function performs an approximate equality
+//   - If the [WithEpsilon] option is provided, the function performs an approximate equality
 //     check, considering p and q equal if their coordinate differences are within the specified
 //     epsilon threshold.
 //
 // Returns:
 //   - bool: True if p and q are equal based on the specified comparison mode; otherwise, false.
-//
-// Example Usage:
-//
-//	p := NewPoint(3.0, 4.0)
-//	q := NewPoint(3.0, 4.0)
-//
-//	// Exact equality
-//	isEqual := p.Eq(q) // isEqual is true
-//
-//	// Approximate equality with epsilon
-//	r := NewPoint(3.000001, 4.000001)
-//	isApproximatelyEqual := p.Eq(r, WithEpsilon(1e-5)) // isApproximatelyEqual is true
 //
 // Notes:
 //   - Approximate equality is particularly useful when comparing points with floating-point
@@ -348,29 +297,44 @@ func (p Point[T]) Eq(q Point[T], opts ...Option) bool {
 	return p.x == q.x && p.y == q.y
 }
 
-// ProjectOntoLineSegment projects the Point p onto a given LineSegment l.
+// Negate returns a new Point with both x and y coordinates negated.
+// This operation is equivalent to reflecting the point across the origin
+// and is useful in reversing the direction of a vector or preparing
+// a point for subtraction via translation.
+//
+// Returns:
+//   - Point[T]: A new Point with negated x and y coordinates.
+//
+// Notes:
+//   - The returned point has the same type as the calling point.
+//   - This method does not modify the original point but returns a new instance.
+func (p Point[T]) Negate() Point[T] {
+	return NewPoint[T](-p.x, -p.y)
+}
+
+// ProjectOntoLineSegment projects the Point p onto a given [LineSegment] l.
 //
 // The function calculates the closest point on the LineSegment defined by
 // the endpoints l.Start() and l.End() to the Point p. It utilizes vector
 // mathematics to determine the projection of Point p onto the infinite line
-// represented by the LineSegment. If the projected point falls beyond the ends of the
-// LineSegment, the function returns the closest endpoint of the segment.
+// represented by the [LineSegment]. If the projected point falls beyond the ends of the
+// [LineSegment], the function returns the closest endpoint of the segment.
 //
 // Parameters:
-//   - l: The line segment onto which the point is projected. It consists of
+//   - l ([LineSegment][T]): The line segment onto which the point is projected. It consists of
 //     two endpoints: Start() and End().
 //
 // Returns:
 //   - A Point[float64] representing the coordinates of the projected point.
-//     If the LineSegment is degenerate (both endpoints are the same),
+//     If the [LineSegment] is degenerate (both endpoints are the same),
 //     the function returns the coordinates of the Start() Point of the LineSegment.
 func (p Point[T]) ProjectOntoLineSegment(l LineSegment[T]) Point[float64] {
 
 	// the direction vector of the line segment
-	vecAB := l.end.Sub(l.start)
+	vecAB := l.end.Translate(l.start.Negate())
 
 	// the vector from line segment start to point
-	vecAP := p.Sub(l.start)
+	vecAP := p.Translate(l.start.Negate())
 
 	// Calculate the dot products
 	ABdotAB := vecAB.DotProduct(vecAB) // |vecAB|^2
@@ -399,18 +363,11 @@ func (p Point[T]) ProjectOntoLineSegment(l LineSegment[T]) Point[float64] {
 // Reflect reflects the point across the specified axis or custom line.
 //
 // Parameters:
-//   - axis: Axis - The axis of reflection (ReflectAcrossXAxis, ReflectAcrossYAxis, or ReflectAcrossCustomLine).
-//   - line: Optional LineSegment[T] - The line for ReflectAcrossCustomLine reflection.
+//   - axis ([ReflectionAxis]): Axis - The axis of reflection ([ReflectAcrossXAxis], [ReflectAcrossYAxis], or [ReflectAcrossCustomLine]).
+//   - line ([LineSegment][T]): Optional. The line for [ReflectAcrossCustomLine] reflection.
 //
 // Returns:
 //   - Point[float64] - A new point representing the reflection of the original point.
-//
-// Example usage:
-//
-//	p := NewPoint(3, 4)
-//	reflectedX := p.Reflect(ReflectAcrossXAxis)               // Reflect across x-axis: (3, -4)
-//	customLine := NewLineSegment(NewPoint(0, 0), NewPoint(1, 1))
-//	reflectedLine := p.Reflect(ReflectAcrossCustomLine, customLine) // Reflect across y = x
 func (p Point[float64]) Reflect(axis ReflectionAxis, line ...LineSegment[float64]) Point[float64] {
 	switch axis {
 	case ReflectAcrossXAxis:
@@ -456,25 +413,75 @@ func (p Point[float64]) reflectAcrossLine(line LineSegment[float64]) Point[float
 	return NewPoint(newX, newY)
 }
 
-func (p Point[T]) RelationshipToCircle(c Circle[T], opts ...Option) PointCircleRelationship {
+// RelationshipToCircle determines the spatial relationship of the Point p
+// to a given [Circle] c.
+//
+// This method is a convenience wrapper around [Circle.RelationshipToPoint],
+// reversing the parameter order to provide a more intuitive calling syntax
+// from the perspective of the [Point].
+//
+// Parameters:
+//   - c ([Circle][T]): The circle to which the relationship is evaluated.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing distances, improving robustness
+//     in floating-point calculations.
+//
+// Returns:
+//   - [RelationshipPointCircle]: The relationship of the point to the circle, as defined by the
+//     [RelationshipPointCircle] enum.
+//
+// Notes:
+//   - This method directly calls [Circle.RelationshipToPoint], and the result is identical to calling
+//     the circle's method with the point as the parameter.
+//
+// See [Circle.RelationshipToPoint] for examples and more information.
+func (p Point[T]) RelationshipToCircle(c Circle[T], opts ...Option) RelationshipPointCircle {
 	return c.RelationshipToPoint(p, opts...)
 }
 
-func (p Point[T]) RelationshipToLineSegment(seg LineSegment[T], opts ...Option) PointLineSegmentRelationship {
+// RelationshipToLineSegment determines the spatial relationship of a [Point]
+// to a given [LineSegment].
+//
+// This method evaluates the position of the calling [Point] relative to the
+// specified [LineSegment]. The possible relationships are defined by the [RelationshipPointLineSegment].
+//
+// Parameters:
+//   - seg ([LineSegment][T]): The line segment to which the relationship is evaluated.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for floating-point comparisons,
+//     improving robustness against precision errors.
+//
+// Returns:
+//   - [RelationshipPointLineSegment]: The relationship of the point to the line segment, as defined by
+//     [RelationshipPointLineSegment].
+//
+// Behavior:
+//   - The function first checks if the point coincides with the start or end of the line segment.
+//   - It then determines if the point lies on the infinite line defined by the segment using orientation tests.
+//   - If the point is collinear with the segment, it checks whether the point lies within the bounds of the segment
+//     (using the bounding box).
+//   - If the point lies on the infinite line but is outside the bounds of the segment, it is classified as
+//     [RelationshipPointLineSegmentCollinearDisjoint].
+//
+// Notes:
+//   - This method is useful for spatial queries where precise relationships between points and line segments are needed.
+//
+// See [RelationshipPointLineSegment] for possible return values.
+func (p Point[T]) RelationshipToLineSegment(seg LineSegment[T], opts ...Option) RelationshipPointLineSegment {
 	options := applyOptions(geomOptions{epsilon: 0}, opts...)
 
 	// Check if the point coincides with the segment's start or end
 	if p.Eq(seg.start, opts...) {
-		return PLRPointEqStart
+		return RelationshipPointLineSegmentPointEqStart
 	}
 	if p.Eq(seg.end, opts...) {
-		return PLRPointEqEnd
+		return RelationshipPointLineSegmentPointEqEnd
 	}
 
 	// Check if the point is collinear with the infinite line of the segment
 	orientation := Orientation(seg.start, seg.end, p)
 	if orientation != PointsCollinear {
-		return PLRMiss
+		return RelationshipPointLineSegmentMiss
 	}
 
 	// Check if the point lies within the bounding box of the segment
@@ -483,14 +490,45 @@ func (p Point[T]) RelationshipToLineSegment(seg LineSegment[T], opts ...Option) 
 
 	if float64(p.x) >= float64(minX)-options.epsilon && float64(p.x) <= float64(maxX)+options.epsilon &&
 		float64(p.y) >= float64(minY)-options.epsilon && float64(p.y) <= float64(maxY)+options.epsilon {
-		return PLRPointOnLineSegment
+		return RelationshipPointLineSegmentPointOnLineSegment
 	}
 
 	// If collinear but outside the segment's bounds
-	return PLRPointOnLine
+	return RelationshipPointLineSegmentCollinearDisjoint
 }
 
-func (p Point[T]) RelationshipToPolyTree(tree *PolyTree[T], opts ...Option) PointPolyTreeRelationship {
+// RelationshipToPolyTree determines the spatial relationship of a [Point] to a given [PolyTree].
+//
+// This method evaluates the position of the calling [Point] relative to the specified [PolyTree],
+// which can include nested polygons such as solid regions, holes, and islands. The possible relationships
+// are defined by [RelationshipPointPolyTree].
+//
+// Parameters:
+//   - tree ([PolyTree][T]): A pointer to the [PolyTree] to analyze.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for floating-point comparisons,
+//     improving robustness against precision errors.
+//
+// Returns:
+//   - [RelationshipPointPolyTree]: The relationship of the point to the [PolyTree], as defined by
+//     [RelationshipPointPolyTree].
+//
+// Behavior:
+//   - It first checks if the point is on an edge of any polygon in the [PolyTree], returning
+//     [PPTRPointOnVertex] or [PPTRPointOnEdge] if a match is found.
+//   - It then determines if the point is inside a polygon and evaluates the type of polygon:
+//   - [PPTRPointInside] if the point is inside the root polygon.
+//   - [PPTRPointInHole] if the point is inside a hole.
+//   - [PPTRPointInsideIsland] if the point is inside a nested solid region (island).
+//   - If no stronger relationship is found, the function returns [PPTRPointOutside], indicating
+//     the point is entirely outside the [PolyTree].
+//
+// Notes:
+//   - This method is particularly useful for complex geometry queries involving hierarchical polygon structures.
+//   - The method leverages the efficient iteration of polygons and edges provided by the [PolyTree] structure.
+//
+// See [RelationshipPointPolyTree] for possible return values.
+func (p Point[T]) RelationshipToPolyTree(tree *PolyTree[T], opts ...Option) RelationshipPointPolyTree {
 	highestRel := PPTRPointOutside // Default to outside
 
 	// as the points in a polytree contour are doubled, we need to also double the input point
@@ -501,9 +539,9 @@ func (p Point[T]) RelationshipToPolyTree(tree *PolyTree[T], opts ...Option) Poin
 		for edge := range poly.contour.iterEdges {
 			rel := edge.RelationshipToPoint(pDoubled, opts...)
 			switch rel {
-			case PLRPointEqStart, PLRPointEqEnd:
+			case RelationshipPointLineSegmentPointEqStart, RelationshipPointLineSegmentPointEqEnd:
 				return PPTRPointOnVertex // Early return for vertex relationship
-			case PLRPointOnLineSegment:
+			case RelationshipPointLineSegmentPointOnLineSegment:
 				return PPTRPointOnEdge // Early return for edge relationship
 			}
 		}
@@ -524,39 +562,53 @@ func (p Point[T]) RelationshipToPolyTree(tree *PolyTree[T], opts ...Option) Poin
 	return highestRel
 }
 
-func (p Point[T]) RelationshipToRectangle(r Rectangle[T]) PointRectangleRelationship {
+// RelationshipToRectangle determines the spatial relationship of the calling [Point] to a given [Rectangle].
+//
+// This method evaluates the position of the point relative to the specified rectangle and returns
+// a [RelationshipPointRectangle] value indicating whether the point is inside, outside, on an edge,
+// or on a vertex of the rectangle.
+//
+// Parameters:
+//   - r ([Rectangle][T]): The rectangle to analyze.
+//
+// Returns:
+//   - [RelationshipPointRectangle]: The relationship of the point to the rectangle, as defined by
+//     [RelationshipPointRectangle].
+//
+// Behavior:
+//   - This method delegates the relationship check to [Rectangle.RelationshipToPoint].
+//   - The evaluation considers the position of the point relative to the rectangle's edges and vertices.
+//
+// Notes:
+//   - For detailed behavior, examples, and further information, refer to the documentation for
+//     [Rectangle.RelationshipToPoint].
+//   - This method provides a convenient shorthand for evaluating the relationship between a point and a rectangle
+//     without needing to directly call [Rectangle.RelationshipToPoint].
+func (p Point[T]) RelationshipToRectangle(r Rectangle[T]) RelationshipPointRectangle {
 	return r.RelationshipToPoint(p)
 }
 
-// Rotate rotates the point by a specified angle (in radians) around a given pivot point.
+// Rotate rotates the point by a specified angle (in radians), counter-clockwise, around a given pivot point.
 //
 // Parameters:
-//   - pivot: Point[T] - The point around which the rotation is performed.
-//   - radians: float64 - The angle of rotation, specified in radians.
-//   - opts: ...Option - Functional options for customizing the rotation behavior. WithEpsilon(epsilon float64): Specifies a tolerance for rounding small floating-point deviations to cleaner values (e.g., snapping near-zero values to zero).
+//   - pivot ([Point][T]): The point around which the rotation is performed.
+//   - radians (float64): The angle of rotation, specified in radians.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for floating-point comparisons,
+//     improving robustness against precision errors.
 //
 // Behavior:
 //   - The method first translates the point to the origin (relative to the pivot),
 //     applies the rotation matrix, and then translates the point back to its original position.
-//   - If the `WithEpsilon` option is provided, small numerical deviations in the rotated coordinates
-//     (e.g., -0.9999999999999998 instead of -1) will be adjusted based on the specified epsilon.
+//   - If the [WithEpsilon] option is provided, small numerical deviations in the rotated coordinates
+//     will be adjusted based on the specified epsilon.
 //
 // Returns:
-//   - Point[float64] - A new point representing the rotated position.
-//
-// Example Usage:
-//
-//	pivot := geom2d.NewPoint(1.0, 1.0)
-//	circle := geom2d.NewCircle(geom2d.NewPoint(3.0, 3.0), 5.0)
-//
-//	// Rotates the circle 90 degrees around (1.0, 1.0)
-//	rotatedCircle := circle.Rotate(pivot, math.Pi/2, geom2d.WithEpsilon(1e-10))
-//
-//	// rotatedCircle = Circle[center=(-1, 3), radius=5]
+//   - Point[float64]: A new point representing the rotated position.
 //
 // Notes:
 //   - If no options are provided, the default behavior applies, and no epsilon adjustment is made.
-//   - The return type is always `Point[float64]` to ensure precision in the rotated result.
+//   - The return type is always Point[float64] to ensure precision in the rotated result.
 func (p Point[T]) Rotate(pivot Point[T], radians float64, opts ...Option) Point[float64] {
 	// Apply options with defaults
 	options := applyOptions(geomOptions{epsilon: 0}, opts...)
@@ -588,17 +640,11 @@ func (p Point[T]) Rotate(pivot Point[T], radians float64, opts ...Option) Point[
 // Scale scales the point by a factor k relative to a reference point ref.
 //
 // Parameters:
-//   - ref: Point[float64] - The reference point from which scaling originates.
-//   - k: float64 - The scaling factor.
+//   - ref (Point[float64]): The reference point from which scaling originates.
+//   - k (float64): The scaling factor.
 //
 // Returns:
 //   - Point[float64] - A new point scaled relative to the reference point.
-//
-// Example:
-//
-//	p := NewPoint(3, 4)
-//	ref := NewPoint(1, 1)
-//	scaled := p.Scale(ref, 2) // scaled is now (5, 7), relative to ref.
 func (p Point[T]) Scale(ref Point[T], k T) Point[T] {
 	return NewPoint(
 		ref.x+(p.x-ref.x)*k,
@@ -612,52 +658,19 @@ func (p Point[T]) Scale(ref Point[T], k T) Point[T] {
 //
 // Returns:
 //   - string: A string representation of the Point in the format "Point[(x, y)]".
-//
-// Example Usage:
-//
-//	p := NewPoint(3, 4)
-//	str := p.String() // str is "Point[(3, 4)]"
 func (p Point[T]) String() string {
 	return fmt.Sprintf("Point[(%v, %v)]", p.x, p.y)
-}
-
-// Sub returns a new Point representing the vector from the calling Point p to another Point q.
-// This is equivalent to subtracting the coordinates of q from those of p, resulting in a vector
-// (as a Point) that points from q to p.
-//
-// Parameters:
-//   - q: The Point to subtract from the calling Point.
-//
-// Returns:
-//   - Point[T]: A new Point representing the vector from p to q, with coordinates equal to p - q.
-//
-// Example Usage:
-//
-//	p := NewPoint(5, 7)
-//	q := NewPoint(3, 2)
-//	vector := p.Sub(q) // vector is a Point with coordinates (2, 5), representing the vector from q to p
-func (p Point[T]) Sub(q Point[T]) Point[T] {
-	return Point[T]{
-		x: p.x - q.x,
-		y: p.y - q.y,
-	}
 }
 
 // Translate moves the Point by a given displacement vector.
 //
 // Parameters:
-//   - delta: Point[T] - The displacement vector to apply.
+//   - delta (Point[T]): The displacement vector to apply.
 //
 // Returns:
 //   - Point[T]: A new Point resulting from the translation.
-//
-// Example Usage:
-//
-//	p := NewPoint(3, 4)
-//	delta := NewPoint(2, -1)
-//	translated := p.Translate(delta) // translated is a Point with coordinates (5, 3)
 func (p Point[T]) Translate(delta Point[T]) Point[T] {
-	return NewPoint(p.x+delta.x, p.y+delta.y)
+	return NewPoint[T](p.x+delta.x, p.y+delta.y)
 }
 
 // X returns the x-coordinate of the Point p.
@@ -665,11 +678,6 @@ func (p Point[T]) Translate(delta Point[T]) Point[T] {
 //
 // Returns:
 //   - T: The x-coordinate of the Point.
-//
-// Example Usage:
-//
-//	p := NewPoint(3, 4)
-//	x := p.X() // x is 3
 func (p Point[T]) X() T {
 	return p.x
 }
@@ -679,14 +687,27 @@ func (p Point[T]) X() T {
 //
 // Returns:
 //   - T: The y-coordinate of the Point.
-//
-// Example Usage:
-//
-//	p := NewPoint(3, 4)
-//	y := p.Y() // y is 4
 func (p Point[T]) Y() T {
 	return p.y
 }
+
+// PointOrientation represents the relative orientation of three points in a two-dimensional plane.
+// It describes whether the points are collinear, form a clockwise turn, or form a counterclockwise turn.
+// This type is commonly used in computational geometry algorithms to determine the spatial relationship
+// between points in relation to each other.
+type PointOrientation uint8
+
+// Valid values for PointOrientation.
+const (
+	// PointsCollinear indicates that the points are collinear, meaning they lie on a single straight line.
+	PointsCollinear PointOrientation = iota
+
+	// PointsClockwise indicates that the points are arranged in a clockwise orientation.
+	PointsClockwise
+
+	// PointsCounterClockwise indicates that the points are arranged in a counterclockwise orientation.
+	PointsCounterClockwise
+)
 
 // findLowestLeftestPoint identifies the point with the lowest y-coordinate from a given set of points.
 // If multiple points share the lowest y-coordinate, it selects the point with the lowest x-coordinate among them.
@@ -750,8 +771,8 @@ func orderPointsByAngleAboutLowestPoint[T SignedNumber](lowestPoint Point[T], po
 		}
 
 		// Calculate relative vectors from lowestPoint to start and end
-		relativeA := a.Sub(lowestPoint)
-		relativeB := b.Sub(lowestPoint)
+		relativeA := a.Translate(lowestPoint.Negate())
+		relativeB := b.Translate(lowestPoint.Negate())
 		crossProduct := relativeA.CrossProduct(relativeB)
 
 		// Use cross product to determine angular order
@@ -793,66 +814,6 @@ func orderPointsByAngleAboutLowestPoint[T SignedNumber](lowestPoint Point[T], po
 // to compute twice the signed area of the triangle formed by p0, p1, p2.
 func triangleAreaX2Signed[T SignedNumber](p0, p1, p2 Point[T]) T {
 	return (p1.x-p0.x)*(p2.y-p0.y) - (p2.x-p0.x)*(p1.y-p0.y)
-}
-
-// ConvexHull computes the convex hull of a finite set of points using the Graham scan algorithm.
-// The convex hull is the smallest convex polygon that encloses all points in the input set. This function is particularly useful in computational
-// geometry applications where the outer boundary of a set of points is needed.
-//
-// This implementation finds the point with the lowest y-coordinate to serve as a reference for sorting points by their angle relative to this point.
-// Starting from this reference, it orders the points counterclockwise, removing any points that cause a clockwise turn to ensure a convex boundary.
-//
-// Parameters:
-//   - points: A variable number of `Point[T]` instances representing the set of points for which the convex hull is to be computed.
-//
-// Returns:
-//   - []Point[T]: A slice of points representing the vertices of the convex hull in counterclockwise order.
-//     The returned slice includes only the points that form the outer boundary of the input set.
-//
-// Note:
-//   - If the `points` parameter is empty or has fewer than three points, the function returns the input points unchanged, as a convex hull cannot be formed.
-//
-// See https://en.wikipedia.org/wiki/Graham_scan for more information on the Graham scan algorithm.
-//
-// See https://en.wikipedia.org/wiki/Convex_hull for more information on convex hulls.
-func ConvexHull[T SignedNumber](points []Point[T]) []Point[T] {
-
-	var (
-		pt0Index, pt1Index, pt2Index int
-		pt0, pt1, pt2                Point[T]
-	)
-
-	// Copy points into a new slice, to prevent modifying input slice
-	output := make([]Point[T], len(points))
-	_ = copy(output, points)
-
-	// Find the point with the lowest y-coordinate.
-	// If the lowest y-coordinate exists in more than one point in the set,
-	// the point with the lowest x-coordinate out of the candidates should be chosen.
-	_, lowestPoint := findLowestLeftestPoint(output...)
-
-	// Order the points by angle about the lowest point
-	orderPointsByAngleAboutLowestPoint(lowestPoint, output)
-
-	// Starting with the lowest point, work through points, popping off
-	// any that cause a clockwise turn, to maintain convexity.
-	for pt0Index = 0; pt0Index < len(output); pt0Index++ {
-		pt1Index = (pt0Index + 1) % len(output)
-		pt2Index = (pt1Index + 1) % len(output)
-		pt0 = output[pt0Index]
-		pt1 = output[pt1Index]
-		pt2 = output[pt2Index]
-		o := Orientation(pt0, pt1, pt2)
-		if o == PointsClockwise {
-			output = slices.Delete(output, pt1Index, pt1Index+1)
-			pt0Index -= 3
-			if pt0Index < 0 {
-				pt0Index = 0
-			}
-		}
-	}
-
-	return output
 }
 
 // EnsureClockwise ensures that a slice of points representing a polygon is ordered in a clockwise direction.
@@ -907,38 +868,6 @@ func EnsureCounterClockwise[T SignedNumber](points []Point[T]) {
 		return // Already counterclockwise
 	}
 	slices.Reverse(points)
-}
-
-// NewPoint creates and returns a new Point with the specified x and y coordinates.
-// This function is a generic constructor for Point, allowing the x and y values to be of any signed numeric type.
-//
-// Parameters:
-//   - x: The x-coordinate of the new point.
-//   - y: The y-coordinate of the new point.
-//
-// Returns:
-//   - Point[T]: A new Point instance with the specified coordinates.
-func NewPoint[T SignedNumber](x, y T) Point[T] {
-	return Point[T]{
-		x: x,
-		y: y,
-	}
-}
-
-// NewPointFromImagePoint creates and returns a new Point with integer x and y coordinates
-// based on an image.Point. This function is useful for converting between graphics and
-// computational geometry representations of points.
-//
-// Parameters:
-//   - q: An image.Point representing the source coordinates for the new point.
-//
-// Returns:
-//   - Point[int]: A new Point with coordinates corresponding to the x and y values of the provided image.Point.
-func NewPointFromImagePoint(q image.Point) Point[int] {
-	return Point[int]{
-		x: q.X,
-		y: q.Y,
-	}
 }
 
 // Orientation determines the relative orientation of three points: p0, p1, and p2.
@@ -1056,8 +985,8 @@ func RelativeCosineOfAngle[T SignedNumber](A, B Point[T], O ...Point[T]) float64
 	}
 
 	// Calculate vectors OA and OB
-	vectorOA := origin.Sub(A)
-	vectorOB := origin.Sub(B)
+	vectorOA := origin.Translate(A.Negate())
+	vectorOB := origin.Translate(B.Negate())
 
 	// Calculate the Dot Product of OA and OB
 	OAdotOB := vectorOA.DotProduct(vectorOB)

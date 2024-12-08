@@ -1,362 +1,478 @@
 package geom2d
 
+// todo for this file:
+//   - is underscore ok, eg: "RelationshipLineSegmentCircle_ContainedByCircle"?
+//   - possibly shorter names without losing clarity?
+
 import "fmt"
 
-// CircleCircleRelationship defines the possible spatial relationships
+// RelationshipCircleCircle defines the possible spatial relationships
 // between two circles in a 2D plane.
 //
 // This enumeration categorizes how two circles relate to each other based on
 // their positions and radii. It covers scenarios such as being disjoint, touching,
 // overlapping, or one circle being contained within the other.
-type CircleCircleRelationship uint8
+type RelationshipCircleCircle uint8
 
-// Valid values for CircleCircleRelationship
+// Valid values for RelationshipCircleCircle
 const (
-	CCRMiss             CircleCircleRelationship = iota // Circles are disjoint
-	CCRTouchingExternal                                 // Circles are externally tangent
-	CCROverlapping                                      // Circles overlap and intersect at two points
-	CCRTouchingInternal                                 // Circles are internally tangent
-	CCRContained                                        // One circle is fully contained within the other
-	CCREqual                                            // Circles are identical
+	// RelationshipCircleCircleMiss - circles are disjoint.
+	RelationshipCircleCircleMiss RelationshipCircleCircle = iota
+
+	// RelationshipCircleCircleExternallyTangent - circles are externally tangent.
+	RelationshipCircleCircleExternallyTangent
+
+	// RelationshipCircleCircleIntersection - circles overlap and intersect at two points.
+	RelationshipCircleCircleIntersection
+
+	// RelationshipCircleCircleInternallyTangent - circles are internally tangent.
+	RelationshipCircleCircleInternallyTangent
+
+	// RelationshipCircleCircleContained - one circle is fully contained within the other, with no touching/intersection.
+	RelationshipCircleCircleContained
+
+	// RelationshipCircleCircleEqual - circles are identical.
+	RelationshipCircleCircleEqual
 )
 
-// String returns the string representation of a [CircleCircleRelationship].
+// String returns the string representation of a [RelationshipCircleCircle].
 //
-// The function converts the [CircleCircleRelationship] enum value into its
+// The function converts the [RelationshipCircleCircle] enum value into its
 // corresponding string representation for readability and debugging purposes.
 //
 // Panics:
-//   - If the [CircleCircleRelationship] has an unsupported or undefined value, the function will panic with a descriptive error.
+//   - If the [RelationshipCircleCircle] has an unsupported or undefined value, the function will panic with a descriptive error.
 //
 // Returns:
-//   - string: The name of the [CircleCircleRelationship] enum value.
-func (r *CircleCircleRelationship) String() string {
-	switch *r {
-	case CCRMiss:
-		return "CCRMiss"
-	case CCRTouchingExternal:
-		return "CCRTouchingExternal"
-	case CCROverlapping:
-		return "CCROverlapping"
-	case CCRTouchingInternal:
-		return "CCRTouchingInternal"
-	case CCRContained:
-		return "CCRContained"
-	case CCREqual:
-		return "CCREqual"
+//   - string: The name of the [RelationshipCircleCircle] enum value.
+func (r RelationshipCircleCircle) String() string {
+	switch r {
+	case RelationshipCircleCircleMiss:
+		return "RelationshipCircleCircleMiss"
+	case RelationshipCircleCircleExternallyTangent:
+		return "RelationshipCircleCircleExternallyTangent"
+	case RelationshipCircleCircleIntersection:
+		return "RelationshipCircleCircleIntersection"
+	case RelationshipCircleCircleInternallyTangent:
+		return "RelationshipCircleCircleInternallyTangent"
+	case RelationshipCircleCircleContained:
+		return "RelationshipCircleCircleContained"
+	case RelationshipCircleCircleEqual:
+		return "RelationshipCircleCircleEqual"
 	default:
-		panic(fmt.Errorf("unsupported CircleCircleRelationship"))
+		panic(fmt.Errorf("unsupported RelationshipCircleCircle"))
 	}
 }
 
-// CircleLineSegmentRelationship defines the possible spatial relationships
+// RelationshipLineSegmentCircle defines the possible spatial relationships
 // between a [Circle] and a [LineSegment] in a 2D plane.
 //
 // This enumeration categorizes how a [LineSegment] relates to a [Circle] based on
 // its position, intersection, and tangency.
-type CircleLineSegmentRelationship uint8
+type RelationshipLineSegmentCircle uint8
 
-// Valid values for CircleLineSegmentRelationship
+// Valid values for RelationshipLineSegmentCircle
 const (
-	// CLROutside indicates that the line segment lies completely outside the circle,
+	// RelationshipLineSegmentCircleMiss indicates that the line segment lies completely outside the circle,
 	// with no intersection or tangency.
-	CLROutside CircleLineSegmentRelationship = iota
+	RelationshipLineSegmentCircleMiss RelationshipLineSegmentCircle = iota
 
-	// CLRInside indicates that the line segment lies completely within the circle,
+	// RelationshipLineSegmentCircleContainedByCircle indicates that the line segment lies completely within the circle,
 	// with both endpoints inside the circle's boundary.
-	CLRInside
+	RelationshipLineSegmentCircleContainedByCircle
 
-	// CLRIntersecting indicates that the line segment intersects the circle at exactly
+	// RelationshipLineSegmentCircleIntersecting indicates that the line segment intersects the circle at exactly
 	// two distinct points.
-	CLRIntersecting
+	RelationshipLineSegmentCircleIntersecting
 
-	// CLRTangent indicates that the line segment is tangent to the circle, touching it
+	// RelationshipLineSegmentCircleTangentToCircle indicates that the line segment is tangent to the circle, touching it
 	// at exactly one point with the tangent forming a 90-degree angle to the circle's radius.
-	CLRTangent
+	RelationshipLineSegmentCircleTangentToCircle
 
-	// CLROneEndOnCircumferenceOutside indicates that one endpoint of the line segment
+	// RelationshipLineSegmentCircleEndOnCircumferenceOutside indicates that one endpoint of the line segment
 	// lies on the circle's boundary, while the other endpoint lies outside the circle.
-	CLROneEndOnCircumferenceOutside
+	RelationshipLineSegmentCircleEndOnCircumferenceOutside
 
-	// CLROneEndOnCircumferenceInside indicates that one endpoint of the line segment
+	// RelationshipLineSegmentCircleEndOnCircumferenceInside indicates that one endpoint of the line segment
 	// lies on the circle's boundary, while the other endpoint lies inside the circle.
-	CLROneEndOnCircumferenceInside
+	RelationshipLineSegmentCircleEndOnCircumferenceInside
 
-	// CLRBothEndsOnCircumference indicates that both endpoints of the line segment lie
+	// RelationshipLineSegmentCircleBothEndsOnCircumference indicates that both endpoints of the line segment lie
 	// exactly on the circle's boundary. The line segment does not extend inside or outside
 	// the circle.
-	CLRBothEndsOnCircumference
+	RelationshipLineSegmentCircleBothEndsOnCircumference
 )
 
-// String returns the string representation of a [CircleLineSegmentRelationship].
+// String returns the string representation of a [RelationshipLineSegmentCircle].
 //
-// This function converts the [CircleLineSegmentRelationship] enum value into a
+// This function converts the [RelationshipLineSegmentCircle] enum value into a
 // corresponding string for improved readability and debugging.
 //
 // Panics:
-//   - If the [CircleLineSegmentRelationship] has an unsupported or undefined value,
+//   - If the [RelationshipLineSegmentCircle] has an unsupported or undefined value,
 //     the function will panic.
 //
 // Returns:
-//   - string: The name of the [CircleLineSegmentRelationship] enum value.
-func (r *CircleLineSegmentRelationship) String() string {
-	switch *r {
-	case CLROutside:
-		return "CLROutside"
-	case CLRInside:
-		return "CLRInside"
-	case CLRIntersecting:
-		return "CLRIntersecting"
-	case CLRTangent:
-		return "CLRTangent"
-	case CLROneEndOnCircumferenceOutside:
-		return "CLROneEndOnCircumferenceOutside"
-	case CLROneEndOnCircumferenceInside:
-		return "CLROneEndOnCircumferenceInside"
-	case CLRBothEndsOnCircumference:
-		return "CLRBothEndsOnCircumference"
+//   - string: The name of the [RelationshipLineSegmentCircle] enum value.
+func (r RelationshipLineSegmentCircle) String() string {
+	switch r {
+	case RelationshipLineSegmentCircleMiss:
+		return "RelationshipLineSegmentCircleMiss"
+	case RelationshipLineSegmentCircleContainedByCircle:
+		return "RelationshipLineSegmentCircleContainedByCircle"
+	case RelationshipLineSegmentCircleIntersecting:
+		return "RelationshipLineSegmentCircleIntersecting"
+	case RelationshipLineSegmentCircleTangentToCircle:
+		return "RelationshipLineSegmentCircleTangentToCircle"
+	case RelationshipLineSegmentCircleEndOnCircumferenceOutside:
+		return "RelationshipLineSegmentCircleEndOnCircumferenceOutside"
+	case RelationshipLineSegmentCircleEndOnCircumferenceInside:
+		return "RelationshipLineSegmentCircleEndOnCircumferenceInside"
+	case RelationshipLineSegmentCircleBothEndsOnCircumference:
+		return "RelationshipLineSegmentCircleBothEndsOnCircumference"
 	default:
-		panic(fmt.Errorf("unsupported CircleLineSegmentRelationship"))
+		panic(fmt.Errorf("unsupported RelationshipLineSegmentCircle"))
 	}
 }
 
-// CirclePolyTreeRelationship defines the possible spatial relationships
-// between a [Circle] and a [PolyTree], which is a hierarchical structure of polygons
-// with holes and nested islands.
+// RelationshipCirclePolygon defines the possible spatial relationships
+// between a [Circle] and the contour of a single polygon within a given [PolyTree].
 //
-// This enumeration categorizes how a [Circle] relates to the [PolyTree], based on
-// whether the [Circle] is inside, outside, intersecting, or touching the solid
-// and hole regions of the [PolyTree].
-type CirclePolyTreeRelationship uint8
+// This type categorizes how a [Circle] relates to an individual polygon in the [PolyTree].
+// The relationships include cases where the circle is inside, outside, tangential to, intersecting,
+// containing, or contained by the polygon's contour.
+//
+// Notes:
+//   - This type describes the relationship of the circle to the current polygon only.
+//   - This type is intended to be used inside the [RelationshipCirclePolyTree] map.
+//
+// See Also:
+//   - [PolyTree.RelationshipToCircle]: For computing relationships between a circle and all polygons
+//     within a [PolyTree].
+type RelationshipCirclePolygon uint8
 
-// Valid values for CirclePolyTreeRelationship
+// Valid values for RelationshipCirclePolygon
 const (
-	CPTRMiss                 CirclePolyTreeRelationship = iota // Circle lies entirely outside the PolyTree
-	CPTRTouchesSolidBoundary                                   // Circle touches the boundary of a solid polygon
-	CPTRTouchesHoleBoundary                                    // Circle touches the boundary of a hole
-	CPTRIntersectsSolid                                        // Circle intersects one or more solid polygons
-	CPTRIntersectsHole                                         // Circle intersects one or more holes
-	CPTRCircleInSolid                                          // Circle is fully contained within a solid polygon
-	CPTRCircleInHole                                           // Circle is fully contained within a hole
-	CPTRSolidInCircle                                          // A solid polygon is fully contained within the circle
-	CPTRHoleInCircle                                           // A hole is fully contained within the circle
-	CPTRSpansSolid                                             // Circle spans across multiple solid polygons
-	CPTRSpansHole                                              // Circle spans across multiple holes
+	// RelationshipCirclePolyTreeMiss indicates that the circle lies entirely outside the polygon.
+	RelationshipCirclePolyTreeMiss RelationshipCirclePolygon = iota
+
+	// RelationshipCirclePolyTreeExternallyTouching indicates that the circle touches the polygon non-tangentially
+	// at one or more points but does not intersect or overlap with it.
+	// The circle and polygon share boundary points without crossing.
+	RelationshipCirclePolyTreeExternallyTouching
+
+	// RelationshipCirclePolyTreeExternallyTangent indicates that the circle is tangential to the polygon from the outside.
+	// This means the circle touches the polygon at exactly one point and does not intersect or enter the polygon's interior.
+	RelationshipCirclePolyTreeExternallyTangent
+
+	// RelationshipCirclePolyTreeIntersection indicates that the circle intersects one or more edges of the polygon.
+	// This means the circle crosses the polygon's boundary, entering and/or exiting the polygon.
+	RelationshipCirclePolyTreeIntersection
+
+	// RelationshipCirclePolyTreeInternallyTangent indicates that the circle is tangential to the polygon from the inside.
+	// This means the circle touches the polygon at exactly one point without extending outside the polygon's boundary.
+	RelationshipCirclePolyTreeInternallyTangent
+
+	// RelationshipCirclePolyTreeInternallyTouching indicates that the circle's boundary touches the polygon's boundary
+	// non-tangentially from the inside at one or more points but does not fully intersect or exit the polygon's interior.
+	RelationshipCirclePolyTreeInternallyTouching
+
+	// RelationshipCirclePolyTreeContainedByCircle indicates that the circle fully contains the polygon.
+	// There is no intersection or touching between the circle's boundary and the polygon's boundary.
+	RelationshipCirclePolyTreeContainedByCircle
+
+	// RelationshipCirclePolyTreeContainedByPoly indicates that the polygon fully contains the circle.
+	// There is no intersection or touching between the polygon's boundary and the circle's boundary.
+	RelationshipCirclePolyTreeContainedByPoly
 )
 
-// CircleRectangleRelationship defines the possible spatial relationships
+// String returns the name of the RelationshipCirclePolygon constant as a string.
+// It panics if the value is unsupported.
+func (r RelationshipCirclePolygon) String() string {
+	switch r {
+	case RelationshipCirclePolyTreeMiss:
+		return "RelationshipCirclePolyTreeMiss"
+	case RelationshipCirclePolyTreeExternallyTouching:
+		return "RelationshipCirclePolyTreeExternallyTouching"
+	case RelationshipCirclePolyTreeExternallyTangent:
+		return "RelationshipCirclePolyTreeExternallyTangent"
+	case RelationshipCirclePolyTreeIntersection:
+		return "RelationshipCirclePolyTreeIntersection"
+	case RelationshipCirclePolyTreeInternallyTangent:
+		return "RelationshipCirclePolyTreeInternallyTangent"
+	case RelationshipCirclePolyTreeInternallyTouching:
+		return "RelationshipCirclePolyTreeInternallyTouching"
+	case RelationshipCirclePolyTreeContainedByCircle:
+		return "RelationshipCirclePolyTreeContainedByCircle"
+	case RelationshipCirclePolyTreeContainedByPoly:
+		return "RelationshipCirclePolyTreeContainedByPoly"
+	default:
+		panic(fmt.Errorf("unsupported RelationshipCirclePolygon value"))
+	}
+}
+
+// RelationshipCirclePolyTree represents the spatial relationships between a [Circle] and the polygons
+// in a [PolyTree].
+//
+// This type is a mapping of pointers to [PolyTree] nodes to their respective [RelationshipCirclePolygon]
+// values. It indicates how a given [Circle] relates to each polygon in the [PolyTree], such as whether
+// the circle is outside, intersects, is contained by, or contains the polygon.
+//
+// Type Parameters:
+//   - T: A numeric type that satisfies the [SignedNumber] constraint (e.g., int, float64).
+//
+// Notes:
+//   - Each [PolyTree] node represents a single polygon, which could be a solid polygon or a hole.
+//   - This type does not automatically account for hierarchical relationships (e.g., parent-child relationships).
+//     It simply provides the direct relationship of the [Circle] to each polygon in the [PolyTree].
+type RelationshipCirclePolyTree[T SignedNumber] map[*PolyTree[T]]RelationshipCirclePolygon
+
+// RelationshipRectangleCircle defines the possible spatial relationships
 // between a [Circle] and a [Rectangle] in a 2D plane.
 //
 // This enumeration categorizes how a [Circle] relates to a [Rectangle] based on
 // their positions and intersections. It can distinguish whether
 // the [Circle] is fully inside, outside or intersecting the rectangle.
-type CircleRectangleRelationship uint8
+type RelationshipRectangleCircle uint8
 
-// Valid values for CircleRectangleRelationship
+// Valid values for RelationshipRectangleCircle
 const (
-	CRRMiss         CircleRectangleRelationship = iota // Circle and rectangle are disjoint
-	CRRCircleInRect                                    // Circle is fully contained within the rectangle
-	CRRRectInCircle                                    // Rectangle is fully contained within the circle
-	CRRIntersection                                    // Circle and rectangle intersect but are not fully contained
+	// RelationshipRectangleCircleMiss - Circle and rectangle are disjoint.
+	RelationshipRectangleCircleMiss RelationshipRectangleCircle = iota
+
+	// RelationshipRectangleCircleContainedByRectangle - Circle is fully contained within the rectangle with no touching/intersection.
+	// todo: verify cases of touching return intersection
+	RelationshipRectangleCircleContainedByRectangle
+
+	// RelationshipRectangleCircleContainedByCircle - Rectangle is fully contained within the circle with no intersection/touching.
+	// todo: verify cases of touching return intersection
+	RelationshipRectangleCircleContainedByCircle
+
+	// RelationshipRectangleCircleIntersection - Circle and rectangle intersect but are not fully contained.
+	RelationshipRectangleCircleIntersection
 )
 
-// String returns the string representation of a [CircleRectangleRelationship].
+// String returns the string representation of a [RelationshipRectangleCircle].
 //
-// This function converts the [CircleRectangleRelationship] enum value into a
+// This function converts the [RelationshipRectangleCircle] enum value into a
 // corresponding string for improved readability and debugging.
 //
 // Panics:
-//   - If the [CircleRectangleRelationship] has an unsupported or undefined value,
+//   - If the [RelationshipRectangleCircle] has an unsupported or undefined value,
 //     the function will panic.
 //
 // Returns:
-//   - string: The name of the [CircleRectangleRelationship] enum value.
-func (r *CircleRectangleRelationship) String() string {
-	switch *r {
-	case CRRMiss:
-		return "CRRMiss"
-	case CRRCircleInRect:
-		return "CRRCircleInRect"
-	case CRRRectInCircle:
-		return "CRRRectInCircle"
-	case CRRIntersection:
-		return "CRRIntersection"
+//   - string: The name of the [RelationshipRectangleCircle] enum value.
+func (r RelationshipRectangleCircle) String() string {
+	switch r {
+	case RelationshipRectangleCircleMiss:
+		return "RelationshipRectangleCircleMiss"
+	case RelationshipRectangleCircleContainedByRectangle:
+		return "RelationshipRectangleCircleContainedByRectangle"
+	case RelationshipRectangleCircleContainedByCircle:
+		return "RelationshipRectangleCircleContainedByCircle"
+	case RelationshipRectangleCircleIntersection:
+		return "RelationshipRectangleCircleIntersection"
 	default:
-		panic(fmt.Errorf("unsupported CircleRectangleRelationship"))
+		panic(fmt.Errorf("unsupported RelationshipRectangleCircle"))
 	}
 }
 
-// LineSegmentLineSegmentRelationship defines the possible spatial relationships
+// RelationshipLineSegmentLineSegment defines the possible spatial relationships
 // between two line segments in a 2D plane.
 //
 // This enumeration categorizes how two line segments relate to each other based on
-// their positions, intersections, and collinearity.
-//
-// Values:
-//   - LLRCollinearDisjoint (-1): The segments are collinear but do not intersect, overlap, or touch at any point.
-//   - LLRMiss (0): The segments are not collinear and do not intersect, overlap, or touch at any point.
-//   - LLRIntersects (1): The segments intersect at a unique point that is not an endpoint of either segment.
-//   - LLRAeqC (2): The starting point (A) of segment AB coincides with the starting point (C) of segment CD.
-//   - LLRAeqD (3): The starting point (A) of segment AB coincides with the ending point (D) of segment CD.
-//   - LLRBeqC (4): The ending point (B) of segment AB coincides with the starting point (C) of segment CD.
-//   - LLRBeqD (5): The ending point (B) of segment AB coincides with the ending point (D) of segment CD.
-//   - LLRAonCD (6): The starting point (A) of segment AB lies on segment CD.
-//   - LLRBonCD (7): The ending point (B) of segment AB lies on segment CD.
-//   - LLRConAB (8): The starting point (C) of segment CD lies on segment AB.
-//   - LLRDonAB (9): The ending point (D) of segment CD lies on segment AB.
-//   - LLRCollinearAonCD (10): The starting point (A) of segment AB lies on segment CD, with the segments being collinear.
-//   - LLRCollinearBonCD (11): The ending point (B) of segment AB lies on segment CD, with the segments being collinear.
-//   - LLRCollinearABinCD (12): Segment AB is fully contained within segment CD.
-//   - LLRCollinearCDinAB (13): Segment CD is fully contained within segment AB.
-//   - LLRCollinearEqual (14): Segments AB and CD are collinear and exactly equal, sharing both endpoints.
-type LineSegmentLineSegmentRelationship int8
+// their positions, intersections, collinearity, etc.
+type RelationshipLineSegmentLineSegment int8
 
-// Valid values for LineSegmentLineSegmentRelationship
+// Valid values for RelationshipLineSegmentLineSegment
 const (
-	LLRCollinearDisjoint LineSegmentLineSegmentRelationship = iota - 1 // Segments are collinear and do not intersect, overlap, or touch at any point.
-	LLRMiss                                                            // The segments are not collinear, disjoint and do not intersect, overlap, or touch at any point.
-	LLRIntersects                                                      // The segments intersect at a unique point that is not an endpoint.
-	LLRAeqC                                                            // Point A of segment AB coincides with Point C of segment CD
-	LLRAeqD                                                            // Point A of segment AB coincides with Point D of segment CD
-	LLRBeqC                                                            // Point End of segment AB coincides with Point C of segment CD
-	LLRBeqD                                                            // Point End of segment AB coincides with Point D of segment CD
-	LLRAonCD                                                           // Point A lies on LineSegment CD
-	LLRBonCD                                                           // Point End lies on LineSegment CD
-	LLRConAB                                                           // Point C lies on LineSegment AB
-	LLRDonAB                                                           // Point D lies on LineSegment AB
-	LLRCollinearAonCD                                                  // Point A lies on LineSegment CD (partial overlap), and line segments are collinear
-	LLRCollinearBonCD                                                  // Point End lies on LineSegment CD (partial overlap), and line segments are collinear
-	LLRCollinearABinCD                                                 // Segment AB is fully contained within segment CD
-	LLRCollinearCDinAB                                                 // Segment CD is fully contained within segment AB
-	LLRCollinearEqual                                                  // The segments AB and CD are exactly equal, sharing both endpoints in the same locations.
+	// RelationshipLineSegmentLineSegmentCollinearDisjoint - segments are collinear and do not intersect, overlap, or touch at any point.
+	RelationshipLineSegmentLineSegmentCollinearDisjoint RelationshipLineSegmentLineSegment = iota - 1
+
+	// RelationshipLineSegmentLineSegmentMiss - the segments are not collinear, disjoint and do not intersect, overlap, or touch at any point.
+	RelationshipLineSegmentLineSegmentMiss
+
+	// RelationshipLineSegmentLineSegmentIntersects - the segments intersect at a unique point that is not an endpoint.
+	RelationshipLineSegmentLineSegmentIntersects
+
+	// RelationshipLineSegmentLineSegmentAeqC - point A of segment AB coincides with Point C of segment CD.
+	RelationshipLineSegmentLineSegmentAeqC
+
+	// RelationshipLineSegmentLineSegmentAeqD - point A of segment AB coincides with Point D of segment CD.
+	RelationshipLineSegmentLineSegmentAeqD
+
+	// RelationshipLineSegmentLineSegmentBeqC - point End of segment AB coincides with Point C of segment CD.
+	RelationshipLineSegmentLineSegmentBeqC
+
+	// RelationshipLineSegmentLineSegmentBeqD - point End of segment AB coincides with Point D of segment CD.
+	RelationshipLineSegmentLineSegmentBeqD
+
+	// RelationshipLineSegmentLineSegmentAonCD - point A lies on LineSegment CD.
+	RelationshipLineSegmentLineSegmentAonCD
+
+	// RelationshipLineSegmentLineSegmentBonCD - point End lies on LineSegment CD.
+	RelationshipLineSegmentLineSegmentBonCD
+
+	// RelationshipLineSegmentLineSegmentConAB - point C lies on LineSegment AB.
+	RelationshipLineSegmentLineSegmentConAB
+
+	// RelationshipLineSegmentLineSegmentDonAB - [oint D lies on LineSegment AB.
+	RelationshipLineSegmentLineSegmentDonAB
+
+	// RelationshipLineSegmentLineSegmentCollinearAonCD - point A lies on LineSegment CD (partial overlap), and line segments are collinear.
+	RelationshipLineSegmentLineSegmentCollinearAonCD
+
+	// RelationshipLineSegmentLineSegmentCollinearBonCD - point End lies on LineSegment CD (partial overlap), and line segments are collinear.
+	RelationshipLineSegmentLineSegmentCollinearBonCD
+
+	// RelationshipLineSegmentLineSegmentCollinearABinCD - segment AB is fully contained within segment CD.
+	RelationshipLineSegmentLineSegmentCollinearABinCD
+
+	// RelationshipLineSegmentLineSegmentCollinearCDinAB - segment CD is fully contained within segment AB.
+	RelationshipLineSegmentLineSegmentCollinearCDinAB
+
+	// RelationshipLineSegmentLineSegmentCollinearEqual - the segments AB and CD are exactly equal, sharing both endpoints in the same locations.
+	RelationshipLineSegmentLineSegmentCollinearEqual
 )
 
-func (r *LineSegmentLineSegmentRelationship) String() string {
-	switch *r {
-	case LLRCollinearDisjoint:
-		return "LLRCollinearDisjoint"
-	case LLRMiss:
-		return "LLRMiss"
-	case LLRIntersects:
-		return "LLRIntersects"
-	case LLRAeqC:
-		return "LLRAeqC"
-	case LLRAeqD:
-		return "LLRAeqD"
-	case LLRBeqC:
-		return "LLRBeqC"
-	case LLRBeqD:
-		return "LLRBeqD"
-	case LLRAonCD:
-		return "LLRAonCD"
-	case LLRBonCD:
-		return "LLRAonCD"
-	case LLRConAB:
-		return "LLRConAB"
-	case LLRDonAB:
-		return "LLRDonAB"
-	case LLRCollinearAonCD:
-		return "LLRCollinearAonCD"
-	case LLRCollinearBonCD:
-		return "LLRCollinearBonCD"
-	case LLRCollinearABinCD:
-		return "LLRCollinearABinCD"
-	case LLRCollinearCDinAB:
-		return "LLRCollinearCDinAB"
-	case LLRCollinearEqual:
-		return "LLRCollinearEqual"
+// String provides a string representation of a [RelationshipLineSegmentLineSegment] value.
+//
+// This method converts the [RelationshipLineSegmentLineSegment] enum value into a human-readable string,
+// allowing for easier debugging and output interpretation. Each enum value maps to its corresponding
+// string name.
+//
+// Returns:
+//   - string: A string representation of the [RelationshipLineSegmentLineSegment].
+//
+// Panics:
+//   - If the enum value is not recognized, the method panics with an error indicating
+//     an unsupported [RelationshipLineSegmentLineSegment] value.
+func (r RelationshipLineSegmentLineSegment) String() string {
+	switch r {
+	case RelationshipLineSegmentLineSegmentCollinearDisjoint:
+		return "RelationshipLineSegmentLineSegmentCollinearDisjoint"
+	case RelationshipLineSegmentLineSegmentMiss:
+		return "RelationshipLineSegmentLineSegmentMiss"
+	case RelationshipLineSegmentLineSegmentIntersects:
+		return "RelationshipLineSegmentLineSegmentIntersects"
+	case RelationshipLineSegmentLineSegmentAeqC:
+		return "RelationshipLineSegmentLineSegmentAeqC"
+	case RelationshipLineSegmentLineSegmentAeqD:
+		return "RelationshipLineSegmentLineSegmentAeqD"
+	case RelationshipLineSegmentLineSegmentBeqC:
+		return "RelationshipLineSegmentLineSegmentBeqC"
+	case RelationshipLineSegmentLineSegmentBeqD:
+		return "RelationshipLineSegmentLineSegmentBeqD"
+	case RelationshipLineSegmentLineSegmentAonCD:
+		return "RelationshipLineSegmentLineSegmentAonCD"
+	case RelationshipLineSegmentLineSegmentBonCD:
+		return "RelationshipLineSegmentLineSegmentBonCD"
+	case RelationshipLineSegmentLineSegmentConAB:
+		return "RelationshipLineSegmentLineSegmentConAB"
+	case RelationshipLineSegmentLineSegmentDonAB:
+		return "RelationshipLineSegmentLineSegmentDonAB"
+	case RelationshipLineSegmentLineSegmentCollinearAonCD:
+		return "RelationshipLineSegmentLineSegmentCollinearAonCD"
+	case RelationshipLineSegmentLineSegmentCollinearBonCD:
+		return "RelationshipLineSegmentLineSegmentCollinearBonCD"
+	case RelationshipLineSegmentLineSegmentCollinearABinCD:
+		return "RelationshipLineSegmentLineSegmentCollinearABinCD"
+	case RelationshipLineSegmentLineSegmentCollinearCDinAB:
+		return "RelationshipLineSegmentLineSegmentCollinearCDinAB"
+	case RelationshipLineSegmentLineSegmentCollinearEqual:
+		return "RelationshipLineSegmentLineSegmentCollinearEqual"
 	default:
-		panic(fmt.Errorf("unsupported LineSegmentLineSegmentRelationship"))
+		panic(fmt.Errorf("unsupported RelationshipLineSegmentLineSegment"))
 	}
 }
 
-// PointCircleRelationship defines the possible spatial relationships between a point
+// RelationshipPointCircle defines the possible spatial relationships between a point
 // and a circle in a 2D plane. This type categorizes whether the point is inside,
 // outside, or exactly on the circle's circumference.
-//
-// Values:
-//   - PCROutside (0): The point lies outside the circle, meaning its distance
-//     from the circle's center is greater than the circle's radius.
-//   - PCROnCircumference (1): The point lies exactly on the circle's circumference,
-//     meaning its distance from the circle's center is equal to the circle's radius
-//     (within a specified tolerance, if applicable).
-//   - PCRInside (2): The point is inside the circle, meaning its distance from
-//     the circle's center is less than the circle's radius.
-type PointCircleRelationship uint8
+type RelationshipPointCircle uint8
 
-// Valid values for PointCircleRelationship
+// Valid values for RelationshipPointCircle
 const (
-	PCROutside         PointCircleRelationship = iota // Point is outside the circle
-	PCROnCircumference                                // Point lies exactly on the circle's circumference
-	PCRInside                                         // Point is inside the circle
+	// RelationshipPointCircleMiss - Point is outside the circle.
+	RelationshipPointCircleMiss RelationshipPointCircle = iota
+
+	// RelationshipPointCircleOnCircumference - Point lies exactly on the circle's circumference.
+	RelationshipPointCircleOnCircumference
+
+	// RelationshipPointCircleContainedByCircle - Point is inside the circle.
+	RelationshipPointCircleContainedByCircle
 )
 
-func (r *PointCircleRelationship) String() string {
-	switch *r {
-	case PCROutside:
-		return "PCROutside"
-	case PCROnCircumference:
-		return "PCROnCircumference"
-	case PCRInside:
-		return "PCRInside"
+func (r RelationshipPointCircle) String() string {
+	switch r {
+	case RelationshipPointCircleMiss:
+		return "RelationshipPointCircleMiss"
+	case RelationshipPointCircleOnCircumference:
+		return "RelationshipPointCircleOnCircumference"
+	case RelationshipPointCircleContainedByCircle:
+		return "RelationshipPointCircleContainedByCircle"
 	default:
-		panic(fmt.Errorf("unsupported PointCircleRelationship"))
+		panic(fmt.Errorf("unsupported RelationshipPointCircle"))
 	}
 }
 
-// PointLineSegmentRelationship defines the possible spatial relationships
+// RelationshipPointLineSegment defines the possible spatial relationships
 // between a point and a line segment.
 //
 // This enumeration is used to classify how a point relates to a line segment,
 // whether it lies on the infinite line, on the segment itself, or elsewhere.
-//
-// Values:
-//   - PLSRPointOnLine (-1): The point lies on the infinite line defined by the
-//     line segment but not within the segment's bounds.
-//   - PLSRMiss (0): The point does not lie on the line segment or the infinite
-//     line that extends through it.
-//   - PLSRPointEqStart (1): The point coincides with the start of the line segment.
-//   - PLSRPointEqEnd (2): The point coincides with the end of the line segment.
-//   - PLSRPointOnLineSegment (3): The point lies on the segment itself but not
-//     at either endpoint.
-type PointLineSegmentRelationship int8
+type RelationshipPointLineSegment int8
 
-// Valid values for PointLineSegmentRelationship
+// Valid values for RelationshipPointLineSegment
 const (
-	PLRPointOnLine        PointLineSegmentRelationship = iota - 1 // Point lies on the infinite line but not the segment
-	PLRMiss                                                       // Point misses the line segment entirely
-	PLRPointEqStart                                               // Point coincides with the start of the segment
-	PLRPointEqEnd                                                 // Point coincides with the end of the segment
-	PLRPointOnLineSegment                                         // Point lies on the segment (not at an endpoint)
+	// RelationshipPointLineSegmentCollinearDisjoint - Point lies on the infinite line but not the segment.
+	RelationshipPointLineSegmentCollinearDisjoint RelationshipPointLineSegment = iota - 1
+
+	// RelationshipPointLineSegmentMiss - Point misses the line segment entirely.
+	RelationshipPointLineSegmentMiss
+
+	// RelationshipPointLineSegmentPointEqStart - Point coincides with the start of the segment.
+	RelationshipPointLineSegmentPointEqStart
+
+	// RelationshipPointLineSegmentPointEqEnd - Point coincides with the end of the segment.
+	RelationshipPointLineSegmentPointEqEnd
+
+	// RelationshipPointLineSegmentPointOnLineSegment - Point lies on the segment (not at an endpoint).
+	RelationshipPointLineSegmentPointOnLineSegment
 )
 
-// PointPolyTreeRelationship defines the possible spatial relationships between a point
+func (r RelationshipPointLineSegment) String() string {
+	switch r {
+	case RelationshipPointLineSegmentCollinearDisjoint:
+		return "RelationshipPointLineSegmentCollinearDisjoint"
+	case RelationshipPointLineSegmentMiss:
+		return "RelationshipPointLineSegmentMiss"
+	case RelationshipPointLineSegmentPointEqStart:
+		return "RelationshipPointLineSegmentPointEqStart"
+	case RelationshipPointLineSegmentPointEqEnd:
+		return "RelationshipPointLineSegmentPointEqEnd"
+	case RelationshipPointLineSegmentPointOnLineSegment:
+		return "RelationshipPointLineSegmentPointOnLineSegment"
+	default:
+		panic(fmt.Errorf("unsupported RelationshipPointLineSegment"))
+	}
+}
+
+// RelationshipPointPolyTree defines the possible spatial relationships between a point
 // and a polygon in a 2D plane. This type accounts for the presence of holes, solid regions,
 // and nested islands within the polygon.
 //
 // This enumeration provides fine-grained distinctions for where a point lies relative
 // to the polygon's structure, including its boundaries, holes, and nested regions.
-//
-// Values:
-//   - PPTRPointInHole (-1): The point is inside a hole within the polygon. Holes are void regions
-//     within the polygon that are not part of its solid area.
-//   - PPTRPointOutside (0): The point lies outside the root polygon, including points outside
-//     the boundary and not within any nested holes or islands.
-//   - PPTRPointOnVertex (1): The point coincides with a vertex of the polygon, including vertices
-//     of its holes or nested islands.
-//   - PPTRPointOnEdge (2): The point lies exactly on an edge of the polygon. This includes edges of
-//     the root polygon, its holes, or its nested islands.
-//   - PPTRPointInside (3): The point is strictly inside the solid area of the polygon, excluding
-//     any holes within the polygon.
-//   - PPTRPointInsideIsland (4): The point lies within a nested island inside the polygon.
-//     Islands are solid regions contained within holes of the polygon.
-type PointPolyTreeRelationship int8
+// todo: refactor. just have this represent the relationship with the current polygon in the polytree. can return a slice for each polygon
+type RelationshipPointPolyTree int8
 
-// Valid values for PointPolyTreeRelationship
+// Valid values for RelationshipPointPolyTree
 const (
 	// PPTRPointInHole indicates the point is inside a hole within the polygon.
 	// Holes are void regions within the polygon that are not part of its solid area.
-	PPTRPointInHole PointPolyTreeRelationship = iota - 1
+	PPTRPointInHole RelationshipPointPolyTree = iota - 1
 
 	// PPTRPointOutside indicates the point lies outside the root polygon.
 	// This includes points outside the boundary and not within any nested holes or islands.
@@ -379,48 +495,61 @@ const (
 	PPTRPointInsideIsland
 )
 
-// PointRectangleRelationship defines the possible spatial relationships between a point
+func (r RelationshipPointPolyTree) String() string {
+	switch r {
+	case PPTRPointInHole:
+		return "PPTRPointInHole"
+	case PPTRPointOutside:
+		return "PPTRPointOutside"
+	case PPTRPointOnVertex:
+		return "PPTRPointOnVertex"
+	case PPTRPointOnEdge:
+		return "PPTRPointOnEdge"
+	case PPTRPointInside:
+		return "PPTRPointInside"
+	case PPTRPointInsideIsland:
+		return "PPTRPointInsideIsland"
+	default:
+		panic(fmt.Errorf("unsupported RelationshipPointPolyTree"))
+	}
+}
+
+// RelationshipPointRectangle defines the possible spatial relationships between a point
 // and a rectangle in a 2D plane. This type categorizes whether the point is inside,
 // outside, on an edge, or on a vertex of the rectangle.
-//
-// Values:
-//   - PRROutside (0): The point lies outside the rectangle, meaning it does not fall
-//     within the rectangle's boundaries or on its edges or vertices.
-//   - PRRInside (1): The point lies strictly inside the rectangle, meaning it falls
-//     within the rectangle's boundaries but not on its edges or vertices.
-//   - PRROnVertex (2): The point lies on one of the rectangle's vertices
-//     (top-left, top-right, bottom-left, or bottom-right).
-//   - PRROnEdge (3): The point lies on one of the rectangle's edges but not on a vertex.
-type PointRectangleRelationship uint8
+type RelationshipPointRectangle uint8
 
+// Valid values for RelationshipPointRectangle
 const (
-	PRROutside  PointRectangleRelationship = iota // The point lies outside the rectangle.
-	PRRInside                                     // The point lies strictly inside the rectangle.
-	PRROnVertex                                   // The point lies on a vertex of the rectangle.
-	PRROnEdge                                     // The point lies on an edge of the rectangle.
+	// RelationshipPointRectangleMiss - The point lies outside the rectangle.
+	RelationshipPointRectangleMiss RelationshipPointRectangle = iota
+
+	// RelationshipPointRectangleContainedByRectangle - The point lies strictly inside the rectangle.
+	RelationshipPointRectangleContainedByRectangle
+
+	// RelationshipPointRectanglePointOnVertex - The point lies on a vertex of the rectangle.
+	RelationshipPointRectanglePointOnVertex
+
+	// RelationshipPointRectanglePointOnEdge - The point lies on an edge of the rectangle.
+	RelationshipPointRectanglePointOnEdge
 )
 
-// PolyTreeLineSegmentRelationship defines the possible spatial relationships
+// RelationshipLineSegmentPolyTree defines the possible spatial relationships
 // between a line segment and a PolyTree, which is a hierarchical structure
 // of polygons with holes and nested islands.
 //
 // This enumeration categorizes how a line segment relates to the PolyTree
 // based on its position, intersections, and interactions with the boundaries
 // of polygons and holes.
-//
-// Values:
-//   - PTLSMiss: The line segment is entirely outside the PolyTree and does not touch or intersect any of its polygons or holes.
-//   - PTLSInsideSolid: The line segment is entirely within a solid polygon in the PolyTree, without touching any boundaries or holes.
-//   - PTLSInsideHole: The line segment is entirely within a hole in the PolyTree, without touching any boundaries or solid polygons.
-//   - PTLSIntersectsBoundary: The line segment crosses one or more boundaries in the PolyTree.
-type PolyTreeLineSegmentRelationship uint8
+// todo: refactor so relationship is just for current polygon
+type RelationshipLineSegmentPolyTree uint8
 
-// PolyTreeLineSegmentRelationship describes the relationship between a line segment
+// RelationshipLineSegmentPolyTree describes the relationship between a line segment
 // and a PolyTree, capturing whether the segment is inside, outside, or intersects
 // boundaries of the PolyTree's polygons.
 const (
 	// PTLRMiss indicates that the line segment lies entirely outside the PolyTree.
-	PTLRMiss PolyTreeLineSegmentRelationship = iota
+	PTLRMiss RelationshipLineSegmentPolyTree = iota
 
 	// PTLRInsideSolid indicates that the line segment lies entirely within a solid polygon
 	// in the PolyTree, without crossing any boundaries.
@@ -435,70 +564,122 @@ const (
 	PTLRIntersectsBoundary
 )
 
-// RectangleLineSegmentRelationship defines the possible spatial relationships between
+func (r RelationshipLineSegmentPolyTree) String() string {
+	switch r {
+	case PTLRMiss:
+		return "PTLRMiss"
+	case PTLRInsideSolid:
+		return "PTLRInsideSolid"
+	case PTLRInsideHole:
+		return "PTLRInsideHole"
+	case PTLRIntersectsBoundary:
+		return "PTLRIntersectsBoundary"
+	default:
+		panic(fmt.Errorf("unsupported RelationshipLineSegmentPolyTree"))
+	}
+}
+
+// RelationshipLineSegmentRectangle defines the possible spatial relationships between
 // a line segment and a rectangle in a 2D plane. This type categorizes whether the segment
 // is inside, outside, touches edges or vertices, or intersects the rectangle's boundary.
-//
-// Values:
-//   - RLROutside (0): The segment lies entirely outside the rectangle, with no intersection
-//     or contact with its edges or vertices.
-//   - RLROutsideEndTouchesEdge (1): The segment lies outside the rectangle, but one of its
-//     endpoints touches an edge of the rectangle.
-//   - RLROutsideEndTouchesVertex (2): The segment lies outside the rectangle, but one of its
-//     endpoints touches a vertex of the rectangle.
-//   - RLRInside (3): The segment lies entirely within the rectangle, without touching or crossing
-//     its boundary.
-//   - RLRInsideEndTouchesEdge (4): The segment lies within the rectangle, with one of its
-//     endpoints touching an edge but not crossing the boundary.
-//   - RLRInsideEndTouchesVertex (5): The segment lies within the rectangle, with one of its
-//     endpoints touching a vertex but not crossing the boundary.
-//   - RLROnEdge (6): The segment lies entirely on one of the rectangle's edges, without crossing
-//     into its interior or exterior.
-//   - RLROnEdgeEndTouchesVertex (7): The segment lies entirely on one of the rectangle's edges,
-//     and one or both endpoints touch a vertex.
-//   - RLRIntersects (8): The segment crosses one or more edges of the rectangle but does not
-//     fully enter or exit through the boundaries.
-//   - RLREntersAndExits (9): The segment enters the rectangle through one edge and exits through
-//     another edge, crossing the interior.
-type RectangleLineSegmentRelationship uint8
+type RelationshipLineSegmentRectangle uint8
 
-// Valid values for RectangleLineSegmentRelationship
+// Valid values for RelationshipLineSegmentRectangle
 const (
-	RLROutside                 RectangleLineSegmentRelationship = iota // The segment lies entirely outside the rectangle.
-	RLROutsideEndTouchesEdge                                           // The segment lies outside the rectangle and one end touches an edge.
-	RLROutsideEndTouchesVertex                                         // The segment lies outside the rectangle and one end touches a vertex.
-	RLRInside                                                          // The segment lies entirely within the rectangle.
-	RLRInsideEndTouchesEdge                                            // The segment lies within the rectangle and one end touches an edge without crossing the boundary.
-	RLRInsideEndTouchesVertex                                          // The segment lies within the rectangle and one end touches a vertex without crossing the boundary.
-	RLROnEdge                                                          // The segment lies entirely on one edge of the rectangle.
-	RLROnEdgeEndTouchesVertex                                          // The segment lies entirely on one edge of the rectangle and one or both ends touch a vertex.
-	RLRIntersects                                                      // The segment crosses one or more edges of the rectangle.
-	RLREntersAndExits                                                  // The segment enters through one edge and exits through another.
+	// RelationshipLineSegmentRectangleMiss - The segment lies entirely outside the rectangle.
+	RelationshipLineSegmentRectangleMiss RelationshipLineSegmentRectangle = iota
+
+	// RelationshipLineSegmentRectangleEndTouchesEdgeExternally - The segment lies outside the rectangle and one end touches an edge.
+	RelationshipLineSegmentRectangleEndTouchesEdgeExternally
+
+	// RelationshipLineSegmentRectangleEndTouchesVertexExternally - The segment lies outside the rectangle and one end touches a vertex.
+	RelationshipLineSegmentRectangleEndTouchesVertexExternally
+
+	// RelationshipLineSegmentRectangleContainedByRectangle - The segment lies entirely within the rectangle.
+	RelationshipLineSegmentRectangleContainedByRectangle
+
+	// RelationshipLineSegmentRectangleEndTouchesEdgeInternally - The segment lies within the rectangle and one end touches an edge without crossing the boundary.
+	RelationshipLineSegmentRectangleEndTouchesEdgeInternally
+
+	// RelationshipLineSegmentRectangleEndTouchesVertexInternally - The segment lies within the rectangle and one end touches a vertex without crossing the boundary.
+	RelationshipLineSegmentRectangleEndTouchesVertexInternally
+
+	// RelationshipLineSegmentRectangleEdgeCollinear - The segment lies entirely on one edge of the rectangle, not touching a vertex.
+	RelationshipLineSegmentRectangleEdgeCollinear
+
+	// RelationshipLineSegmentRectangleEdgeCollinearTouchingVertex - The segment lies entirely on one edge of the rectangle and one or both ends touch a vertex.
+	RelationshipLineSegmentRectangleEdgeCollinearTouchingVertex
+
+	// RelationshipLineSegmentRectangleIntersects - The segment crosses one or more edges of the rectangle.
+	RelationshipLineSegmentRectangleIntersects
+
+	// RelationshipLineSegmentRectangleEntersAndExits - The segment enters through one edge and exits through another.
+	RelationshipLineSegmentRectangleEntersAndExits
 )
 
-// RectangleRectangleRelationship defines the possible spatial relationships
+// String returns the string representation of the RelationshipLineSegmentRectangle constant.
+//
+// The method maps each RelationshipLineSegmentRectangle value to a descriptive string. It
+// panics if an unsupported value is encountered, ensuring that the relationship is always
+// valid within its defined range.
+//
+// Returns:
+//   - string: The string representation of the RelationshipLineSegmentRectangle.
+func (r RelationshipLineSegmentRectangle) String() string {
+	switch r {
+	case RelationshipLineSegmentRectangleMiss:
+		return "RelationshipLineSegmentRectangleMiss"
+	case RelationshipLineSegmentRectangleEndTouchesEdgeExternally:
+		return "RelationshipLineSegmentRectangleEndTouchesEdgeExternally"
+	case RelationshipLineSegmentRectangleEndTouchesVertexExternally:
+		return "RelationshipLineSegmentRectangleEndTouchesVertexExternally"
+	case RelationshipLineSegmentRectangleContainedByRectangle:
+		return "RelationshipLineSegmentRectangleContainedByRectangle"
+	case RelationshipLineSegmentRectangleEndTouchesEdgeInternally:
+		return "RelationshipLineSegmentRectangleEndTouchesEdgeInternally"
+	case RelationshipLineSegmentRectangleEndTouchesVertexInternally:
+		return "RelationshipLineSegmentRectangleEndTouchesVertexInternally"
+	case RelationshipLineSegmentRectangleEdgeCollinear:
+		return "RelationshipLineSegmentRectangleEdgeCollinear"
+	case RelationshipLineSegmentRectangleEdgeCollinearTouchingVertex:
+		return "RelationshipLineSegmentRectangleEdgeCollinearTouchingVertex"
+	case RelationshipLineSegmentRectangleIntersects:
+		return "RelationshipLineSegmentRectangleIntersects"
+	case RelationshipLineSegmentRectangleEntersAndExits:
+		return "RelationshipLineSegmentRectangleEntersAndExits"
+	default:
+		panic(fmt.Errorf("unsupported RelationshipLineSegmentRectangle: %d", r))
+	}
+}
+
+// RelationshipRectangleRectangle defines the possible spatial relationships
 // between two rectangles in a 2D plane.
 //
 // This enumeration categorizes how two rectangles relate to each other based on
 // their positions, overlaps, and containment.
-//
-// Values:
-//   - RRRMiss (0): The rectangles are disjoint, with no overlap or touching.
-//   - RRRTouchingEdge (1): The rectangles share a complete edge but do not overlap.
-//   - RRRTouchingVertex (2): The rectangles share a single vertex but do not overlap.
-//   - RRRIntersecting (3): The rectangles overlap but neither is fully contained within the other.
-//   - RRRContained (4): One rectangle is fully contained within the other without touching its edges.
-//   - RRRTouchingContained (5): One rectangle is fully contained within the other and touches one or more edges.
-//   - RRREqual (6): The rectangles are identical, sharing the same top-left and bottom-right coordinates.
-type RectangleRectangleRelationship uint8
+type RelationshipRectangleRectangle uint8
 
-// Valid values for RectangleRectangleRelationship
+// Valid values for RelationshipRectangleRectangle
 const (
-	RRRMiss              RectangleRectangleRelationship = iota // Rectangles are disjoint, with no overlap or touching.
-	RRRTouchingEdge                                            // Rectangles share a complete edge but do not overlap.
-	RRRTouchingVertex                                          // Rectangles share a single vertex but do not overlap.
-	RRRIntersecting                                            // Rectangles overlap but neither is fully contained in the other.
-	RRRContained                                               // One rectangle is fully contained within the other without touching edges.
-	RRRTouchingContained                                       // One rectangle is fully contained within the other and touches edges.
-	RRREqual                                                   // Rectangles are identical in position and size.
+	// RelationshipRectangleRectangleMiss - Rectangles are disjoint, with no overlap or touching.
+	RelationshipRectangleRectangleMiss RelationshipRectangleRectangle = iota
+
+	// RelationshipRectangleRectangleSharedEdge - Rectangles share a complete edge but do not overlap.
+	RelationshipRectangleRectangleSharedEdge
+
+	// RelationshipRectangleRectangleSharedVertex - Rectangles share a single vertex but do not overlap.
+	RelationshipRectangleRectangleSharedVertex
+
+	// RelationshipRectangleRectangleIntersection - Rectangles overlap but neither is fully contained in the other.
+	// todo: standardise constant wording - should be "intersecting" across all
+	RelationshipRectangleRectangleIntersection
+
+	// RelationshipRectangleRectangleContained - One rectangle is fully contained within the other without touching edges.
+	RelationshipRectangleRectangleContained
+
+	// RelationshipRectangleRectangleContainedTouching - One rectangle is fully contained within the other and touches edges.
+	RelationshipRectangleRectangleContainedTouching
+
+	// RelationshipRectangleRectangleEqual - Rectangles are identical in position and size.
+	RelationshipRectangleRectangleEqual
 )

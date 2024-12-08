@@ -6,22 +6,22 @@ import (
 )
 
 func ExampleCircleCircleRelationship_String() {
-	rel := geom2d.CCRTouchingExternal
+	rel := geom2d.RelationshipCircleCircleExternallyTangent
 	fmt.Println(rel.String())
 	// Output:
-	// CCRTouchingExternal
+	// RelationshipCircleCircleExternallyTangent
 }
 
 func ExampleCircleLineSegmentRelationship_String() {
-	rel := geom2d.CLRIntersecting
+	rel := geom2d.RelationshipLineSegmentCircleIntersecting
 	fmt.Println(rel.String())
 	// Output:
-	// CLRIntersecting
+	// RelationshipLineSegmentCircleIntersecting
 }
 
 func ExampleCircleRectangleRelationship_String() {
-	rel := geom2d.CRRIntersection
+	rel := geom2d.RelationshipRectangleCircleIntersection
 	fmt.Println(rel.String())
 	// Output:
-	// CRRIntersection
+	// RelationshipRectangleCircleIntersection
 }

@@ -232,49 +232,49 @@ func TestCircle_RelationshipToCircle(t *testing.T) {
 		c1       Circle[float64]
 		c2       Circle[float64]
 		epsilon  float64
-		expected CircleCircleRelationship
+		expected RelationshipCircleCircle
 	}{
 		"Disjoint Circles": {
 			c1:       NewCircle[float64](NewPoint[float64](0, 0), 5),
 			c2:       NewCircle[float64](NewPoint[float64](15, 0), 5),
 			epsilon:  1e-10,
-			expected: CCRMiss,
+			expected: RelationshipCircleCircleMiss,
 		},
 		"Externally Tangent Circles": {
 			c1:       NewCircle[float64](NewPoint[float64](0, 0), 5),
 			c2:       NewCircle[float64](NewPoint[float64](10, 0), 5),
 			epsilon:  1e-10,
-			expected: CCRTouchingExternal,
+			expected: RelationshipCircleCircleExternallyTangent,
 		},
 		"Overlapping Circles": {
 			c1:       NewCircle[float64](NewPoint[float64](0, 0), 5),
 			c2:       NewCircle[float64](NewPoint[float64](6, 0), 5),
 			epsilon:  1e-10,
-			expected: CCROverlapping,
+			expected: RelationshipCircleCircleIntersection,
 		},
 		"Internally Tangent Circles": {
 			c1:       NewCircle[float64](NewPoint[float64](0, 0), 5),
 			c2:       NewCircle[float64](NewPoint[float64](2, 0), 3),
 			epsilon:  1e-10,
-			expected: CCRTouchingInternal,
+			expected: RelationshipCircleCircleInternallyTangent,
 		},
 		"Circle Fully Contained in Another": {
 			c1:       NewCircle[float64](NewPoint[float64](0, 0), 10),
 			c2:       NewCircle[float64](NewPoint[float64](2, 2), 5),
 			epsilon:  1e-10,
-			expected: CCRContained,
+			expected: RelationshipCircleCircleContained,
 		},
 		"Circle Fully Contains Another": {
 			c1:       NewCircle[float64](NewPoint[float64](2, 2), 5),
 			c2:       NewCircle[float64](NewPoint[float64](0, 0), 10),
 			epsilon:  1e-10,
-			expected: CCRContained,
+			expected: RelationshipCircleCircleContained,
 		},
 		"Equal Circles": {
 			c1:       NewCircle[float64](NewPoint[float64](0, 0), 5),
 			c2:       NewCircle[float64](NewPoint[float64](0, 0), 5),
 			epsilon:  1e-10,
-			expected: CCREqual,
+			expected: RelationshipCircleCircleEqual,
 		},
 	}
 
@@ -291,73 +291,73 @@ func TestCircle_RelationshipToLineSegment(t *testing.T) {
 		segment  LineSegment[float64]
 		circle   Circle[float64]
 		epsilon  float64
-		expected CircleLineSegmentRelationship
+		expected RelationshipLineSegmentCircle
 	}{
 		"segment completely inside circle": {
 			segment:  NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](2, 2)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
 			epsilon:  0,
-			expected: CLRInside,
+			expected: RelationshipLineSegmentCircleContainedByCircle,
 		},
 		"segment completely outside circle": {
 			segment:  NewLineSegment(NewPoint[float64](10, 10), NewPoint[float64](15, 15)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
 			epsilon:  0,
-			expected: CLROutside,
+			expected: RelationshipLineSegmentCircleMiss,
 		},
 		"segment intersects circle at two points": {
 			segment:  NewLineSegment(NewPoint[float64](-6, 0), NewPoint[float64](6, 0)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
 			epsilon:  0,
-			expected: CLRIntersecting,
+			expected: RelationshipLineSegmentCircleIntersecting,
 		},
 		"segment is tangent to circle": {
 			segment:  NewLineSegment(NewPoint[float64](5, -5), NewPoint[float64](5, 5)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
 			epsilon:  1e-10,
-			expected: CLRTangent,
+			expected: RelationshipLineSegmentCircleTangentToCircle,
 		},
 		"segment partially inside circle": {
 			segment:  NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](10, 10)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
 			epsilon:  0,
-			expected: CLRIntersecting,
+			expected: RelationshipLineSegmentCircleIntersecting,
 		},
 		"segment with one endpoint on circumference and other outside": {
 			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](10, 10)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
 			epsilon:  1e-10,
-			expected: CLROneEndOnCircumferenceOutside,
+			expected: RelationshipLineSegmentCircleEndOnCircumferenceOutside,
 		},
 		"segment with one endpoint on circumference and other inside": {
 			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](2, 2)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
 			epsilon:  1e-10,
-			expected: CLROneEndOnCircumferenceInside,
+			expected: RelationshipLineSegmentCircleEndOnCircumferenceInside,
 		},
 		"segment with both endpoints on circumference": {
 			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](-5, 0)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
 			epsilon:  1e-10,
-			expected: CLRBothEndsOnCircumference,
+			expected: RelationshipLineSegmentCircleBothEndsOnCircumference,
 		},
 		"degenerate segment inside circle": {
 			segment:  NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](1, 1)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
 			epsilon:  0,
-			expected: CLRInside,
+			expected: RelationshipLineSegmentCircleContainedByCircle,
 		},
 		"degenerate segment on circle boundary": {
 			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](5, 0)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
 			epsilon:  1e-10,
-			expected: CLRBothEndsOnCircumference,
+			expected: RelationshipLineSegmentCircleBothEndsOnCircumference,
 		},
 		"degenerate segment outside circle": {
 			segment:  NewLineSegment(NewPoint[float64](10, 10), NewPoint[float64](10, 10)),
 			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
 			epsilon:  0,
-			expected: CLROutside,
+			expected: RelationshipLineSegmentCircleMiss,
 		},
 	}
 
@@ -374,31 +374,31 @@ func TestCircle_RelationshipToPoint(t *testing.T) {
 		circle   Circle[float64]
 		point    Point[float64]
 		epsilon  float64
-		expected PointCircleRelationship
+		expected RelationshipPointCircle
 	}{
 		"point inside circle": {
 			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
 			point:    NewPoint[float64](-3.0, -2.0),
 			epsilon:  0,
-			expected: PCRInside,
+			expected: RelationshipPointCircleContainedByCircle,
 		},
 		"point on circle boundary": {
 			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
 			point:    NewPoint[float64](3.0, 4.0),
 			epsilon:  1e-10,
-			expected: PCROnCircumference,
+			expected: RelationshipPointCircleOnCircumference,
 		},
 		"point outside circle": {
 			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
 			point:    NewPoint[float64](6.0, 8.0),
 			epsilon:  0,
-			expected: PCROutside,
+			expected: RelationshipPointCircleMiss,
 		},
 		"point at center of circle": {
 			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
 			point:    NewPoint[float64](0.0, 0.0),
 			epsilon:  0,
-			expected: PCRInside,
+			expected: RelationshipPointCircleContainedByCircle,
 		},
 	}
 
@@ -415,37 +415,37 @@ func TestCircle_RelationshipToRectangle(t *testing.T) {
 		circle      Circle[int]
 		rectangle   Rectangle[int]
 		epsilon     float64
-		expectedRel CircleRectangleRelationship
+		expectedRel RelationshipRectangleCircle
 	}{
 		"Disjoint": {
 			circle:      NewCircle(NewPoint(50, 50), 10),
 			rectangle:   NewRectangle([]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)}),
 			epsilon:     1e-10,
-			expectedRel: CRRMiss,
+			expectedRel: RelationshipRectangleCircleMiss,
 		},
 		"Circle Inside Rectangle": {
 			circle:      NewCircle(NewPoint(5, 5), 4),
 			rectangle:   NewRectangle([]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)}),
 			epsilon:     1e-10,
-			expectedRel: CRRCircleInRect,
+			expectedRel: RelationshipRectangleCircleContainedByRectangle,
 		},
 		"Rectangle Inside Circle": {
 			circle:      NewCircle(NewPoint(5, 5), 10),
 			rectangle:   NewRectangle([]Point[int]{NewPoint(3, 3), NewPoint(7, 3), NewPoint(7, 7), NewPoint(3, 7)}),
 			epsilon:     1e-10,
-			expectedRel: CRRRectInCircle,
+			expectedRel: RelationshipRectangleCircleContainedByCircle,
 		},
 		"Circle exactly in Rect (Circle Touching Edges)": {
 			circle:      NewCircle(NewPoint(5, 5), 5),
 			rectangle:   NewRectangle([]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)}),
 			epsilon:     1e-10,
-			expectedRel: CRRCircleInRect,
+			expectedRel: RelationshipRectangleCircleContainedByRectangle,
 		},
 		"Intersecting (Circle Center On Edge)": {
 			circle:      NewCircle(NewPoint(5, 0), 5),
 			rectangle:   NewRectangle([]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)}),
 			epsilon:     1e-10,
-			expectedRel: CRRIntersection,
+			expectedRel: RelationshipRectangleCircleIntersection,
 		},
 	}
 

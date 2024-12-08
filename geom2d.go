@@ -64,6 +64,39 @@ import (
 	"math"
 )
 
+// Option is a functional option type used to configure optional parameters
+// in geometric operations. Functions that accept an Option parameter allow
+// users to customize behavior without modifying the primary function signature.
+//
+// Option functions take a pointer to an geomOptions struct and modify its fields
+// to apply specific configurations.
+type Option func(*geomOptions)
+
+// WithEpsilon returns an [Option] that sets the Epsilon value for functions that support it.
+// Epsilon is a small positive value used to adjust for floating-point precision errors,
+// ensuring numerical stability in geometric calculations.
+//
+// Parameters:
+//   - epsilon: A small positive value specifying the tolerance range. Values within
+//     [-epsilon, epsilon] are treated as zero.
+//
+// Behavior:
+//   - When this option is applied, functions will use the specified Epsilon value
+//     to handle near-zero results caused by floating-point arithmetic.
+//   - If a negative epsilon is provided, it will default to 0 (no adjustment).
+//   - If not set (default), Epsilon remains 0, and no adjustment is applied.
+//
+// Returns:
+//   - An [Option] function that modifies the Epsilon field in the geomOptions struct.
+func WithEpsilon(epsilon float64) Option {
+	return func(opts *geomOptions) {
+		if epsilon < 0 {
+			epsilon = 0 // Default to no adjustment
+		}
+		opts.epsilon = epsilon
+	}
+}
+
 // SignedNumber is a generic interface representing signed numeric types supported by this package.
 // This interface allows functions and structs to operate generically on various numeric types,
 // including integer and floating-point types, while restricting to signed values only.
@@ -101,32 +134,32 @@ type SignedNumber interface {
 //   - It does not define methods that the types must implement, but rather ensures that
 //     only valid geometric types are used.
 //
-// todo: consider making private
+// todo: consider making private & finish doco
 type GeometricType[T SignedNumber] interface {
 	Point[T] | LineSegment[T] | Rectangle[T] | Circle[T] | PolyTree[T]
 }
 
-// todo: consider making private
+// todo: consider making private & finish doco
 type Measurable[T SignedNumber] interface {
 	Area() float64
 	Center(opts ...Option) Point[T]
 	Perimeter(opts ...Option) float64
 }
 
-// todo: consider making private
+// todo: consider making private & finish doco
 type Spatial[T SignedNumber] interface {
 	BoundingBox() Rectangle[T]
 	ContainsPoint(p Point[T]) bool
 }
 
-// todo: consider making private
+// todo: consider making private & finish doco
 type Transformable[T SignedNumber, R GeometricType[T]] interface {
 	Rotate(pivot Point[T], radians float64, opts ...Option) R
 	Scale(ref Point[T], k T) R
 	Translate(delta Point[T]) R
 }
 
-// todo: consider making private
+// todo: consider making private & finish doco
 type Geometry[T SignedNumber, R GeometricType[T]] interface {
 	Measurable[T]
 	Spatial[T]
@@ -195,52 +228,6 @@ type geomOptions struct {
 	//
 	// Default: 0 (no epsilon adjustment)
 	epsilon float64
-}
-
-// Option is a functional option type used to configure optional parameters
-// in geometric operations. Functions that accept an Option parameter allow
-// users to customize behavior without modifying the primary function signature.
-//
-// Option functions take a pointer to an geomOptions struct and modify its fields
-// to apply specific configurations.
-//
-// Example:
-//
-//	rotated := p.Rotate(pivot, math.Pi/2, WithEpsilon(1e-10))
-//
-// In this example, the WithEpsilon function returns an Option that sets the
-// Epsilon field in the geomOptions struct, enabling numerical stability adjustments.
-type Option func(*geomOptions)
-
-// WithEpsilon returns an Option that sets the Epsilon value in the geomOptions struct.
-// Epsilon is a small positive value used to adjust for floating-point precision errors,
-// ensuring numerical stability in geometric calculations.
-//
-// Parameters:
-//   - epsilon: A small positive value specifying the tolerance range. Values within
-//     [-epsilon, epsilon] are treated as zero.
-//
-// Behavior:
-//   - When this option is applied, functions will use the specified Epsilon value
-//     to handle near-zero results caused by floating-point arithmetic.
-//   - If a negative epsilon is provided, it will default to 0 (no adjustment).
-//   - If not set (default), Epsilon remains 0, and no adjustment is applied.
-//
-// Example:
-//
-//	rotated := p.Rotate(pivot, math.Pi/2, WithEpsilon(1e-10))
-//	// Configures the rotation to treat values within 1e-10 of zero as zero.
-//
-// Returns:
-//
-//	An Option function that modifies the Epsilon field in the geomOptions struct.
-func WithEpsilon(epsilon float64) Option {
-	return func(opts *geomOptions) {
-		if epsilon < 0 {
-			epsilon = 0 // Default to no adjustment
-		}
-		opts.epsilon = epsilon
-	}
 }
 
 // applyOptions applies a set of functional options to a given options struct,

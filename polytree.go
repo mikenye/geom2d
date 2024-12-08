@@ -3,6 +3,7 @@ package geom2d
 import (
 	"fmt"
 	"slices"
+	"strings"
 )
 
 // BooleanOperation defines the types of Boolean operations that can be performed on polygons.
@@ -25,6 +26,46 @@ const (
 	BooleanSubtraction
 )
 
+// NewPolyTreeOption defines a functional option type for configuring a new [PolyTree] during creation.
+//
+// This type allows for flexible and extensible initialization of [PolyTree] objects by applying optional
+// configurations after the core properties have been set.
+//
+// Parameters:
+//   - T: The numeric type of the coordinates in the [PolyTree], constrained by the [SignedNumber] interface.
+//
+// This pattern makes it easy to add optional properties to a PolyTree without requiring an extensive list
+// of parameters in the NewPolyTree function.
+type NewPolyTreeOption[T SignedNumber] func(*PolyTree[T])
+
+// WithChildren is an option for the [NewPolyTree] function that assigns child polygons to the created [PolyTree].
+// It also sets up parent-child relationships and orders the children for consistency.
+//
+// Parameters:
+//   - children: A variadic list of pointers to [PolyTree] objects representing the child polygons.
+//
+// Behavior:
+//   - The function assigns the provided children to the [PolyTree] being created.
+//   - It establishes the parent-child relationship by setting the parent of each child to the newly created [PolyTree].
+//
+// Returns:
+//   - A [NewPolyTreeOption] that can be passed to the [NewPolyTree] function.
+func WithChildren[T SignedNumber](children ...*PolyTree[T]) NewPolyTreeOption[T] {
+	return func(p *PolyTree[T]) {
+
+		// Assign the provided children to the parent polygon.
+		p.children = children
+
+		// Order the children for consistency in traversal and comparison.
+		p.orderSiblingsAndChildren()
+
+		// Set the parent field of each child to the current polygon.
+		for i := range p.children {
+			p.children[i].parent = p
+		}
+	}
+}
+
 // Valid values for PolygonType
 const (
 	// PTSolid represents a solid region of the polygon, commonly referred to as an "island."
@@ -35,6 +76,31 @@ const (
 	// Holes are not part of the filled area of the polygon and are treated as exclusions.
 	PTHole
 )
+
+// String returns a string representation of the [PolygonType].
+//
+// This method converts the enum value of a [PolygonType] into a human-readable string,
+// making it useful for debugging, logging, or providing textual representations.
+//
+// Returns:
+//   - string: A string representation of the [PolygonType], such as "PTSolid" or "PTHole".
+//
+// Panics:
+//   - If the [PolygonType] value is unsupported, the method will panic with an appropriate error message.
+//
+// Notes:
+//   - This method assumes that the [PolygonType] is valid. If new polygon types are added
+//     in the future, ensure this method is updated to include them to avoid panics.
+func (t PolygonType) String() string {
+	switch t {
+	case PTSolid:
+		return "PTSolid"
+	case PTHole:
+		return "PTHole"
+	default:
+		panic(fmt.Errorf("unsupported PolygonType"))
+	}
+}
 
 // Valid values for polyIntersectionType
 const (
@@ -229,31 +295,6 @@ var entryExitPointLookUpTable = map[BooleanOperation]map[PolygonType]map[Polygon
 	},
 }
 
-// NewPolyTreeOption defines a functional option type for configuring a new PolyTree during creation.
-//
-// This type allows for flexible and extensible initialization of PolyTree objects by applying optional
-// configurations after the core properties have been set.
-//
-// Parameters:
-//   - T: The numeric type of the coordinates in the PolyTree, constrained by the SignedNumber interface.
-//
-// Example Usage:
-//
-//	// Define an option that adds children to a PolyTree
-//	func WithChildren[T SignedNumber](children ...*PolyTree[T]) NewPolyTreeOption[T] {
-//	    return func(pt *PolyTree[T]) {
-//	        pt.children = append(pt.children, children...)
-//	    }
-//	}
-//
-//	// Create a new PolyTree with a child
-//	child, _ := NewPolyTree([]Point[int]{{1, 1}, {2, 1}, {2, 2}, {1, 2}}, PTSolid)
-//	parent, _ := NewPolyTree([]Point[int]{{0, 0}, {3, 0}, {3, 3}, {0, 3}}, PTSolid, WithChildren(child))
-//
-// This pattern makes it easy to add optional properties to a PolyTree without requiring an extensive list
-// of parameters in the NewPolyTree function.
-type NewPolyTreeOption[T SignedNumber] func(*PolyTree[T])
-
 // PolygonType (PT) defines whether the inside of the contour of a polygon represents either a solid region (island)
 // or a void region (hole). This distinction is essential for operations involving polygons
 // with complex structures, such as those containing holes or nested islands.
@@ -333,6 +374,31 @@ type PolyTreeMismatch uint8
 // involving midpoints and to avoid precision issues when working with integer-based
 // coordinates.
 type contour[T SignedNumber] []polyTreePoint[T]
+
+// String returns a string representation of the contour, listing all its points in order.
+//
+// This method iterates through all polyTreePoints in the contour and appends their coordinates
+// to a human-readable string.
+//
+// Returns:
+//   - string: A formatted string showing the list of points in the contour.
+func (c *contour[T]) String() string {
+	var builder strings.Builder
+	builder.WriteString("Contour Points: [")
+
+	first := true
+	for _, pt := range c.toPoints() {
+		if first {
+			builder.WriteString(fmt.Sprintf("(%v, %v)", pt.x/2, pt.y/2))
+			first = false
+			continue
+		}
+		builder.WriteString(fmt.Sprintf(", (%v, %v)", pt.x/2, pt.y/2))
+	}
+
+	builder.WriteString("]")
+	return builder.String()
+}
 
 // polyEdge represents an edge of a polygon, storing the geometric line segment
 // and additional metadata for polygon operations.
@@ -576,34 +642,6 @@ func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPo
 func newSimpleConvexPolygon[T SignedNumber](points []Point[T]) simpleConvexPolygon[T] {
 	// Assume `points` is already ordered to form a convex polygon
 	return simpleConvexPolygon[T]{Points: points}
-}
-
-// WithChildren is an option for the NewPolyTree function that assigns child polygons to the created PolyTree.
-// It also sets up parent-child relationships and orders the children for consistency.
-//
-// Parameters:
-//   - children: A variadic list of pointers to PolyTree objects representing the child polygons.
-//
-// Behavior:
-//   - The function assigns the provided children to the PolyTree being created.
-//   - It establishes the parent-child relationship by setting the parent of each child to the newly created PolyTree.
-//
-// Returns:
-//   - A NewPolyTreeOption that can be passed to the NewPolyTree function.
-func WithChildren[T SignedNumber](children ...*PolyTree[T]) NewPolyTreeOption[T] {
-	return func(p *PolyTree[T]) {
-
-		// Assign the provided children to the parent polygon.
-		p.children = children
-
-		// Order the children for consistency in traversal and comparison.
-		p.orderSiblingsAndChildren()
-
-		// Set the parent field of each child to the current polygon.
-		for i := range p.children {
-			p.children[i].parent = p
-		}
-	}
 }
 
 // contains checks whether a given point is present in the contour.
@@ -1784,6 +1822,39 @@ func (p *PolyTree[T]) resetIntersectionMetadataAndReorder() {
 
 	// Reorder the contour to ensure a consistent starting point
 	p.contour.reorder()
+}
+
+// String returns a string representation of the PolyTree, displaying its hierarchy,
+// polygon type, and contour points.
+//
+// This method uses the iterPolys method to traverse the entire PolyTree
+// and represent each polygon's type, contour points, and relationships.
+//
+// Returns:
+//   - string: A human-readable representation of the PolyTree.
+func (p *PolyTree[T]) String() string {
+	var builder strings.Builder
+
+	for poly := range p.iterPolys {
+
+		// Calculate indentation level based on hierarchy depth
+		depth := 0
+		for parent := poly.parent; parent != nil; parent = parent.parent {
+			depth++
+		}
+		indent := strings.Repeat("  ", depth)
+
+		// Write polygon information
+		builder.WriteString(fmt.Sprintf(
+			"%sPolyTree: %s\n%s%s\n",
+			indent,
+			poly.polygonType.String(),
+			indent,
+			poly.contour.String(),
+		))
+	}
+
+	return builder.String()
 }
 
 // ContainsPoint determines whether a given point lies inside the convex polygon.
