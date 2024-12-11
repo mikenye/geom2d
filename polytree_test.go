@@ -13,7 +13,7 @@ func TestSimpleConvexPolygon_ContainsPoint(t *testing.T) {
 		point           Point[int]
 		expectedContain bool
 	}{
-		"Point PCRInside Polygon": {
+		"Point RelationshipPointCircleContainedByCircle Polygon": {
 			polygon: simpleConvexPolygon[int]{
 				Points: []Point[int]{
 					NewPoint(0, 0),
@@ -25,7 +25,7 @@ func TestSimpleConvexPolygon_ContainsPoint(t *testing.T) {
 			point:           NewPoint(2, 2), // Point inside the square
 			expectedContain: true,
 		},
-		"Point PCROutside Polygon": {
+		"Point RelationshipPointCircleMiss Polygon": {
 			polygon: simpleConvexPolygon[int]{
 				Points: []Point[int]{
 					NewPoint(0, 0),
@@ -826,6 +826,123 @@ func TestPolyTree_OrderConsistency(t *testing.T) {
 	// Verify sibling order
 	expectedSiblingOrder := []*PolyTree[int]{sibling2, sibling1} // Ordered by lowest, leftmost point
 	assert.Equal(t, expectedSiblingOrder, root.siblings, "Siblings should be ordered by lowest, leftmost point")
+}
+
+func TestPolyTree_RelationshipToCircle(t *testing.T) {
+	// create polytree
+	root, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(0, 100),
+		NewPoint(100, 100),
+		NewPoint(100, 0),
+	}, PTSolid)
+	require.NoError(t, err, "error creating root poly")
+	hole, err := NewPolyTree([]Point[int]{
+		NewPoint(20, 20),
+		NewPoint(20, 80),
+		NewPoint(80, 80),
+		NewPoint(80, 20),
+	}, PTHole)
+	require.NoError(t, err, "error creating hole poly")
+	err = root.AddChild(hole)
+	require.NoError(t, err, "error adding hole as child to root")
+	island, err := NewPolyTree([]Point[int]{
+		NewPoint(40, 40),
+		NewPoint(40, 60),
+		NewPoint(60, 60),
+		NewPoint(60, 40),
+	}, PTSolid)
+	require.NoError(t, err, "error creating island poly")
+	err = hole.AddChild(island)
+	require.NoError(t, err, "error adding island as child to hole")
+
+	t.Run("Circle completely outside all polygons", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](-20, -20), 10)
+		rels := root.RelationshipToCircle(circle)
+		for _, rel := range rels {
+			assert.Equal(t, RelationshipCirclePolyTreeMiss, rel, "expected RelationshipCirclePolyTreeMiss")
+		}
+	})
+
+	t.Run("Circle externally tangent to root polygon", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](-10, 50), 10)
+		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
+		assert.Equal(t, RelationshipCirclePolyTreeExternallyTangent, rels[root], "expected different root relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[hole], "expected different hole relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
+	})
+
+	t.Run("Circle externally touching root polygon", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](0, 110), 10)
+		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
+		assert.Equal(t, RelationshipCirclePolyTreeExternallyTouching, rels[root], "expected different root relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[hole], "expected different hole relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
+	})
+
+	t.Run("Circle intersecting root polygon", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](-5, 50), 10)
+		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
+		assert.Equal(t, RelationshipCirclePolyTreeIntersection, rels[root], "expected different root relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[hole], "expected different hole relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
+	})
+
+	t.Run("Circle internally and externally tangent to root and hole polygons", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](10, 50), 10)
+		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
+		assert.Equal(t, RelationshipCirclePolyTreeInternallyTangent, rels[root], "expected different root relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeExternallyTangent, rels[hole], "expected different hole relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
+	})
+
+	t.Run("Circle fully containing all polygons", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](0, 0), 10000)
+		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
+		assert.Equal(t, RelationshipCirclePolyTreeContainedByCircle, rels[root], "expected different root relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeContainedByCircle, rels[hole], "expected different hole relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeContainedByCircle, rels[island], "expected different island relationship")
+	})
+
+	t.Run("Circle contained by root polygon", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](11, 11), 10)
+		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
+		assert.Equal(t, RelationshipCirclePolyTreeContainedByPoly, rels[root], "expected different root relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[hole], "expected different hole relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
+	})
+
+	t.Run("Degenerate circle contained by root polygon", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](10, 10), 0)
+		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
+		assert.Equal(t, RelationshipCirclePolyTreeContainedByPoly, rels[root], "expected different root relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[hole], "expected different hole relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
+	})
+
+	t.Run("Circle intersecting hole polygon", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](15, 15), 10)
+		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
+		assert.Equal(t, RelationshipCirclePolyTreeContainedByPoly, rels[root], "expected different root relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeIntersection, rels[hole], "expected different hole relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
+	})
+
+	t.Run("Circle center on vertex of root polygon", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](0, 0), 10)
+		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
+		assert.Equal(t, RelationshipCirclePolyTreeIntersection, rels[root], "expected different root relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[hole], "expected different hole relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
+	})
+
+	t.Run("Circle intersecting root and hole polygons", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](10, 50), 12)
+		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
+		assert.Equal(t, RelationshipCirclePolyTreeIntersection, rels[root], "expected different root relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeIntersection, rels[hole], "expected different hole relationship")
+		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
+	})
 }
 
 func TestNestPointsToPolyTrees(t *testing.T) {

@@ -49,6 +49,27 @@ func ExampleWithChildren() {
 	//   Contour Points: [(1, 1), (1, 3), (3, 3), (3, 1)]
 }
 
+func ExamplePolyTree_RelationshipToCircle() {
+	// Create a PolyTree with a solid polygon
+	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(100, 0),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(0, 100),
+	}, geom2d.PTSolid)
+
+	// Create a circle that intersects the root polygon
+	circle := geom2d.NewCircle(geom2d.NewPoint[int](50, 50), 25)
+
+	// Determine the relationship between the circle and the PolyTree
+	rels := root.RelationshipToCircle(circle, geom2d.WithEpsilon(1e-10))
+
+	// Output the relationship
+	fmt.Println(rels[root])
+	// Output:
+	// RelationshipCirclePolyTreeContainedByPoly
+}
+
 func ExamplePolygonType_String() {
 	pt := geom2d.PTSolid
 	fmt.Println(pt.String())

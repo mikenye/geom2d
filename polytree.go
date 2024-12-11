@@ -2,6 +2,7 @@ package geom2d
 
 import (
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 )
@@ -414,7 +415,7 @@ type polyEdge[T SignedNumber] struct {
 	// rel specifies the relationship of this edge with a ray during point-in-polygon tests.
 	// This field is primarily used for algorithms like ray-casting to determine whether
 	// a point is inside or outside the polygon.
-	rel LineSegmentLineSegmentRelationship
+	rel RelationshipLineSegmentLineSegment
 }
 
 // polyIntersectionType defines the type of intersection point in polygon operations,
@@ -869,27 +870,27 @@ func (c *contour[T]) isPointInside(point Point[T]) bool {
 		iNext := (i + 1) % len(edges)
 
 		switch edges[i].rel {
-		case LLRIntersects: // Ray intersects the edge.
+		case RelationshipLineSegmentLineSegmentIntersects: // Ray intersects the edge.
 			crosses++
 
-		case LLRCollinearCDinAB: // Ray is collinear with the edge and overlaps it.
+		case RelationshipLineSegmentLineSegmentCollinearCDinAB: // Ray is collinear with the edge and overlaps it.
 			crosses += 2
 
-		case LLRConAB: // Ray starts on the edge.
+		case RelationshipLineSegmentLineSegmentConAB: // Ray starts on the edge.
 			crosses++
 
 			// Handle potential overlaps with the next edge.
-			if edges[iNext].rel == LLRDonAB {
+			if edges[iNext].rel == RelationshipLineSegmentLineSegmentDonAB {
 				if inOrder(edges[i].lineSegment.start.y, point.y, edges[iNext].lineSegment.end.y) {
 					crosses++
 				}
 			}
 
-		case LLRDonAB: // Ray ends on the edge.
+		case RelationshipLineSegmentLineSegmentDonAB: // Ray ends on the edge.
 			crosses++
 
 			// Handle potential overlaps with the next edge.
-			if edges[iNext].rel == LLRConAB {
+			if edges[iNext].rel == RelationshipLineSegmentLineSegmentConAB {
 				if inOrder(edges[i].lineSegment.start.y, point.y, edges[iNext].lineSegment.end.y) {
 					crosses++
 				}
@@ -1287,7 +1288,7 @@ func (p *PolyTree[T]) AddChild(child *PolyTree[T]) error {
 	for _, sibling := range p.children {
 		for siblingEdge := range sibling.contour.iterEdges {
 			for childEdge := range child.contour.iterEdges {
-				if siblingEdge.RelationshipToLineSegment(childEdge) > LLRMiss {
+				if siblingEdge.RelationshipToLineSegment(childEdge) > RelationshipLineSegmentLineSegmentMiss {
 					return fmt.Errorf("child polygon overlaps with an existing sibling polygon")
 				}
 			}
@@ -1331,7 +1332,7 @@ func (p *PolyTree[T]) AddSibling(sibling *PolyTree[T]) error {
 	for _, existingSibling := range p.siblings {
 		for existingSiblingEdge := range existingSibling.contour.iterEdges {
 			for siblingEdge := range sibling.contour.iterEdges {
-				if siblingEdge.RelationshipToLineSegment(existingSiblingEdge) > LLRMiss {
+				if siblingEdge.RelationshipToLineSegment(existingSiblingEdge) > RelationshipLineSegmentLineSegmentMiss {
 					return fmt.Errorf("child polygon overlaps with an existing sibling polygon")
 				}
 			}
@@ -1661,6 +1662,14 @@ func (p *PolyTree[T]) iterPolys(yield func(*PolyTree[T]) bool) {
 	}
 }
 
+func (p *PolyTree[T]) Len() int {
+	i := 0
+	for _ = range p.iterPolys {
+		i++
+	}
+	return i
+}
+
 // markEntryExitPoints assigns entry and exit metadata to intersection points for Boolean operations
 // between two PolyTree objects.
 //
@@ -1783,7 +1792,112 @@ func (p *PolyTree[T]) orderSiblingsAndChildren() {
 	})
 }
 
-func (p *PolyTree[T]) RelationshipToPoint(point Point[T], opts ...Option) PointPolyTreeRelationship {
+// RelationshipToCircle determines the spatial relationship between a [Circle] and a [PolyTree].
+//
+// This method evaluates the relationship of the given circle to each polygon within the PolyTree
+// and returns a map indicating the relationship for each polygon. The relationships are determined
+// based on the circle's position relative to the polygon edges, such as intersection, tangency,
+// containment, or disjointness.
+//
+// Parameters:
+//   - circle ([Circle][T]): The circle to evaluate against the PolyTree.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing distances and coordinates, allowing
+//     for robust handling of floating-point precision errors.
+//
+// Returns:
+//   - [RelationshipCirclePolyTree][T]: A map where each key is a pointer to a polygon in the PolyTree
+//     and each value is a [RelationshipCirclePolygon] describing the relationship of the circle to that polygon.
+//
+// Behavior:
+//   - The method iterates through each polygon in the PolyTree and evaluates its edges relative to the circle.
+//   - Relationships such as intersection, touching a vertex, tangency (internal or external), containment, and miss are computed.
+//
+// Notes:
+//   - This method ensures precision by applying epsilon adjustments to floating-point calculations.
+func (p *PolyTree[T]) RelationshipToCircle(circle Circle[T], opts ...Option) RelationshipCirclePolyTree[T] {
+	output := make(RelationshipCirclePolyTree[T], p.Len())
+
+	circleCentreDoubled := NewPoint[T](
+		circle.center.x*2,
+		circle.center.y*2,
+	)
+
+RelationshipToCircleIterPolys:
+	for poly := range p.iterPolys {
+
+		shortestDistanceCircleCenterToPolyEdge := math.MaxFloat64
+		longestDistanceCircleCenterToPolyEdge := -math.MaxFloat64
+
+		for edge := range poly.contour.iterEdges {
+
+			// Halve values for doubled-point format
+			edgeHalved := NewLineSegment(
+				NewPoint(edge.start.x/2, edge.start.y/2),
+				NewPoint(edge.end.x/2, edge.end.y/2),
+			)
+
+			// Update shortest and longest distances
+			distanceCircleCenterToEdge := edgeHalved.DistanceToPoint(circle.center)
+			if shortestDistanceCircleCenterToPolyEdge > distanceCircleCenterToEdge {
+				shortestDistanceCircleCenterToPolyEdge = distanceCircleCenterToEdge
+			}
+			if longestDistanceCircleCenterToPolyEdge < distanceCircleCenterToEdge {
+				longestDistanceCircleCenterToPolyEdge = distanceCircleCenterToEdge
+			}
+
+			// Check edge relationship to circle
+			rel := circle.RelationshipToLineSegment(edgeHalved, opts...)
+			switch rel {
+			case RelationshipLineSegmentCircleMiss, RelationshipLineSegmentCircleContainedByCircle:
+				// No action needed
+			case RelationshipLineSegmentCircleIntersecting:
+				output[poly] = RelationshipCirclePolyTreeIntersection
+				continue RelationshipToCircleIterPolys
+			case RelationshipLineSegmentCircleTangentToCircle:
+				if poly.contour.isPointInside(circleCentreDoubled) {
+					output[poly] = RelationshipCirclePolyTreeInternallyTangent
+				} else {
+					output[poly] = RelationshipCirclePolyTreeExternallyTangent
+				}
+				continue RelationshipToCircleIterPolys
+			case RelationshipLineSegmentCircleEndOnCircumferenceOutside:
+				if poly.contour.isPointInside(circleCentreDoubled) {
+					output[poly] = RelationshipCirclePolyTreeInternallyTouching
+				} else {
+					output[poly] = RelationshipCirclePolyTreeExternallyTouching
+				}
+				continue RelationshipToCircleIterPolys
+			case RelationshipLineSegmentCircleEndOnCircumferenceInside:
+				output[poly] = RelationshipCirclePolyTreeInternallyTangent
+				continue RelationshipToCircleIterPolys
+			case RelationshipLineSegmentCircleBothEndsOnCircumference:
+				output[poly] = RelationshipCirclePolyTreeIntersection
+				continue RelationshipToCircleIterPolys
+			}
+		}
+
+		// Check for full containment
+		switch {
+		case longestDistanceCircleCenterToPolyEdge <= float64(circle.radius):
+			// Polygon is fully contained within the circle
+			output[poly] = RelationshipCirclePolyTreeContainedByCircle
+			continue RelationshipToCircleIterPolys
+		case shortestDistanceCircleCenterToPolyEdge >= float64(circle.radius) && poly.contour.isPointInside(circleCentreDoubled):
+			// Circle is fully contained within the polygon
+			output[poly] = RelationshipCirclePolyTreeContainedByPoly
+			continue RelationshipToCircleIterPolys
+		default:
+			// No containment; assume miss if no stronger relationship is found
+			output[poly] = RelationshipCirclePolyTreeMiss
+			continue RelationshipToCircleIterPolys
+		}
+	}
+
+	return output
+}
+
+func (p *PolyTree[T]) RelationshipToPoint(point Point[T], opts ...Option) RelationshipPointPolyTree {
 	return point.RelationshipToPolyTree(p, opts...)
 }
 
