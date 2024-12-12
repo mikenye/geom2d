@@ -501,32 +501,30 @@ func (l LineSegment[T]) RelationshipToCircle(c Circle[T], opts ...Option) Relati
 //
 // This function evaluates the relationship between two line segments, AB and CD, by checking for
 // endpoint coincidences, intersections, collinear relationships, and containment. It returns a
-// [RelationshipLineSegmentLineSegment] constant that describes the exact relationship between the segments, such
-// as intersection, partial overlap, full containment, etc.
+// [RelationshipLineSegmentLineSegment] constant that describes the exact relationship between the segments,
+// such as intersection, partial overlap, or full containment.
 //
-// Output constants may include references to A, B, C or D (for brevity).
+// The output constants may reference A, B, C, or D for brevity.
 //
 // Parameters:
 //   - other (LineSegment[T]): The line segment to compare with l.
 //   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
 //     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing points and collinearity calculations,
-//     allowing for robust handling of floating-point precision errors.
+//     improving robustness against floating-point precision errors.
 //
 // Behavior:
-//   - The function first checks if the two line segments are exactly equal (or approximately equal if epsilon is provided).
-//   - It then evaluates endpoint coincidences, collinearity, intersection, and containment using orientation tests,
+//   - The function first checks if the two line segments are exactly equal (or approximately equal if an epsilon is provided).
+//   - It evaluates endpoint coincidences, collinearity, intersection, and containment using orientation tests,
 //     point-on-segment checks, and direct comparisons.
 //   - If [WithEpsilon] is provided, epsilon adjustments are applied to point comparisons, collinearity checks, and
-//     point-on-segment tests to ensure robustness against floating-point imprecision.
+//     point-on-segment tests to handle floating-point imprecision.
 //
 // Returns:
-//   - [RelationshipLineSegmentLineSegment]: A constant that describes the relationship between segments AB and CD.
+//   - [RelationshipLineSegmentLineSegment]: A constant describing the relationship between segments AB and CD.
 //
 // Notes:
 //   - Epsilon adjustment is particularly useful when working with floating-point coordinates, where small
-//     precision errors might otherwise cause incorrect results.
-//
-// todo: check wording with astra
+//     precision errors might lead to incorrect results.
 func (l LineSegment[T]) RelationshipToLineSegment(other LineSegment[T], opts ...Option) RelationshipLineSegmentLineSegment {
 
 	// Check if segments are exactly equal
