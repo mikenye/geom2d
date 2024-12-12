@@ -70,6 +70,47 @@ func ExamplePolyTree_RelationshipToCircle() {
 	// RelationshipCirclePolyTreeContainedByPoly
 }
 
+func ExamplePolyTree_RelationshipToPoint() {
+	// Create a PolyTree with nested polygons
+	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(0, 100),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(100, 0),
+	}, geom2d.PTSolid)
+	hole, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(20, 20),
+		geom2d.NewPoint(20, 80),
+		geom2d.NewPoint(80, 80),
+		geom2d.NewPoint(80, 20),
+	}, geom2d.PTHole)
+	_ = root.AddChild(hole)
+	island, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(40, 40),
+		geom2d.NewPoint(40, 60),
+		geom2d.NewPoint(60, 60),
+		geom2d.NewPoint(60, 40),
+	}, geom2d.PTSolid)
+	_ = hole.AddChild(island)
+
+	// todo: reminder about handling errors
+
+	// Define test point
+	pointOnHoleVertex := geom2d.NewPoint[int](20, 20)
+
+	// Evaluate relationships
+	relationships := root.RelationshipToPoint(pointOnHoleVertex)
+
+	// Print relationships
+	fmt.Printf("Root relationship: %s\n", relationships[root].String())
+	fmt.Printf("Hole relationship: %s\n", relationships[hole].String())
+	fmt.Printf("Island relationship: %s\n", relationships[island].String())
+	// Output:
+	// Root relationship: RelationshipPointPolygonPointInsidePolygon
+	// Hole relationship: RelationshipPointPolygonPointOnVertex
+	// Island relationship: RelationshipPointPolygonMiss
+}
+
 func ExamplePolygonType_String() {
 	pt := geom2d.PTSolid
 	fmt.Println(pt.String())

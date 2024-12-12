@@ -459,60 +459,67 @@ func (r RelationshipPointLineSegment) String() string {
 	}
 }
 
-// RelationshipPointPolyTree defines the possible spatial relationships between a point
-// and a polygon in a 2D plane. This type accounts for the presence of holes, solid regions,
-// and nested islands within the polygon.
+// RelationshipPointPolygon represents the spatial relationship between a point
+// and a polygon within a PolyTree. This enumeration categorizes the possible
+// relationships, such as whether the point is inside the polygon, on its edge, on a vertex, or outside.
 //
-// This enumeration provides fine-grained distinctions for where a point lies relative
-// to the polygon's structure, including its boundaries, holes, and nested regions.
-// todo: refactor. just have this represent the relationship with the current polygon in the polytree. can return a slice for each polygon
-type RelationshipPointPolyTree int8
+// Notes:
+//   - This enumeration is used to describe the relationship between a point and individual polygons in a PolyTree.
+//   - Relationships to sibling or child polygons should be handled separately, as this type only applies
+//     to individual polygons.
+type RelationshipPointPolygon int8
 
-// Valid values for RelationshipPointPolyTree
+// Valid values for RelationshipPointPolygon
 const (
-	// PPTRPointInHole indicates the point is inside a hole within the polygon.
-	// Holes are void regions within the polygon that are not part of its solid area.
-	PPTRPointInHole RelationshipPointPolyTree = iota - 1
+	// RelationshipPointPolygonMiss indicates that the point lies entirely outside the polygon.
+	RelationshipPointPolygonMiss RelationshipPointPolygon = iota
 
-	// PPTRPointOutside indicates the point lies outside the root polygon.
-	// This includes points outside the boundary and not within any nested holes or islands.
-	PPTRPointOutside
+	// RelationshipPointPolygonPointOnEdge indicates that the point lies on an edge of the polygon.
+	RelationshipPointPolygonPointOnEdge
 
-	// PPTRPointOnVertex indicates the point coincides with a vertex of the polygon,
-	// including vertices of its holes or nested islands.
-	PPTRPointOnVertex
+	// RelationshipPointPolygonPointOnVertex indicates that the point lies on a vertex of the polygon.
+	RelationshipPointPolygonPointOnVertex
 
-	// PPTRPointOnEdge indicates the point lies exactly on an edge of the polygon.
-	// This includes edges of the root polygon, its holes, or its nested islands.
-	PPTRPointOnEdge
-
-	// PPTRPointInside indicates the point is strictly inside the solid area of the polygon,
-	// excluding any holes within the polygon.
-	PPTRPointInside
-
-	// PPTRPointInsideIsland indicates the point lies within a nested island inside the polygon.
-	// Islands are solid regions contained within holes of the polygon.
-	PPTRPointInsideIsland
+	// RelationshipPointPolygonPointInsidePolygon indicates that the point lies strictly within the polygon's boundary.
+	RelationshipPointPolygonPointInsidePolygon
 )
 
-func (r RelationshipPointPolyTree) String() string {
+// String returns the string representation of the RelationshipPointPolygon value.
+// This is useful for debugging, logging, or generating user-friendly output.
+//
+// If the value is not recognized, the function panics with an error.
+func (r RelationshipPointPolygon) String() string {
 	switch r {
-	case PPTRPointInHole:
-		return "PPTRPointInHole"
-	case PPTRPointOutside:
-		return "PPTRPointOutside"
-	case PPTRPointOnVertex:
-		return "PPTRPointOnVertex"
-	case PPTRPointOnEdge:
-		return "PPTRPointOnEdge"
-	case PPTRPointInside:
-		return "PPTRPointInside"
-	case PPTRPointInsideIsland:
-		return "PPTRPointInsideIsland"
+	case RelationshipPointPolygonMiss:
+		return "RelationshipPointPolygonMiss"
+	case RelationshipPointPolygonPointOnEdge:
+		return "RelationshipPointPolygonPointOnEdge"
+	case RelationshipPointPolygonPointOnVertex:
+		return "RelationshipPointPolygonPointOnVertex"
+	case RelationshipPointPolygonPointInsidePolygon:
+		return "RelationshipPointPolygonPointInsidePolygon"
 	default:
-		panic(fmt.Errorf("unsupported RelationshipPointPolyTree"))
+		panic(fmt.Errorf("unsupported RelationshipPointPolygon value: %d", r))
 	}
 }
+
+// RelationshipPointPolyTree represents the spatial relationships between a point
+// and all polygons in a PolyTree.
+//
+// This type is a map where each key is a pointer to a specific polygon (represented as a [PolyTree]),
+// and the value is a [RelationshipPointPolygon] indicating the relationship of the point
+// to that polygon. The relationships describe whether the point lies outside, on an edge,
+// on a vertex, or inside the polygon.
+//
+// Type Parameters:
+//   - T: A type that satisfies the [SignedNumber] constraint, representing the numeric type
+//     used for the point and polygon coordinates (e.g., int, int64, float32, float64).
+//
+// Notes:
+//   - The relationships are determined individually for each polygon in the PolyTree.
+//   - Users can leverage this map to efficiently access and analyze the relationship of a
+//     point to each polygon, without manually iterating through the PolyTree.
+type RelationshipPointPolyTree[T SignedNumber] map[*PolyTree[T]]RelationshipPointPolygon
 
 // RelationshipPointRectangle defines the possible spatial relationships between a point
 // and a rectangle in a 2D plane. This type categorizes whether the point is inside,

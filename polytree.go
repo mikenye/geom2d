@@ -1893,8 +1893,68 @@ RelationshipToCircleIterPolys:
 	return output
 }
 
-func (p *PolyTree[T]) RelationshipToPoint(point Point[T], opts ...Option) RelationshipPointPolyTree {
-	return point.RelationshipToPolyTree(p, opts...)
+// RelationshipToPoint determines the spatial relationship between a given [Point] and
+// each polygon in the [PolyTree]. The function returns a map where the keys are
+// pointers to individual polygons within the tree, and the values are
+// [RelationshipPointPolygon] constants indicating the relationship of the point to
+// each polygon.
+//
+// Parameters:
+//   - point ([Point][T]): The point whose relationship to the polygons is to be determined.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the
+//     relationship check. For example, [WithEpsilon](epsilon float64) allows for a
+//     tolerance when comparing distances or collinearity, improving robustness against
+//     floating-point precision errors.
+//
+// Returns:
+//   - [RelationshipPointPolyTree][T]: A map where the keys are pointers to polygons in
+//     the [PolyTree], and the values are [RelationshipPointPolygon] constants describing
+//     the relationship of the point to each polygon.
+//
+// Behavior:
+//   - For each polygon in the tree, the function first checks the point's relationship
+//     to the edges of the polygon. If the point lies on a vertex or an edge, the
+//     corresponding relationship is set, and no further checks are performed for that
+//     polygon.
+//   - If the point does not lie on an edge or vertex, the function checks whether the
+//     point is inside the polygon using a point-in-polygon test.
+//   - If the point does not satisfy any of the above relationships, it is classified as
+//     being outside the polygon.
+func (p *PolyTree[T]) RelationshipToPoint(point Point[T], opts ...Option) RelationshipPointPolyTree[T] {
+	pointDoubled := NewPoint(point.x*2, point.y*2)
+	output := make(RelationshipPointPolyTree[T])
+
+RelationshipToPointIterPolys:
+	for poly := range p.iterPolys {
+		// Check the relationship of the point to each edge of the polygon
+		for edge := range poly.contour.iterEdges {
+			rel := edge.RelationshipToPoint(pointDoubled, opts...)
+			switch rel {
+			case RelationshipPointLineSegmentCollinearDisjoint, RelationshipPointLineSegmentMiss:
+				// Skip ambiguous cases
+				continue
+			case RelationshipPointLineSegmentPointEqStart, RelationshipPointLineSegmentPointEqEnd:
+				// Point is on a vertex
+				output[poly] = RelationshipPointPolygonPointOnVertex
+				continue RelationshipToPointIterPolys
+			case RelationshipPointLineSegmentPointOnLineSegment:
+				// Point is on an edge
+				output[poly] = RelationshipPointPolygonPointOnEdge
+				continue RelationshipToPointIterPolys
+			}
+		}
+
+		// Check if the point is inside the polygon
+		if poly.contour.isPointInside(pointDoubled) {
+			output[poly] = RelationshipPointPolygonPointInsidePolygon
+			continue RelationshipToPointIterPolys
+		}
+
+		// Default to outside relationship
+		output[poly] = RelationshipPointPolygonMiss
+	}
+
+	return output
 }
 
 // resetIntersectionMetadataAndReorder removes intersection-related metadata from the PolyTree

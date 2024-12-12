@@ -945,6 +945,100 @@ func TestPolyTree_RelationshipToCircle(t *testing.T) {
 	})
 }
 
+func TestPolyTree_RelationshipToPoint(t *testing.T) {
+	// Create a sample PolyTree with a root polygon, a hole, and an island
+	root, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(0, 100),
+		NewPoint(100, 100),
+		NewPoint(100, 0),
+	}, PTSolid)
+	require.NoError(t, err, "error creating root polygon")
+
+	hole, err := NewPolyTree([]Point[int]{
+		NewPoint(20, 20),
+		NewPoint(20, 80),
+		NewPoint(80, 80),
+		NewPoint(80, 20),
+	}, PTHole)
+	require.NoError(t, err, "error creating hole polygon")
+	err = root.AddChild(hole)
+	require.NoError(t, err, "error adding hole to root")
+
+	island, err := NewPolyTree([]Point[int]{
+		NewPoint(40, 40),
+		NewPoint(40, 60),
+		NewPoint(60, 60),
+		NewPoint(60, 40),
+	}, PTSolid)
+	require.NoError(t, err, "error creating island polygon")
+	err = hole.AddChild(island)
+	require.NoError(t, err, "error adding island to hole")
+
+	t.Run("Point outside all polygons", func(t *testing.T) {
+		point := NewPoint(150, 150)
+		rels := root.RelationshipToPoint(point)
+
+		assert.Equal(t, RelationshipPointPolygonMiss, rels[root], "expected point to be outside root polygon")
+		assert.Equal(t, RelationshipPointPolygonMiss, rels[hole], "expected point to be outside hole polygon")
+		assert.Equal(t, RelationshipPointPolygonMiss, rels[island], "expected point to be outside island polygon")
+	})
+
+	t.Run("Point inside root polygon but outside hole", func(t *testing.T) {
+		point := NewPoint(10, 10)
+		rels := root.RelationshipToPoint(point)
+
+		assert.Equal(t, RelationshipPointPolygonPointInsidePolygon, rels[root], "expected point to be inside root polygon")
+		assert.Equal(t, RelationshipPointPolygonMiss, rels[hole], "expected point to be outside hole polygon")
+		assert.Equal(t, RelationshipPointPolygonMiss, rels[island], "expected point to be outside island polygon")
+	})
+
+	t.Run("Point on edge of root polygon", func(t *testing.T) {
+		point := NewPoint(0, 50)
+		rels := root.RelationshipToPoint(point)
+
+		assert.Equal(t, RelationshipPointPolygonPointOnEdge, rels[root], "expected point to be on edge of root polygon")
+		assert.Equal(t, RelationshipPointPolygonMiss, rels[hole], "expected point to be outside hole polygon")
+		assert.Equal(t, RelationshipPointPolygonMiss, rels[island], "expected point to be outside island polygon")
+	})
+
+	t.Run("Point on vertex of root polygon", func(t *testing.T) {
+		point := NewPoint(0, 0)
+		rels := root.RelationshipToPoint(point)
+
+		assert.Equal(t, RelationshipPointPolygonPointOnVertex, rels[root], "expected point to be on vertex of root polygon")
+		assert.Equal(t, RelationshipPointPolygonMiss, rels[hole], "expected point to be outside hole polygon")
+		assert.Equal(t, RelationshipPointPolygonMiss, rels[island], "expected point to be outside island polygon")
+	})
+
+	t.Run("Point inside island polygon", func(t *testing.T) {
+		point := NewPoint(50, 50)
+		rels := root.RelationshipToPoint(point)
+
+		assert.Equal(t, RelationshipPointPolygonPointInsidePolygon, rels[root], "expected point to be outside root polygon")
+		assert.Equal(t, RelationshipPointPolygonPointInsidePolygon, rels[hole], "expected point to be inside hole polygon")
+		assert.Equal(t, RelationshipPointPolygonPointInsidePolygon, rels[island], "expected point to be outside island polygon")
+	})
+
+	t.Run("Point on edge of hole polygon", func(t *testing.T) {
+		point := NewPoint(20, 50)
+		rels := root.RelationshipToPoint(point)
+
+		assert.Equal(t, RelationshipPointPolygonPointInsidePolygon, rels[root], "expected point to be outside root polygon")
+		assert.Equal(t, RelationshipPointPolygonPointOnEdge, rels[hole], "expected point to be on edge of hole polygon")
+		assert.Equal(t, RelationshipPointPolygonMiss, rels[island], "expected point to be outside island polygon")
+	})
+
+	t.Run("Point on vertex of hole polygon", func(t *testing.T) {
+		point := NewPoint(20, 20)
+		rels := root.RelationshipToPoint(point)
+
+		assert.Equal(t, RelationshipPointPolygonPointInsidePolygon, rels[root], "expected point to be outside root polygon")
+		assert.Equal(t, RelationshipPointPolygonPointOnVertex, rels[hole], "expected point to be on vertex of hole polygon")
+		assert.Equal(t, RelationshipPointPolygonMiss, rels[island], "expected point to be outside island polygon")
+	})
+}
+
 func TestNestPointsToPolyTrees(t *testing.T) {
 	tests := map[string]struct {
 		contours [][]Point[int]

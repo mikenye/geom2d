@@ -325,42 +325,6 @@ func ExamplePoint_RelationshipToLineSegment() {
 	// RelationshipPointLineSegmentMiss
 }
 
-func ExamplePoint_RelationshipToPolyTree() {
-	// Define a PolyTree with nested polygons
-	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
-		geom2d.NewPoint(0, 0), geom2d.NewPoint(20, 0), geom2d.NewPoint(20, 20), geom2d.NewPoint(0, 20),
-	}, geom2d.PTSolid)
-
-	hole, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
-		geom2d.NewPoint(5, 5), geom2d.NewPoint(15, 5), geom2d.NewPoint(15, 15), geom2d.NewPoint(5, 15),
-	}, geom2d.PTHole)
-	_ = root.AddChild(hole)
-
-	island, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
-		geom2d.NewPoint(10, 10), geom2d.NewPoint(12, 10), geom2d.NewPoint(12, 12), geom2d.NewPoint(10, 12),
-	}, geom2d.PTSolid)
-	_ = hole.AddChild(island)
-
-	// As this is example code, errors are not handled. Please handle errors in your code!
-
-	// Define points to analyze
-	pointOutside := geom2d.NewPoint[int](25, 25)
-	pointOnEdge := geom2d.NewPoint[int](5, 5)
-	pointInHole := geom2d.NewPoint[int](7, 7)
-	pointInIsland := geom2d.NewPoint[int](11, 11)
-
-	// Analyze relationships
-	fmt.Println(pointOutside.RelationshipToPolyTree(root))
-	fmt.Println(pointOnEdge.RelationshipToPolyTree(root))
-	fmt.Println(pointInHole.RelationshipToPolyTree(root))
-	fmt.Println(pointInIsland.RelationshipToPolyTree(root))
-	// Output:
-	// PPTRPointOutside
-	// PPTRPointOnVertex
-	// PPTRPointInHole
-	// PPTRPointInsideIsland
-}
-
 func ExamplePoint_Rotate() {
 	pivot := geom2d.NewPoint(1.0, 1.0)
 	circle := geom2d.NewCircle(geom2d.NewPoint(3.0, 3.0), 5.0)
