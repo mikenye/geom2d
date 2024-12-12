@@ -534,6 +534,23 @@ const (
 	RelationshipPointRectanglePointOnEdge
 )
 
+// String returns the string representation of a RelationshipPointRectangle value.
+// It outputs the constant name corresponding to the relationship and panics if an unsupported value is encountered.
+func (r RelationshipPointRectangle) String() string {
+	switch r {
+	case RelationshipPointRectangleMiss:
+		return "RelationshipPointRectangleMiss"
+	case RelationshipPointRectangleContainedByRectangle:
+		return "RelationshipPointRectangleContainedByRectangle"
+	case RelationshipPointRectanglePointOnVertex:
+		return "RelationshipPointRectanglePointOnVertex"
+	case RelationshipPointRectanglePointOnEdge:
+		return "RelationshipPointRectanglePointOnEdge"
+	default:
+		panic(fmt.Errorf("unsupported RelationshipPointRectangle value: %d", r))
+	}
+}
+
 // RelationshipLineSegmentPolyTree defines the possible spatial relationships
 // between a line segment and a PolyTree, which is a hierarchical structure
 // of polygons with holes and nested islands.
@@ -683,3 +700,26 @@ const (
 	// RelationshipRectangleRectangleEqual - Rectangles are identical in position and size.
 	RelationshipRectangleRectangleEqual
 )
+
+// String returns the string representation of a RelationshipRectangleRectangle value.
+// It outputs the constant name corresponding to the relationship and panics if an unsupported value is encountered.
+func (r RelationshipRectangleRectangle) String() string {
+	switch r {
+	case RelationshipRectangleRectangleMiss:
+		return "RelationshipRectangleRectangleMiss"
+	case RelationshipRectangleRectangleSharedEdge:
+		return "RelationshipRectangleRectangleSharedEdge"
+	case RelationshipRectangleRectangleSharedVertex:
+		return "RelationshipRectangleRectangleSharedVertex"
+	case RelationshipRectangleRectangleIntersection:
+		return "RelationshipRectangleRectangleIntersection"
+	case RelationshipRectangleRectangleContained:
+		return "RelationshipRectangleRectangleContained"
+	case RelationshipRectangleRectangleContainedTouching:
+		return "RelationshipRectangleRectangleContainedTouching"
+	case RelationshipRectangleRectangleEqual:
+		return "RelationshipRectangleRectangleEqual"
+	default:
+		panic(fmt.Errorf("unsupported RelationshipRectangleRectangle value: %d", r))
+	}
+}

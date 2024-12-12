@@ -596,7 +596,7 @@ func ExampleLineSegment_Translate() {
 	// End Point: Point[(6, 7)]
 }
 
-func ExampleLineSegmentLineSegmentRelationship_String() {
+func ExampleRelationshipLineSegmentLineSegment_String() {
 	rel := geom2d.RelationshipLineSegmentLineSegmentIntersects
 	fmt.Println(rel.String())
 	// Output:

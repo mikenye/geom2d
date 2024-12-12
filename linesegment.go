@@ -5,27 +5,6 @@ import (
 	"math"
 )
 
-// ScaleOrigin specifies the origin point from which a line segment should be scaled.
-//
-// The origin can be set to either the start point, the end point, or the midpoint
-// of the line segment. This allows for flexible scaling behavior depending on
-// the desired point of reference.
-type ScaleOrigin uint8
-
-const (
-	// ScaleFromStart scales the line segment from its start point.
-	// The start point remains fixed, while the end point is adjusted based on the scaling factor.
-	ScaleFromStart ScaleOrigin = iota
-
-	// ScaleFromEnd scales the line segment from its end point.
-	// The end point remains fixed, while the start point is adjusted based on the scaling factor.
-	ScaleFromEnd
-
-	// ScaleFromMidpoint scales the line segment from its midpoint.
-	// Both the start and end points are adjusted proportionally to maintain the midpoint's position.
-	ScaleFromMidpoint
-)
-
 // LineSegment represents a line segment in a 2D space, defined by two endpoints, the start [Point] and end [Point].
 //
 // The generic type parameter T must satisfy the [SignedNumber] constraint, allowing the segment

@@ -124,10 +124,6 @@ const (
 	// These points are part of the polygon's initial definition.
 	pointTypeOriginal polyPointType = iota
 
-	// pointTypeOriginalAndIntersection indicates that the point is an original vertex that also serves
-	// as an intersection point between polygons during operations such as union or intersection.
-	pointTypeOriginalAndIntersection
-
 	// pointTypeAddedIntersection indicates that the point is an intersection point that was added
 	// during a polygon operation. These points are not part of the polygon's original definition
 	// but are dynamically introduced for computational purposes.
