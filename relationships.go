@@ -346,17 +346,75 @@ func (r RelationshipLineSegmentLineSegment) String() string {
 type RelationshipLineSegmentPolygon uint8
 
 const (
+	// RelationshipLineSegmentPolygonMiss indicates that the line segment lies entirely outside the polygon
+	// and does not touch or intersect its boundary.
 	RelationshipLineSegmentPolygonMiss RelationshipLineSegmentPolygon = iota
+
+	// RelationshipLineSegmentPolygonEndTouchesEdgeExternally indicates that one endpoint of the line segment
+	// touches an edge of the polygon but lies outside the polygon's boundary.
 	RelationshipLineSegmentPolygonEndTouchesEdgeExternally
+
+	// RelationshipLineSegmentPolygonEndTouchesVertexExternally indicates that one endpoint of the line segment
+	// coincides with a vertex of the polygon but lies outside the polygon's boundary.
 	RelationshipLineSegmentPolygonEndTouchesVertexExternally
+
+	// RelationshipLineSegmentPolygonContainedByPoly indicates that the line segment lies entirely within the polygon,
+	// with both endpoints inside the polygon and no intersection with its boundary.
 	RelationshipLineSegmentPolygonContainedByPoly
+
+	// RelationshipLineSegmentPolygonEndTouchesEdgeInternally indicates that one endpoint of the line segment
+	// touches an edge of the polygon but lies inside the polygon's boundary.
 	RelationshipLineSegmentPolygonEndTouchesEdgeInternally
+
+	// RelationshipLineSegmentPolygonEndTouchesVertexInternally indicates that one endpoint of the line segment
+	// coincides with a vertex of the polygon and lies inside the polygon's boundary.
 	RelationshipLineSegmentPolygonEndTouchesVertexInternally
+
+	// RelationshipLineSegmentPolygonEdgeCollinear indicates that the line segment is collinear with an edge
+	// of the polygon and overlaps with it completely or partially.
 	RelationshipLineSegmentPolygonEdgeCollinear
+
+	// RelationshipLineSegmentPolygonEdgeCollinearTouchingVertex indicates that the line segment is collinear
+	// with an edge of the polygon and at least one of its endpoints coincides with a vertex of the polygon.
 	RelationshipLineSegmentPolygonEdgeCollinearTouchingVertex
+
+	// RelationshipLineSegmentPolygonIntersects indicates that the line segment crosses one or more edges
+	// of the polygon but is not fully contained within the polygon.
 	RelationshipLineSegmentPolygonIntersects
+
+	// RelationshipLineSegmentPolygonEntersAndExits indicates that the line segment enters the polygon through
+	// one edge and exits through another edge.
 	RelationshipLineSegmentPolygonEntersAndExits
 )
+
+// String returns the string representation of a RelationshipLineSegmentPolygon value.
+// It panics if an unsupported value is encountered.
+func (r RelationshipLineSegmentPolygon) String() string {
+	switch r {
+	case RelationshipLineSegmentPolygonMiss:
+		return "RelationshipLineSegmentPolygonMiss"
+	case RelationshipLineSegmentPolygonEndTouchesEdgeExternally:
+		return "RelationshipLineSegmentPolygonEndTouchesEdgeExternally"
+	case RelationshipLineSegmentPolygonEndTouchesVertexExternally:
+		return "RelationshipLineSegmentPolygonEndTouchesVertexExternally"
+	case RelationshipLineSegmentPolygonContainedByPoly:
+		return "RelationshipLineSegmentPolygonContainedByPoly"
+	case RelationshipLineSegmentPolygonEndTouchesEdgeInternally:
+		return "RelationshipLineSegmentPolygonEndTouchesEdgeInternally"
+	case RelationshipLineSegmentPolygonEndTouchesVertexInternally:
+		return "RelationshipLineSegmentPolygonEndTouchesVertexInternally"
+	case RelationshipLineSegmentPolygonEdgeCollinear:
+		return "RelationshipLineSegmentPolygonEdgeCollinear"
+	case RelationshipLineSegmentPolygonEdgeCollinearTouchingVertex:
+		return "RelationshipLineSegmentPolygonEdgeCollinearTouchingVertex"
+	case RelationshipLineSegmentPolygonIntersects:
+		return "RelationshipLineSegmentPolygonIntersects"
+	case RelationshipLineSegmentPolygonEntersAndExits:
+		return "RelationshipLineSegmentPolygonEntersAndExits"
+	default:
+		panic(fmt.Errorf("unsupported RelationshipLineSegmentPolygon value: %d", r))
+	}
+}
 
 type RelationshipLineSegmentPolyTree[T SignedNumber] map[*PolyTree[T]]RelationshipLineSegmentPolygon
 

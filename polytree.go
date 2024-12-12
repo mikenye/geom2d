@@ -1927,7 +1927,8 @@ RelationshipToLineSegmentIterPolys:
 				continue RelationshipToLineSegmentIterPolys
 
 			case RelationshipLineSegmentLineSegmentAeqC, RelationshipLineSegmentLineSegmentAeqD,
-				RelationshipLineSegmentLineSegmentBeqC, RelationshipLineSegmentLineSegmentBeqD:
+				RelationshipLineSegmentLineSegmentBeqC, RelationshipLineSegmentLineSegmentBeqD,
+				RelationshipLineSegmentLineSegmentCollinearAonCD, RelationshipLineSegmentLineSegmentCollinearBonCD:
 				// Vertex touch relationships
 				if (!containsEnd && containsStart) || (containsEnd && !containsStart) {
 					output[poly] = RelationshipLineSegmentPolygonEndTouchesVertexExternally
@@ -1948,11 +1949,6 @@ RelationshipToLineSegmentIterPolys:
 			case RelationshipLineSegmentLineSegmentConAB, RelationshipLineSegmentLineSegmentDonAB:
 				// Line segment intersects polygon edge
 				output[poly] = RelationshipLineSegmentPolygonIntersects
-				continue RelationshipToLineSegmentIterPolys
-
-			case RelationshipLineSegmentLineSegmentCollinearAonCD, RelationshipLineSegmentLineSegmentCollinearBonCD:
-				// Collinear with edge, touching a vertex
-				output[poly] = RelationshipLineSegmentPolygonEdgeCollinearTouchingVertex
 				continue RelationshipToLineSegmentIterPolys
 
 			case RelationshipLineSegmentLineSegmentCollinearABinCD, RelationshipLineSegmentLineSegmentCollinearCDinAB:
