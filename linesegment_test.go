@@ -3,7 +3,6 @@ package geom2d
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"math"
 	"testing"
 )
@@ -838,117 +837,6 @@ func TestLineSegment_RelationshipToLineSegment(t *testing.T) {
 			default:
 				t.Errorf("Unsupported segment type in test %s", name)
 			}
-		})
-	}
-}
-
-func TestLineSegment_RelationshipToPolyTree(t *testing.T) {
-	tests := map[string]struct {
-		lineSegment  LineSegment[int]
-		polyTreeFunc func() (*PolyTree[int], error)
-		epsilon      float64
-		expectedRel  RelationshipLineSegmentPolyTree
-	}{
-		"LineSegment Outside": {
-			lineSegment: NewLineSegment(NewPoint(11, -1), NewPoint(11, 11)),
-			polyTreeFunc: func() (*PolyTree[int], error) {
-				return NewPolyTree(
-					[]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)},
-					PTSolid,
-				)
-			},
-			epsilon:     1e-10,
-			expectedRel: PTLRMiss,
-		},
-		"LineSegment Inside Solid Polygon": {
-			lineSegment: NewLineSegment(NewPoint(1, 1), NewPoint(9, 9)),
-			polyTreeFunc: func() (*PolyTree[int], error) {
-				return NewPolyTree(
-					[]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)},
-					PTSolid,
-				)
-			},
-			epsilon:     1e-10,
-			expectedRel: PTLRInsideSolid,
-		},
-		"LineSegment Inside Hole": {
-			lineSegment: NewLineSegment(NewPoint(5, 5), NewPoint(15, 15)),
-			polyTreeFunc: func() (*PolyTree[int], error) {
-				root, err := NewPolyTree(
-					[]Point[int]{NewPoint(0, 0), NewPoint(20, 0), NewPoint(20, 20), NewPoint(0, 20)},
-					PTSolid,
-				)
-				if err != nil {
-					return nil, err
-				}
-				hole, err := NewPolyTree(
-					[]Point[int]{NewPoint(4, 4), NewPoint(16, 4), NewPoint(16, 16), NewPoint(4, 16)},
-					PTHole,
-				)
-				if err != nil {
-					return nil, err
-				}
-				err = root.AddChild(hole)
-				if err != nil {
-					return nil, err
-				}
-				return root, nil
-			},
-			epsilon:     1e-10,
-			expectedRel: PTLRInsideHole,
-		},
-		"LineSegment on Edge": {
-			lineSegment: NewLineSegment(NewPoint(0, 0), NewPoint(10, 0)),
-			polyTreeFunc: func() (*PolyTree[int], error) {
-				return NewPolyTree([]Point[int]{
-					NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10),
-				}, PTSolid)
-			},
-			expectedRel: PTLRIntersectsBoundary,
-		},
-		"LineSegment Crosses Edges": {
-			lineSegment: NewLineSegment(NewPoint(-1, -1), NewPoint(11, 11)),
-			polyTreeFunc: func() (*PolyTree[int], error) {
-				return NewPolyTree([]Point[int]{
-					NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10),
-				}, PTSolid)
-			},
-			expectedRel: PTLRIntersectsBoundary,
-		},
-		"LineSegment Inside Island": {
-			lineSegment: NewLineSegment(NewPoint(11, 11), NewPoint(13, 13)),
-			polyTreeFunc: func() (*PolyTree[int], error) {
-				root, err := NewPolyTree([]Point[int]{
-					NewPoint(0, 0), NewPoint(20, 0), NewPoint(20, 20), NewPoint(0, 20),
-				}, PTSolid)
-				if err != nil {
-					return nil, err
-				}
-				hole, err := NewPolyTree([]Point[int]{
-					NewPoint(5, 5), NewPoint(15, 5), NewPoint(15, 15), NewPoint(5, 15),
-				}, PTHole)
-				if err != nil {
-					return nil, err
-				}
-				require.NoError(t, root.AddChild(hole))
-				island, err := NewPolyTree([]Point[int]{
-					NewPoint(10, 10), NewPoint(14, 10), NewPoint(14, 14), NewPoint(10, 14),
-				}, PTSolid)
-				require.NoError(t, hole.AddChild(island))
-				return root, nil
-			},
-			expectedRel: PTLRInsideSolid,
-		},
-	}
-
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
-			polyTree, err := test.polyTreeFunc()
-			require.NoError(t, err, "Error creating PolyTree for test: %s", name)
-			require.NotNil(t, polyTree, "PolyTree is nil for test: %s", name)
-
-			actualRel := test.lineSegment.RelationshipToPolyTree(polyTree, WithEpsilon(test.epsilon))
-			require.Equal(t, test.expectedRel, actualRel, "Relationship mismatch for test: %s", name)
 		})
 	}
 }

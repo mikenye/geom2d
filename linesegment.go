@@ -642,60 +642,6 @@ func (l LineSegment[T]) RelationshipToPoint(p Point[T], opts ...Option) Relation
 	return p.RelationshipToLineSegment(l, opts...)
 }
 
-// RelationshipToPolyTree determines the spatial relationship of a line segment to a [PolyTree].
-//
-// The function evaluates whether the line segment:
-//   - Intersects any boundary within the [PolyTree].
-//   - Is entirely within a solid or hole polygon in the [PolyTree].
-//   - Lies entirely outside the [PolyTree].
-//
-// Parameters:
-//   - tree (*[PolyTree][T]): A pointer to the [PolyTree] to evaluate.
-//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the point's location relative
-//     to the line segment, improving robustness in floating-point calculations.
-//
-// Returns:
-//   - [RelationshipLineSegmentPolyTree]: The relationship between the line segment and the [PolyTree].
-//
-// Behavior:
-//   - If the line segment intersects any boundary (considering epsilon), the function immediately returns [PTLRIntersectsBoundary].
-//   - If the segment's endpoints are entirely contained within the same polygon, the function returns [PTLRInsideSolid] or [PTLRInsideHole], depending on the polygon type.
-//   - The function uses an epsilon tolerance when checking relationships between line segments and polygon edges.
-//   - If no stronger relationship is found, the function returns [PTLRMiss], indicating the segment is entirely outside the [PolyTree].
-func (l LineSegment[T]) RelationshipToPolyTree(tree *PolyTree[T], opts ...Option) RelationshipLineSegmentPolyTree {
-
-	// as the points in a polytree contour are doubled, we need to also double the input line segment
-	lineSegmentDoubled := l.Scale(NewPoint[T](0, 0), 2)
-
-	highestRel := PTLRMiss // Default to outside
-
-	// Iterate through each polygon in the tree
-	for poly := range tree.iterPolys {
-		// Check each edge of the polygon's contour
-		for edge := range poly.contour.iterEdges {
-			// Determine relationship between poly contour & line segment
-			rel := edge.RelationshipToLineSegment(lineSegmentDoubled, opts...)
-			// any intersection
-			if rel > RelationshipLineSegmentLineSegmentMiss {
-				return PTLRIntersectsBoundary
-			}
-		}
-
-		// check for containment
-		if poly.contour.isPointInside(lineSegmentDoubled.start) && poly.contour.isPointInside(lineSegmentDoubled.end) {
-			switch poly.polygonType {
-			case PTSolid:
-				highestRel = PTLRInsideSolid
-			case PTHole:
-				highestRel = PTLRInsideHole
-			}
-		}
-	}
-
-	return highestRel
-}
-
 // RelationshipToRectangle determines the spatial relationship between a line segment and a [Rectangle].
 //
 // Parameters:

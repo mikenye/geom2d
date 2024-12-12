@@ -1893,6 +1893,92 @@ RelationshipToCircleIterPolys:
 	return output
 }
 
+// todo: improve coverage, doc comments, example func.
+func (p *PolyTree[T]) RelationshipToLineSegment(segment LineSegment[T], opts ...Option) map[*PolyTree[T]]RelationshipLineSegmentPolygon {
+	// Prepare the output map to store relationships for each polygon in the tree
+	output := make(map[*PolyTree[T]]RelationshipLineSegmentPolygon)
+
+	segmentDoubled := NewLineSegment[T](
+		NewPoint[T](segment.start.x*2, segment.start.y*2),
+		NewPoint[T](segment.end.x*2, segment.end.y*2),
+	)
+
+RelationshipToLineSegmentIterPolys:
+	for poly := range p.iterPolys {
+
+		containsStart := poly.contour.isPointInside(segmentDoubled.start)
+		containsEnd := poly.contour.isPointInside(segmentDoubled.end)
+
+		// Check each edge of the polygon
+		for edge := range poly.contour.iterEdges {
+			relationship := segmentDoubled.RelationshipToLineSegment(edge, opts...)
+			switch relationship {
+			case RelationshipLineSegmentLineSegmentCollinearDisjoint, RelationshipLineSegmentLineSegmentMiss:
+				// Ignore ambiguous or non-intersecting cases
+				continue
+
+			case RelationshipLineSegmentLineSegmentIntersects:
+				// Intersection relationships
+				if !containsStart && !containsEnd {
+					output[poly] = RelationshipLineSegmentPolygonEntersAndExits
+				} else {
+					output[poly] = RelationshipLineSegmentPolygonIntersects
+				}
+				continue RelationshipToLineSegmentIterPolys
+
+			case RelationshipLineSegmentLineSegmentAeqC, RelationshipLineSegmentLineSegmentAeqD,
+				RelationshipLineSegmentLineSegmentBeqC, RelationshipLineSegmentLineSegmentBeqD:
+				// Vertex touch relationships
+				if (!containsEnd && containsStart) || (containsEnd && !containsStart) {
+					output[poly] = RelationshipLineSegmentPolygonEndTouchesVertexExternally
+				} else {
+					output[poly] = RelationshipLineSegmentPolygonEndTouchesVertexInternally
+				}
+				continue RelationshipToLineSegmentIterPolys
+
+			case RelationshipLineSegmentLineSegmentAonCD, RelationshipLineSegmentLineSegmentBonCD:
+				// Edge touch relationships
+				if !containsEnd != !containsStart {
+					output[poly] = RelationshipLineSegmentPolygonEndTouchesEdgeExternally
+				} else {
+					output[poly] = RelationshipLineSegmentPolygonEndTouchesEdgeInternally
+				}
+				continue RelationshipToLineSegmentIterPolys
+
+			case RelationshipLineSegmentLineSegmentConAB, RelationshipLineSegmentLineSegmentDonAB:
+				// Line segment intersects polygon edge
+				output[poly] = RelationshipLineSegmentPolygonIntersects
+				continue RelationshipToLineSegmentIterPolys
+
+			case RelationshipLineSegmentLineSegmentCollinearAonCD, RelationshipLineSegmentLineSegmentCollinearBonCD:
+				// Collinear with edge, touching a vertex
+				output[poly] = RelationshipLineSegmentPolygonEdgeCollinearTouchingVertex
+				continue RelationshipToLineSegmentIterPolys
+
+			case RelationshipLineSegmentLineSegmentCollinearABinCD, RelationshipLineSegmentLineSegmentCollinearCDinAB:
+				// Fully collinear with an edge
+				output[poly] = RelationshipLineSegmentPolygonEdgeCollinear
+				continue RelationshipToLineSegmentIterPolys
+
+			case RelationshipLineSegmentLineSegmentCollinearEqual:
+				// Line segment exactly overlaps with an edge
+				output[poly] = RelationshipLineSegmentPolygonEdgeCollinearTouchingVertex
+				continue RelationshipToLineSegmentIterPolys
+			}
+		}
+
+		// Check if the segment is fully contained within the polygon
+		if containsStart && containsEnd {
+			output[poly] = RelationshipLineSegmentPolygonContainedByPoly
+			continue RelationshipToLineSegmentIterPolys
+		}
+
+		// Default relationship is a miss
+		output[poly] = RelationshipLineSegmentPolygonMiss
+	}
+	return output
+}
+
 // RelationshipToPoint determines the spatial relationship between a given [Point] and
 // each polygon in the [PolyTree]. The function returns a map where the keys are
 // pointers to individual polygons within the tree, and the values are

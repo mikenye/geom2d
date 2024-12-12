@@ -390,52 +390,6 @@ func ExampleLineSegment_RelationshipToPoint() {
 	// Point Misses Segment: RelationshipPointLineSegmentMiss
 }
 
-func ExampleLineSegment_RelationshipToPolyTree() {
-	// Define a root solid polygon (outer boundary)
-	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
-		geom2d.NewPoint(0, 0), geom2d.NewPoint(20, 0),
-		geom2d.NewPoint(20, 20), geom2d.NewPoint(0, 20),
-	}, geom2d.PTSolid)
-
-	// Define a hole within the root polygon
-	hole, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
-		geom2d.NewPoint(5, 5), geom2d.NewPoint(15, 5),
-		geom2d.NewPoint(15, 15), geom2d.NewPoint(5, 15),
-	}, geom2d.PTHole)
-	_ = root.AddChild(hole)
-
-	// Note, error handling is omitted for this example, but please handle errors in your code!
-
-	// Define various line segments to test against the PolyTree
-	lineOutside := geom2d.NewLineSegment(
-		geom2d.NewPoint(25, 25),
-		geom2d.NewPoint(30, 30),
-	)
-	lineInsideSolid := geom2d.NewLineSegment(
-		geom2d.NewPoint(2, 2),
-		geom2d.NewPoint(3, 3),
-	)
-	lineInsideHole := geom2d.NewLineSegment(
-		geom2d.NewPoint(6, 6),
-		geom2d.NewPoint(8, 8),
-	)
-	lineIntersectsBoundary := geom2d.NewLineSegment(
-		geom2d.NewPoint(10, 0),
-		geom2d.NewPoint(10, 25),
-	)
-
-	// Analyze relationships
-	fmt.Println("Line Outside:", lineOutside.RelationshipToPolyTree(root).String())
-	fmt.Println("Line Inside Solid:", lineInsideSolid.RelationshipToPolyTree(root).String())
-	fmt.Println("Line Inside Hole:", lineInsideHole.RelationshipToPolyTree(root).String())
-	fmt.Println("Line Intersects Boundary:", lineIntersectsBoundary.RelationshipToPolyTree(root).String())
-	// Output:
-	// Line Outside: PTLRMiss
-	// Line Inside Solid: PTLRInsideSolid
-	// Line Inside Hole: PTLRInsideHole
-	// Line Intersects Boundary: PTLRIntersectsBoundary
-}
-
 func ExampleLineSegment_RelationshipToRectangle() {
 	// Define a rectangle with corners (0, 0), (10, 0), (10, 10), (0, 10)
 	rect := geom2d.NewRectangle([]geom2d.Point[int]{

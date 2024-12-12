@@ -945,6 +945,123 @@ func TestPolyTree_RelationshipToCircle(t *testing.T) {
 	})
 }
 
+func TestPolyTree_RelationshipToLineSegment(t *testing.T) {
+	// Create a PolyTree with a solid root and a hole
+	root, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(0, 100),
+		NewPoint(100, 100),
+		NewPoint(100, 0),
+	}, PTSolid)
+	require.NoError(t, err, "error creating root polygon")
+
+	hole, err := NewPolyTree([]Point[int]{
+		NewPoint(20, 20),
+		NewPoint(20, 80),
+		NewPoint(80, 80),
+		NewPoint(80, 20),
+	}, PTHole)
+	require.NoError(t, err, "error creating hole polygon")
+
+	err = root.AddChild(hole)
+	require.NoError(t, err, "error adding hole as child to root")
+
+	// Test cases
+	tests := []struct {
+		name     string
+		segment  LineSegment[int]
+		expected map[*PolyTree[int]]RelationshipLineSegmentPolygon
+	}{
+		{
+			name: "Miss",
+			segment: NewLineSegment(
+				NewPoint(110, 110),
+				NewPoint(120, 120),
+			),
+			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
+				root: RelationshipLineSegmentPolygonMiss,
+				hole: RelationshipLineSegmentPolygonMiss,
+			},
+		},
+		{
+			name: "Intersects all polygons",
+			segment: NewLineSegment(
+				NewPoint(-10, 50),
+				NewPoint(110, 50),
+			),
+			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
+				root: RelationshipLineSegmentPolygonEntersAndExits,
+				hole: RelationshipLineSegmentPolygonEntersAndExits,
+			},
+		},
+		{
+			name: "Contained by root polygon",
+			segment: NewLineSegment(
+				NewPoint(10, 10),
+				NewPoint(10, 90),
+			),
+			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
+				root: RelationshipLineSegmentPolygonContainedByPoly,
+				hole: RelationshipLineSegmentPolygonMiss,
+			},
+		},
+		{
+			name: "Touches vertex externally",
+			segment: NewLineSegment(
+				NewPoint(-10, -10),
+				NewPoint(0, 0),
+			),
+			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
+				root: RelationshipLineSegmentPolygonEndTouchesVertexExternally,
+				hole: RelationshipLineSegmentPolygonMiss,
+			},
+		},
+		{
+			name: "Touches edge externally",
+			segment: NewLineSegment(
+				NewPoint(-10, 50),
+				NewPoint(0, 50),
+			),
+			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
+				root: RelationshipLineSegmentPolygonEndTouchesEdgeExternally,
+				hole: RelationshipLineSegmentPolygonMiss,
+			},
+		},
+		{
+			name: "Intersecting hole polygon",
+			segment: NewLineSegment(
+				NewPoint(30, 30),
+				NewPoint(70, 70),
+			),
+			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
+				root: RelationshipLineSegmentPolygonContainedByPoly,
+				hole: RelationshipLineSegmentPolygonContainedByPoly,
+			},
+		},
+		{
+			name: "Collinear with edge",
+			segment: NewLineSegment(
+				NewPoint(0, 0),
+				NewPoint(100, 0),
+			),
+			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
+				root: RelationshipLineSegmentPolygonEdgeCollinearTouchingVertex,
+				hole: RelationshipLineSegmentPolygonMiss,
+			},
+		},
+	}
+
+	// Run tests
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rels := root.RelationshipToLineSegment(tt.segment)
+			for poly, expectedRel := range tt.expected {
+				assert.Equal(t, expectedRel, rels[poly], "unexpected relationship for poly")
+			}
+		})
+	}
+}
+
 func TestPolyTree_RelationshipToPoint(t *testing.T) {
 	// Create a sample PolyTree with a root polygon, a hole, and an island
 	root, err := NewPolyTree([]Point[int]{
