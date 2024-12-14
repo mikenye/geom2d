@@ -38,14 +38,26 @@ func (c Circle[T]) Area() float64 {
 	return math.Pi * float64(c.radius) * float64(c.radius)
 }
 
-// AsFloat converts the Circle's center coordinates and radius to the float64 type, returning a new Circle[float64].
+// AsFloat32 converts the Circle's center coordinates and radius to the float32 type, returning a new Circle[float32].
+// This method is useful for cases where higher precision or floating-point arithmetic is required.
+//
+// Returns:
+//   - Circle[float32]: A new Circle with the center coordinates and radius converted to float64.
+func (c Circle[T]) AsFloat32() Circle[float32] {
+	return Circle[float32]{
+		center: c.center.AsFloat32(),
+		radius: float32(c.radius),
+	}
+}
+
+// AsFloat64 converts the Circle's center coordinates and radius to the float64 type, returning a new Circle[float64].
 // This method is useful for cases where higher precision or floating-point arithmetic is required.
 //
 // Returns:
 //   - Circle[float64]: A new Circle with the center coordinates and radius converted to float64.
-func (c Circle[T]) AsFloat() Circle[float64] {
+func (c Circle[T]) AsFloat64() Circle[float64] {
 	return Circle[float64]{
-		center: c.center.AsFloat(),
+		center: c.center.AsFloat64(),
 		radius: float64(c.radius),
 	}
 }
@@ -73,6 +85,25 @@ func (c Circle[T]) AsIntRounded() Circle[int] {
 		center: c.center.AsIntRounded(),
 		radius: int(math.Round(float64(c.radius))),
 	}
+}
+
+// BoundingBox calculates the axis-aligned bounding box (AABB) of the circle.
+//
+// The bounding box is the smallest rectangle, aligned with the coordinate axes, that completely encloses the circle.
+// This is useful for collision detection, spatial partitioning, and other geometric operations.
+//
+// Returns:
+//   - [Rectangle][T]: The axis-aligned bounding box that encloses the circle.
+//
+// Notes:
+//   - The bounding box is a rectangle defined by the four corner points derived from the circle's center and radius.
+func (c Circle[T]) BoundingBox() Rectangle[T] {
+	return NewRectangle[T]([]Point[T]{
+		NewPoint(c.center.x-c.radius, c.center.y-c.radius),
+		NewPoint(c.center.x+c.radius, c.center.y-c.radius),
+		NewPoint(c.center.x+c.radius, c.center.y+c.radius),
+		NewPoint(c.center.x-c.radius, c.center.y+c.radius),
+	})
 }
 
 // Center returns the center [Point] of the Circle.
@@ -137,228 +168,209 @@ func (c Circle[T]) Radius() T {
 	return c.radius
 }
 
-// RelationshipToCircle determines the relationship between the calling circle
-// and another circle.
+// RelationshipToCircle determines the spatial relationship between two circles.
 //
-// This method calculates the distance between the centers of the two circles
-// and compares it with their radii to determine their spatial relationship.
-//
-// Parameters:
-//   - other (Circle[T]): The circle to compare with the calling circle.
-//
-// Returns:
-//   - [RelationshipCircleCircle]: The relationship between the two circles.
-func (c Circle[T]) RelationshipToCircle(other Circle[T], opts ...Option) RelationshipCircleCircle {
-	options := applyOptions(geomOptions{epsilon: 0}, opts...)
-
-	// Calculate the distance between the centers of the two circles
-	centerDistance := c.center.DistanceToPoint(other.center, opts...)
-
-	// Calculate the sum and absolute difference of the radii
-	sumRadii := float64(c.radius) + float64(other.radius)
-	diffRadii := math.Abs(float64(c.radius) - float64(other.radius))
-
-	absCenterDistanceSubRadiiSub := math.Abs(centerDistance - sumRadii)
-	absCenterDistanceSubDiffRadii := math.Abs(centerDistance - diffRadii)
-
-	// Determine the relationship
-	switch {
-	case centerDistance == 0 && c.radius == other.radius:
-		return RelationshipCircleCircleEqual // Circles are identical
-	case absCenterDistanceSubRadiiSub < options.epsilon:
-		return RelationshipCircleCircleExternallyTangent // Circles are externally tangent
-	case absCenterDistanceSubDiffRadii < options.epsilon:
-		return RelationshipCircleCircleInternallyTangent // Circles are internally tangent
-	case centerDistance > sumRadii:
-		return RelationshipCircleCircleMiss // Circles are disjoint
-	case centerDistance < diffRadii:
-		return RelationshipCircleCircleContained // One circle is fully contained within the other
-	case centerDistance < sumRadii:
-		return RelationshipCircleCircleIntersection // Circles overlap
-	}
-
-	// Fallback (should not happen)
-	return RelationshipCircleCircleMiss
-}
-
-// RelationshipToLineSegment determines the spatial relationship of a [LineSegment]
-// to the circle. It returns one of several possible relationships, such as whether
-// the segment is inside, outside, tangent to, or intersects the circle.
+// This function evaluates the relationship between the current circle and another
+// circle by comparing their center points and radii. The possible relationships include:
+//   - RelationshipEqual: The circles are identical.
+//   - RelationshipContainedBy: The current circle is completely contained within the other circle.
+//   - RelationshipContains: The current circle completely contains the other circle.
+//   - RelationshipIntersection: The circles overlap, including tangency.
+//   - RelationshipDisjoint: The circles do not overlap.
 //
 // Parameters:
-//   - AB ([LineSegment][T]): The [LineSegment] to analyze.
-//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing distances to the circle's radius,
-//     improving robustness against floating-point precision errors.
+//   - other (Circle[T]): The circle to compare against the current circle.
+//   - opts: A variadic slice of Option functions to customize the equality check.
+//     WithEpsilon(epsilon float64): Specifies a tolerance for comparing the center coordinates
+//     and radii of the circles, allowing for robust handling of floating-point precision errors.
 //
 // Returns:
-//   - [RelationshipLineSegmentCircle]: An enum value indicating the relationship.
-//
-// Notes:
-//   - Epsilon adjustment is particularly useful for floating-point coordinates, where small precision
-//     errors might otherwise cause incorrect classifications.
-func (c Circle[T]) RelationshipToLineSegment(AB LineSegment[T], opts ...Option) RelationshipLineSegmentCircle {
-	// Apply options with defaults
-	options := applyOptions(geomOptions{epsilon: 0}, opts...)
-
-	// Calculate distances from the circle's center to the line segment's endpoints
-	distStart := c.center.DistanceToPoint(AB.start, opts...)
-	distEnd := c.center.DistanceToPoint(AB.end, opts...)
-
-	// Check if both endpoints are within the circle's radius
-	if distStart < float64(c.radius) && distEnd < float64(c.radius) {
-		return RelationshipLineSegmentCircleContainedByCircle
-	}
-
-	// Check if both endpoints are exactly on the boundary
-	if math.Abs(distStart-float64(c.radius)) < options.epsilon && math.Abs(distEnd-float64(c.radius)) < options.epsilon {
-		return RelationshipLineSegmentCircleBothEndsOnCircumference
-	}
-
-	// Check if one endpoint is on the boundary
-	if math.Abs(distStart-float64(c.radius)) < options.epsilon || math.Abs(distEnd-float64(c.radius)) < options.epsilon {
-		if distStart < float64(c.radius) || distEnd < float64(c.radius) {
-			// One endpoint is on the circumference, and the other is inside
-			return RelationshipLineSegmentCircleEndOnCircumferenceInside
-		} else {
-			// One endpoint is on the circumference, and the other is outside
-			return RelationshipLineSegmentCircleEndOnCircumferenceOutside
-		}
-	}
-
-	// Calculate the closest point on the segment to the circle's center
-	closestPoint := c.center.ProjectOntoLineSegment(AB)
-	closestDistance := closestPoint.DistanceToPoint(c.center.AsFloat(), opts...)
-
-	// Check if the closest point is on the circle's boundary or inside the circle
-	if closestDistance <= float64(c.radius)+options.epsilon {
-
-		// True tangent check:
-		// Confirm perpendicularity (right angle)
-		// Calculate direction vector for line segment and radius vector to closest point
-		segmentDirection := AB.end.Translate(AB.start.Negate())             // Vector along line segment
-		radiusVector := closestPoint.Translate(c.center.AsFloat().Negate()) // Vector from center to closest point
-
-		// Dot product should be zero for perpendicular vectors
-		isPerpendicular := math.Abs(segmentDirection.AsFloat().DotProduct(radiusVector)) < options.epsilon
-
-		if math.Abs(closestDistance-float64(c.radius)) < options.epsilon && isPerpendicular {
-			return RelationshipLineSegmentCircleTangentToCircle
-		}
-
-		// Otherwise, it's intersecting
-		return RelationshipLineSegmentCircleIntersecting
-	}
-
-	// If none of the conditions are met, the segment is outside the circle
-	return RelationshipLineSegmentCircleMiss
-}
-
-// RelationshipToPoint determines the relationship of a given [Point] to the circle.
-// It returns whether the point is Outside, OnCircumference, or Inside the circle.
-//
-// Parameters:
-//   - p ([Point][T]): The [Point] to check.
-//   - opts: A variadic slice of Option functions to customize the behavior of the relationship check.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the distance of the point
-//     to the circle's radius, improving robustness against floating-point precision errors.
-//
-// Returns:
-//   - [RelationshipPointCircle]: The relationship of the [Point] to the circle, indicating whether it
-//     is outside, on the circumference, or inside the circle.
+//   - Relationship: A constant representing the relationship between the circles.
 //
 // Behavior:
-//   - The function calculates the Euclidean distance between the [Point] p and the circle's center.
-//   - It compares this distance to the circle's radius:
-//   - [RelationshipPointCircleContainedByCircle]: The point lies inside the circle (distance < radius).
-//   - [RelationshipPointCircleOnCircumference]: The point lies on the circumference of the circle (distance ≈ radius).
-//   - [RelationshipPointCircleMiss]: The point lies outside the circle (distance > radius).
-//   - If [WithEpsilon] is provided, epsilon adjustments are applied to the comparison with the radius.
-//
-// Notes:
-//   - Epsilon adjustment is particularly useful when working with floating-point coordinates, where small
-//     precision errors might otherwise cause incorrect classifications.
-func (c Circle[T]) RelationshipToPoint(p Point[T], opts ...Option) RelationshipPointCircle {
-	// Apply options with defaults
-	options := applyOptions(geomOptions{epsilon: 0}, opts...)
+//   - The function first checks for equality by comparing center points and radii.
+//   - It then checks for containment by comparing the distance between centers and radii.
+//   - Intersection is detected if the distance between centers is less than or equal to the sum of the radii.
+//   - If no other relationship is found, the circles are considered disjoint.
+func (c Circle[T]) RelationshipToCircle(other Circle[T], opts ...Option) Relationship {
+	distanceBetweenCenters := c.center.DistanceToPoint(other.center, opts...)
+	cFloat := c.AsFloat64()
+	otherFloat := other.AsFloat64()
 
-	distance := c.center.DistanceToPoint(p, opts...)
-	switch {
-	case distance < float64(c.radius)-options.epsilon:
-		return RelationshipPointCircleContainedByCircle
-	case math.Abs(distance-float64(c.radius)) < options.epsilon:
-		return RelationshipPointCircleOnCircumference
-	default:
-		return RelationshipPointCircleMiss
+	// check for equality
+	if c.Eq(other) {
+		return RelationshipEqual
 	}
+
+	// check for c contained by other
+	if distanceBetweenCenters+cFloat.radius < otherFloat.radius {
+		return RelationshipContainedBy
+	}
+
+	// check for c contains other
+	if distanceBetweenCenters+otherFloat.radius < cFloat.radius {
+		return RelationshipContains
+	}
+
+	// check for intersection
+	if distanceBetweenCenters <= cFloat.radius+otherFloat.radius {
+		return RelationshipIntersection
+	}
+
+	return RelationshipDisjoint
+
 }
 
-// RelationshipToRectangle determines the spatial relationship between the circle
-// and a [Rectangle].
+// RelationshipToLineSegment determines the spatial relationship between the current circle and a given line segment.
 //
-// This method evaluates whether the circle and [Rectangle] are disjoint, tangent,
-// intersecting, or whether one is fully contained within the other.
+// This function evaluates the relationship between the circle and the line segment,
+// which can be one of the following:
+//   - RelationshipDisjoint: The line segment lies entirely outside the circle.
+//   - RelationshipIntersection: The line segment intersects the circle's boundary.
+//   - RelationshipContains: The line segment is fully contained within the circle.
+//
+// This method internally calls [LineSegment.RelationshipToCircle], flipping the containment
+// direction to align with the perspective of the circle.
 //
 // Parameters:
-//   - rect ([Rectangle][T]): The rectangle to compare with the circle.
+//   - l (LineSegment[T]): The line segment to compare against the circle.
+//   - opts: A variadic slice of Option functions to customize the equality check.
+//     WithEpsilon(epsilon float64): Specifies a tolerance for comparing the center coordinates
+//     and radii of the circles, allowing for robust handling of floating-point precision errors.
 //
 // Returns:
-//   - [RelationshipRectangleCircle]: The relationship between the circle and the [Rectangle].
-func (c Circle[T]) RelationshipToRectangle(rect Rectangle[T], opts ...Option) RelationshipRectangleCircle {
+//   - Relationship: A constant representing the relationship between the circle and the line segment.
+func (c Circle[T]) RelationshipToLineSegment(l LineSegment[T], opts ...Option) Relationship {
+	return l.RelationshipToCircle(c, opts...).flipContainment()
+}
 
-	// Calculate the bounding box of the circle
-	circleBounds := NewRectangle(
-		[]Point[T]{
-			NewPoint(c.center.x-T(c.radius), c.center.y-T(c.radius)),
-			NewPoint(c.center.x+T(c.radius), c.center.y-T(c.radius)),
-			NewPoint(c.center.x+T(c.radius), c.center.y+T(c.radius)),
-			NewPoint(c.center.x-T(c.radius), c.center.y+T(c.radius)),
-		},
-	)
+// RelationshipToPoint determines the spatial relationship between the current circle and a given point.
+//
+// This function evaluates the relationship between the circle and the point,
+// which can be one of the following:
+//   - RelationshipDisjoint: The point lies outside the circle.
+//   - RelationshipIntersection: The point lies exactly on the circle's boundary.
+//   - RelationshipContains: The point lies inside the circle.
+//
+// This method internally calls [Point.RelationshipToCircle], flipping the containment
+// direction to align with the perspective of the circle.
+//
+// Parameters:
+//   - p (Point[T]): The point to compare against the circle.
+//   - opts: A variadic slice of Option functions to customize the equality check.
+//     WithEpsilon(epsilon float64): Specifies a tolerance for comparing the center coordinates
+//     and radii of the circles, allowing for robust handling of floating-point precision errors.
+//
+// Returns:
+//   - Relationship: A constant representing the relationship between the circle and the point.
+func (c Circle[T]) RelationshipToPoint(p Point[T], opts ...Option) Relationship {
+	return p.RelationshipToCircle(c, opts...).flipContainment()
+}
 
-	// Check if bounding boxes are disjoint
-	if circleBounds.RelationshipToRectangle(rect, opts...) == RelationshipRectangleRectangleMiss {
-		return RelationshipRectangleCircleMiss
-	}
+func (c Circle[T]) RelationshipToPolyTree(pt *PolyTree[T], opts ...Option) map[*PolyTree[T]]Relationship {
+	output := make(map[*PolyTree[T]]Relationship, pt.Len())
+	cDoubled := NewCircle(NewPoint(c.center.x*2, c.center.y*2), c.radius*2)
+	cFloatDoubled := cDoubled.AsFloat64()
 
-	// Check if the circle is fully contained within the rectangle
-	circlePoints := []Point[T]{
-		NewPoint(c.center.x-T(c.radius), c.center.y-T(c.radius)),
-		NewPoint(c.center.x+T(c.radius), c.center.y+T(c.radius)),
-	}
-	allCirclePointsInRect := true
-	for _, p := range circlePoints {
-		if rect.RelationshipToPoint(p) == RelationshipPointRectangleMiss {
-			allCirclePointsInRect = false
-			break
+RelationshipToPolyTreeIterPolys:
+	for poly := range pt.iterPolys {
+		minDistCircleCenterToEdge := math.MaxFloat64
+		allEdgesWithinCircle := true
+
+		for edge := range poly.contour.iterEdges {
+			rel := cDoubled.RelationshipToLineSegment(edge, opts...)
+
+			// Check for intersection
+			if rel == RelationshipIntersection {
+				output[poly] = RelationshipIntersection
+				continue RelationshipToPolyTreeIterPolys
+			}
+
+			// Check if all edges are within the circle's radius
+			distanceToEdge := cDoubled.center.DistanceToLineSegment(edge, opts...)
+			minDistCircleCenterToEdge = min(minDistCircleCenterToEdge, distanceToEdge)
+			if distanceToEdge > cFloatDoubled.radius {
+				allEdgesWithinCircle = false
+			}
 		}
-	}
-	if allCirclePointsInRect {
-		return RelationshipRectangleCircleContainedByRectangle
-	}
 
-	// Check if the rectangle is fully contained within the circle
-	rectVertices := []Point[T]{rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight}
-	allVerticesInCircle := true
-	for _, vertex := range rectVertices {
-		if c.center.DistanceToPoint(vertex, opts...) > float64(c.radius) {
-			allVerticesInCircle = false
-			break
+		// Check for containment: circle fully contains the polygon
+		if allEdgesWithinCircle {
+			output[poly] = RelationshipContains
+			continue RelationshipToPolyTreeIterPolys
 		}
-	}
-	if allVerticesInCircle {
-		return RelationshipRectangleCircleContainedByCircle
-	}
 
-	// Check if the circle intersects the rectangle
-	rectEdges := rect.Edges()
-	for _, edge := range rectEdges {
-		if c.RelationshipToLineSegment(edge, opts...) >= RelationshipLineSegmentCircleIntersecting {
-			return RelationshipRectangleCircleIntersection
+		// Check for containment: polygon fully contains the circle
+		if poly.contour.isPointInside(cDoubled.center) && minDistCircleCenterToEdge > cFloatDoubled.radius {
+			output[poly] = RelationshipContainedBy
+			continue RelationshipToPolyTreeIterPolys
 		}
+
+		// Default: no relationship found
+		output[poly] = RelationshipDisjoint
 	}
 
-	return RelationshipRectangleCircleMiss
+	return output
+}
+
+// RelationshipToRectangle determines the spatial relationship between the circle and the rectangle.
+//
+// This function evaluates whether the circle is:
+//   - Disjoint from the rectangle (no overlap or touching),
+//   - Intersects with the rectangle (crosses its boundary),
+//   - Fully contains the rectangle (encloses it entirely),
+//   - Fully contained by the rectangle (is completely inside the rectangle).
+//
+// Parameters:
+//   - r ([Rectangle][T]): The rectangle to compare with the circle.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for floating-point precision.
+//
+// Behavior:
+//   - The function checks each edge of the rectangle for potential intersections with the circle.
+//   - If all edges of the rectangle are fully contained within the circle, it returns `RelationshipContains`.
+//   - If the rectangle fully contains the circle (the circle’s center is inside the rectangle, and the circle
+//     does not extend beyond any edge), it returns `RelationshipContainedBy`.
+//   - If none of these conditions are met, it determines whether the circle and rectangle are disjoint.
+//
+// Returns:
+//   - [Relationship]: One of the following constants:
+//   - RelationshipDisjoint: The circle and rectangle are entirely separate.
+//   - RelationshipIntersection: The circle intersects with one or more edges of the rectangle.
+//   - RelationshipContains: The circle completely encloses the rectangle.
+//   - RelationshipContainedBy: The circle is fully contained within the rectangle.
+func (c Circle[T]) RelationshipToRectangle(r Rectangle[T], opts ...Option) Relationship {
+	cContainsR := true
+	cFloat := c.AsFloat64()
+	minDistCircleCenterToEdge := math.MaxFloat64
+	for _, edge := range r.Edges() {
+		rel := edge.RelationshipToCircle(c, opts...)
+
+		// check for intersection
+		if rel == RelationshipIntersection {
+			return RelationshipIntersection
+		}
+
+		// check for containment
+		if rel != RelationshipContainedBy {
+			cContainsR = false
+		}
+
+		edgeFloat := edge.AsFloat()
+		minDistCircleCenterToEdge = min(minDistCircleCenterToEdge, cFloat.center.DistanceToLineSegment(edgeFloat, opts...))
+	}
+
+	// check c contain r
+	if cContainsR {
+		return RelationshipContains
+	}
+
+	// check r contains c
+	if r.ContainsPoint(c.center) && minDistCircleCenterToEdge > cFloat.radius {
+		return RelationshipContainedBy
+	}
+
+	return RelationshipDisjoint
 }
 
 // Rotate rotates the Circle's center around a specified pivot [Point] by a given angle in radians

@@ -5,6 +5,115 @@ import (
 	"math"
 )
 
+// detailedLineSegmentRelationship defines the possible spatial relationships
+// between two line segments in a 2D plane.
+//
+// This enumeration categorizes how two line segments relate to each other based on
+// their positions, intersections, collinearity, etc.
+type detailedLineSegmentRelationship int8
+
+// Valid values for detailedLineSegmentRelationship
+const (
+	// lsrCollinearDisjoint indicates that the segments are collinear and do not intersect, overlap, or touch at any point.
+	lsrCollinearDisjoint detailedLineSegmentRelationship = iota - 1
+
+	// lsrMiss indicates that the segments are not collinear, disjoint, and do not intersect, overlap, or touch at any point.
+	lsrMiss
+
+	// lsrIntersects indicates that the segments intersect at a unique point that is not an endpoint.
+	lsrIntersects
+
+	// lsrAeqC indicates that point A of segment AB coincides with Point C of segment CD.
+	lsrAeqC
+
+	// lsrAeqD indicates that point A of segment AB coincides with Point D of segment CD.
+	lsrAeqD
+
+	// lsrBeqC indicates that the endpoint of segment AB coincides with Point C of segment CD.
+	lsrBeqC
+
+	// lsrBeqD indicates that the endpoint of segment AB coincides with Point D of segment CD.
+	lsrBeqD
+
+	// lsrAonCD indicates that point A lies on LineSegment CD.
+	lsrAonCD
+
+	// lsrBonCD indicates that the endpoint lies on LineSegment CD.
+	lsrBonCD
+
+	// lsrConAB indicates that point C lies on LineSegment AB.
+	lsrConAB
+
+	// lsrDonAB indicates that point D lies on LineSegment AB.
+	lsrDonAB
+
+	// lsrCollinearAonCD indicates that point A lies on LineSegment CD (partial overlap), and the line segments are collinear.
+	lsrCollinearAonCD
+
+	// lsrCollinearBonCD indicates that the endpoint lies on LineSegment CD (partial overlap), and the line segments are collinear.
+	lsrCollinearBonCD
+
+	// lsrCollinearABinCD indicates that segment AB is fully contained within segment CD.
+	lsrCollinearABinCD
+
+	// lsrCollinearCDinAB indicates that segment CD is fully contained within segment AB.
+	lsrCollinearCDinAB
+
+	// lsrCollinearEqual indicates that the segments AB and CD are exactly equal, sharing both endpoints in the same locations.
+	lsrCollinearEqual
+)
+
+// String provides a string representation of a [detailedLineSegmentRelationship] value.
+//
+// This method converts the [detailedLineSegmentRelationship] enum value into a human-readable string,
+// allowing for easier debugging and output interpretation. Each enum value maps to its corresponding
+// string name.
+//
+// Returns:
+//   - string: A string representation of the [detailedLineSegmentRelationship].
+//
+// Panics:
+//   - If the enum value is not recognized, the method panics with an error indicating
+//     an unsupported [detailedLineSegmentRelationship] value.
+func (r detailedLineSegmentRelationship) String() string {
+	switch r {
+	case lsrCollinearDisjoint:
+		return "lsrCollinearDisjoint"
+	case lsrMiss:
+		return "lsrMiss"
+	case lsrIntersects:
+		return "lsrIntersects"
+	case lsrAeqC:
+		return "lsrAeqC"
+	case lsrAeqD:
+		return "lsrAeqD"
+	case lsrBeqC:
+		return "lsrBeqC"
+	case lsrBeqD:
+		return "lsrBeqD"
+	case lsrAonCD:
+		return "lsrAonCD"
+	case lsrBonCD:
+		return "lsrBonCD"
+	case lsrConAB:
+		return "lsrConAB"
+	case lsrDonAB:
+		return "lsrDonAB"
+	case lsrCollinearAonCD:
+		return "lsrCollinearAonCD"
+	case lsrCollinearBonCD:
+		return "lsrCollinearBonCD"
+	case lsrCollinearABinCD:
+		return "lsrCollinearABinCD"
+	case lsrCollinearCDinAB:
+		return "lsrCollinearCDinAB"
+	case lsrCollinearEqual:
+		return "lsrCollinearEqual"
+	default:
+		panic(fmt.Errorf("unsupported detailedLineSegmentRelationship"))
+	}
+}
+
 // LineSegment represents a line segment in a 2D space, defined by two endpoints, the start [Point] and end [Point].
 //
 // The generic type parameter T must satisfy the [SignedNumber] constraint, allowing the segment
@@ -76,7 +185,7 @@ func (l LineSegment[T]) Area() float64 {
 // Returns:
 //   - LineSegment[float64] - The line segment with both endpoints converted to float64.
 func (l LineSegment[T]) AsFloat() LineSegment[float64] {
-	return NewLineSegment(l.start.AsFloat(), l.end.AsFloat())
+	return NewLineSegment(l.start.AsFloat64(), l.end.AsFloat64())
 }
 
 // AsInt converts the line segment to a LineSegment[int] type.
@@ -154,8 +263,8 @@ func (l LineSegment[T]) Center(opts ...Option) Point[float64] {
 	// Apply geomOptions with defaults
 	options := applyOptions(geomOptions{epsilon: 0}, opts...)
 
-	start := l.start.AsFloat()
-	end := l.end.AsFloat()
+	start := l.start.AsFloat64()
+	end := l.end.AsFloat64()
 
 	midX := (start.x + end.x) / 2
 	midY := (start.y + end.y) / 2
@@ -190,6 +299,127 @@ func (l LineSegment[T]) ContainsPoint(p Point[T]) bool {
 	// Check if the point lies within the bounding box defined by A and End
 	return p.x >= min(l.start.x, l.end.x) && p.x <= max(l.start.x, l.end.x) &&
 		p.y >= min(l.start.y, l.end.y) && p.y <= max(l.start.y, l.end.y)
+}
+
+// detailedRelationshipToLineSegment determines the spatial relationship between two line segments, l and other.
+//
+//   - Let A = l.Start()
+//   - Let B = l.End()
+//   - Let C = other.Start()
+//   - Let D = other.End()
+//
+// This function evaluates the relationship between two line segments, AB and CD, by checking for
+// endpoint coincidences, intersections, collinear relationships, and containment. It returns a
+// [detailedLineSegmentRelationship] constant that describes the exact relationship between the segments,
+// such as intersection, partial overlap, or full containment.
+//
+// The output constants may reference A, B, C, or D for brevity.
+//
+// Parameters:
+//   - other (LineSegment[T]): The line segment to compare with l.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing points and collinearity calculations,
+//     improving robustness against floating-point precision errors.
+//
+// Behavior:
+//   - The function first checks if the two line segments are exactly equal (or approximately equal if an epsilon is provided).
+//   - It evaluates endpoint coincidences, collinearity, intersection, and containment using orientation tests,
+//     point-on-segment checks, and direct comparisons.
+//   - If [WithEpsilon] is provided, epsilon adjustments are applied to point comparisons, collinearity checks, and
+//     point-on-segment tests to handle floating-point imprecision.
+//
+// Returns:
+//   - [detailedLineSegmentRelationship]: A constant describing the relationship between segments AB and CD.
+//
+// Notes:
+//   - Epsilon adjustment is particularly useful when working with floating-point coordinates, where small
+//     precision errors might lead to incorrect results.
+func (l LineSegment[T]) detailedRelationshipToLineSegment(other LineSegment[T], opts ...Option) detailedLineSegmentRelationship {
+
+	// Check if segments are exactly equal
+	if (l.start.Eq(other.start, opts...) && l.end.Eq(other.end, opts...)) || (l.start.Eq(other.end, opts...) && l.end.Eq(other.start, opts...)) {
+		return lsrCollinearEqual
+	}
+
+	switch {
+
+	// Check if A and C coincide
+	case l.start.Eq(other.start, opts...):
+		return lsrAeqC
+
+	// Check if A and D coincide
+	case l.start.Eq(other.end, opts...):
+		return lsrAeqD
+
+	// Check if B and C coincide
+	case l.end.Eq(other.start, opts...):
+		return lsrBeqC
+
+	// Check if B and D coincide
+	case l.end.Eq(other.end, opts...):
+		return lsrBeqD
+
+	}
+
+	// Determine orientations for intersection and collinearity checks
+	o1 := Orientation(l.start, l.end, other.start)
+	o2 := Orientation(l.start, l.end, other.end)
+	o3 := Orientation(other.start, other.end, l.start)
+	o4 := Orientation(other.start, other.end, l.end)
+
+	// Non-collinear intersection cases
+	if o1 != o2 && o3 != o4 {
+
+		switch {
+
+		// Check if A lies on CD
+		case other.ContainsPoint(l.start) && !other.ContainsPoint(l.end):
+			return lsrAonCD
+
+		// Check if B lies on CD
+		case !other.ContainsPoint(l.start) && other.ContainsPoint(l.end):
+			return lsrBonCD
+
+		// Check if C lies on l
+		case l.ContainsPoint(other.start) && !l.ContainsPoint(other.end):
+			return lsrConAB
+
+		// Check if D lies on l
+		case !l.ContainsPoint(other.start) && l.ContainsPoint(other.end):
+			return lsrDonAB
+
+		// Default case that lines intersect without any "edge cases"
+		default:
+			return lsrIntersects
+		}
+	}
+
+	// PointsCollinear cases: All orientations are zero
+	if o1 == 0 && o2 == 0 && o3 == 0 && o4 == 0 {
+		// Check if segments are collinear and disjoint
+		if !other.ContainsPoint(l.start) && !other.ContainsPoint(l.end) &&
+			!l.ContainsPoint(other.start) && !l.ContainsPoint(other.end) {
+			return lsrCollinearDisjoint
+		}
+		// Check if AB is fully contained within CD
+		if other.ContainsPoint(l.start) && other.ContainsPoint(l.end) {
+			return lsrCollinearABinCD
+		}
+		// Check if CD is fully contained within AB
+		if l.ContainsPoint(other.start) && l.ContainsPoint(other.end) {
+			return lsrCollinearCDinAB
+		}
+		// Check specific collinear partial overlaps
+		if other.ContainsPoint(l.start) {
+			return lsrCollinearAonCD
+		}
+		if other.ContainsPoint(l.end) {
+			return lsrCollinearBonCD
+		}
+	}
+
+	// If none of the conditions matched, the segments are disjoint
+	return lsrMiss
 }
 
 // DistanceToLineSegment calculates the minimum distance between two line segments, l and other.
@@ -336,8 +566,8 @@ func (l LineSegment[T]) Eq(other LineSegment[T], opts ...Option) bool {
 //     no intersection within the segments’ bounds or the segments are parallel.
 func (l LineSegment[T]) IntersectionPoint(other LineSegment[T]) (Point[float64], bool) {
 	// Define segment endpoints for AB (l) and CD (other)
-	A, B := l.start.AsFloat(), l.end.AsFloat()
-	C, D := other.start.AsFloat(), other.end.AsFloat()
+	A, B := l.start.AsFloat64(), l.end.AsFloat64()
+	C, D := other.start.AsFloat64(), other.end.AsFloat64()
 
 	// Calculate the direction vectors
 
@@ -373,8 +603,8 @@ func (l LineSegment[T]) IntersectionPoint(other LineSegment[T]) (Point[float64],
 // IntersectsLineSegment checks whether there is any intersection or overlap between LineSegment l and LineSegment other.
 //
 // This function returns true if segments l and other have an intersecting spatial relationship, such as intersection,
-// overlap, containment, or endpoint coincidence. It leverages the [LineSegment.RelationshipToLineSegment] function to
-// determine if the relationship value is greater than [RelationshipLineSegmentLineSegmentMiss], indicating that the segments are not fully
+// overlap, containment, or endpoint coincidence. It leverages the [LineSegment.detailedRelationshipToLineSegment] function to
+// determine if the relationship value is greater than [lsrMiss], indicating that the segments are not fully
 // disjoint.
 //
 // Parameters:
@@ -392,7 +622,7 @@ func (l LineSegment[T]) IntersectionPoint(other LineSegment[T]) (Point[float64],
 // `intersects` will be `true` as there is an intersecting relationship between `AB` and `CD`.
 // todo: may not be needed: RelationshipTo* methods can make IntersectsLineSegment and ContainsPoint redundant
 func (l LineSegment[T]) IntersectsLineSegment(other LineSegment[T]) bool {
-	if l.RelationshipToLineSegment(other) > RelationshipLineSegmentLineSegmentMiss {
+	if l.detailedRelationshipToLineSegment(other) > lsrMiss {
 		return true
 	}
 	return false
@@ -443,7 +673,7 @@ func (l LineSegment[T]) Points() []Point[T] {
 //
 // Returns:
 //   - LineSegment[float64] - A new line segment where both endpoints are reflected accordingly.
-func (l LineSegment[float64]) Reflect(axis ReflectionAxis, line ...LineSegment[float64]) LineSegment[float64] {
+func (l LineSegment[T]) Reflect(axis ReflectionAxis, line ...LineSegment[float64]) LineSegment[float64] {
 	var startReflected, endReflected Point[float64]
 	switch axis {
 	case ReflectAcrossXAxis:
@@ -461,205 +691,231 @@ func (l LineSegment[float64]) Reflect(axis ReflectionAxis, line ...LineSegment[f
 			endReflected = l.end.Reflect(ReflectAcrossCustomLine, line[0])
 		} else {
 			// No custom line provided; return the original line segment unchanged
-			return l
+			return l.AsFloat()
 		}
 	default:
 		// Invalid axis, return the line segment unchanged
-		return l
+		return l.AsFloat()
 	}
 
 	// Return a new line segment with reflected points
 	return NewLineSegment(startReflected, endReflected)
 }
 
-// RelationshipToCircle determines the spatial relationship of the line segment
-// to a [Circle]. It returns one of several possible relationships, such as whether
-// the segment is inside, outside, tangent to, or intersects the [Circle].
+// RelationshipToCircle determines the spatial relationship between the current LineSegment and a Circle.
+//
+// This function evaluates whether the LineSegment:
+//   - Intersects the circle at any point.
+//   - Lies entirely within the circle.
+//   - Lies entirely outside the circle.
 //
 // Parameters:
-//   - c ([Circle][T]): The [Circle] to analyze.
+//   - c ([Circle][T]): The circle to compare with the line segment.
 //   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing distances to the circle's radius,
-//     improving robustness against floating-point precision errors.
-//
-// Returns:
-//   - [RelationshipLineSegmentCircle]: An enum value indicating the relationship.
-//
-// Notes:
-//   - Epsilon adjustment is particularly useful for floating-point coordinates, where small precision
-//     errors might otherwise cause incorrect classifications.
-func (l LineSegment[T]) RelationshipToCircle(c Circle[T], opts ...Option) RelationshipLineSegmentCircle {
-	return c.RelationshipToLineSegment(l, opts...)
-}
-
-// RelationshipToLineSegment determines the spatial relationship between two line segments, l and other.
-//
-//   - Let A = l.Start()
-//   - Let B = l.End()
-//   - Let C = other.Start()
-//   - Let D = other.End()
-//
-// This function evaluates the relationship between two line segments, AB and CD, by checking for
-// endpoint coincidences, intersections, collinear relationships, and containment. It returns a
-// [RelationshipLineSegmentLineSegment] constant that describes the exact relationship between the segments,
-// such as intersection, partial overlap, or full containment.
-//
-// The output constants may reference A, B, C, or D for brevity.
-//
-// Parameters:
-//   - other (LineSegment[T]): The line segment to compare with l.
-//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing points and collinearity calculations,
-//     improving robustness against floating-point precision errors.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing distances, improving robustness against
+//     floating-point precision errors.
 //
 // Behavior:
-//   - The function first checks if the two line segments are exactly equal (or approximately equal if an epsilon is provided).
-//   - It evaluates endpoint coincidences, collinearity, intersection, and containment using orientation tests,
-//     point-on-segment checks, and direct comparisons.
-//   - If [WithEpsilon] is provided, epsilon adjustments are applied to point comparisons, collinearity checks, and
-//     point-on-segment tests to handle floating-point imprecision.
+//   - The function calculates the distance between the circle's center and the endpoints of the line segment,
+//     as well as the shortest distance between the circle's center and the line segment itself.
+//   - If any of these distances are exactly equal to the circle's radius, the function determines that the
+//     line segment intersects the circle.
+//   - If both endpoints of the line segment lie within the circle, the function determines that the line segment
+//     is contained within the circle.
+//   - Otherwise, the function determines that the line segment lies entirely outside the circle.
 //
 // Returns:
-//   - [RelationshipLineSegmentLineSegment]: A constant describing the relationship between segments AB and CD.
+//
+// [Relationship]: A constant indicating the relationship of the line segment to the circle. Possible values are:
+//   - RelationshipDisjoint: The line segment lies entirely outside the circle.
+//   - RelationshipIntersection: The line segment intersects the circle at one or more points.
+//   - RelationshipContainedBy: The line segment lies entirely within the circle.
 //
 // Notes:
-//   - Epsilon adjustment is particularly useful when working with floating-point coordinates, where small
-//     precision errors might lead to incorrect results.
-func (l LineSegment[T]) RelationshipToLineSegment(other LineSegment[T], opts ...Option) RelationshipLineSegmentLineSegment {
+//   - Epsilon adjustment is particularly useful when working with floating-point coordinates,
+//     where minor precision errors could otherwise lead to incorrect results.
+func (l LineSegment[T]) RelationshipToCircle(c Circle[T], opts ...Option) Relationship {
+	circleFloat := c.AsFloat64()
 
-	// Check if segments are exactly equal
-	if (l.start.Eq(other.start, opts...) && l.end.Eq(other.end, opts...)) || (l.start.Eq(other.end, opts...) && l.end.Eq(other.start, opts...)) {
-		return RelationshipLineSegmentLineSegmentCollinearEqual
+	distanceCircleCenterToLineSegment := c.center.DistanceToLineSegment(l, opts...)
+	distanceCircleCenterToLineSegmentStart := c.center.DistanceToPoint(l.start, opts...)
+	distanceCircleCenterToLineSegmentEnd := c.center.DistanceToPoint(l.end, opts...)
+
+	// check for intersection
+	if distanceCircleCenterToLineSegmentStart == circleFloat.radius ||
+		distanceCircleCenterToLineSegmentEnd == circleFloat.radius ||
+		distanceCircleCenterToLineSegment == circleFloat.radius {
+		return RelationshipIntersection
+	}
+	if (distanceCircleCenterToLineSegmentStart > circleFloat.radius || distanceCircleCenterToLineSegmentEnd > circleFloat.radius) &&
+		distanceCircleCenterToLineSegment <= circleFloat.radius {
+		return RelationshipIntersection
 	}
 
-	switch {
-
-	// Check if A and C coincide
-	case l.start.Eq(other.start, opts...):
-		return RelationshipLineSegmentLineSegmentAeqC
-
-	// Check if A and D coincide
-	case l.start.Eq(other.end, opts...):
-		return RelationshipLineSegmentLineSegmentAeqD
-
-	// Check if B and C coincide
-	case l.end.Eq(other.start, opts...):
-		return RelationshipLineSegmentLineSegmentBeqC
-
-	// Check if B and D coincide
-	case l.end.Eq(other.end, opts...):
-		return RelationshipLineSegmentLineSegmentBeqD
-
+	// check for containment
+	if distanceCircleCenterToLineSegmentStart < circleFloat.radius &&
+		distanceCircleCenterToLineSegmentEnd < circleFloat.radius {
+		return RelationshipContainedBy
 	}
 
-	// Determine orientations for intersection and collinearity checks
-	o1 := Orientation(l.start, l.end, other.start)
-	o2 := Orientation(l.start, l.end, other.end)
-	o3 := Orientation(other.start, other.end, l.start)
-	o4 := Orientation(other.start, other.end, l.end)
-
-	// Non-collinear intersection cases
-	if o1 != o2 && o3 != o4 {
-
-		switch {
-
-		// Check if A lies on CD
-		case other.ContainsPoint(l.start) && !other.ContainsPoint(l.end):
-			return RelationshipLineSegmentLineSegmentAonCD
-
-		// Check if B lies on CD
-		case !other.ContainsPoint(l.start) && other.ContainsPoint(l.end):
-			return RelationshipLineSegmentLineSegmentBonCD
-
-		// Check if C lies on l
-		case l.ContainsPoint(other.start) && !l.ContainsPoint(other.end):
-			return RelationshipLineSegmentLineSegmentConAB
-
-		// Check if D lies on l
-		case !l.ContainsPoint(other.start) && l.ContainsPoint(other.end):
-			return RelationshipLineSegmentLineSegmentDonAB
-
-		// Default case that lines intersect without any "edge cases"
-		default:
-			return RelationshipLineSegmentLineSegmentIntersects
-		}
-	}
-
-	// PointsCollinear cases: All orientations are zero
-	if o1 == 0 && o2 == 0 && o3 == 0 && o4 == 0 {
-		// Check if segments are collinear and disjoint
-		if !other.ContainsPoint(l.start) && !other.ContainsPoint(l.end) &&
-			!l.ContainsPoint(other.start) && !l.ContainsPoint(other.end) {
-			return RelationshipLineSegmentLineSegmentCollinearDisjoint
-		}
-		// Check if AB is fully contained within CD
-		if other.ContainsPoint(l.start) && other.ContainsPoint(l.end) {
-			return RelationshipLineSegmentLineSegmentCollinearABinCD
-		}
-		// Check if CD is fully contained within AB
-		if l.ContainsPoint(other.start) && l.ContainsPoint(other.end) {
-			return RelationshipLineSegmentLineSegmentCollinearCDinAB
-		}
-		// Check specific collinear partial overlaps
-		if other.ContainsPoint(l.start) {
-			return RelationshipLineSegmentLineSegmentCollinearAonCD
-		}
-		if other.ContainsPoint(l.end) {
-			return RelationshipLineSegmentLineSegmentCollinearBonCD
-		}
-	}
-
-	// If none of the conditions matched, the segments are disjoint
-	return RelationshipLineSegmentLineSegmentMiss
+	return RelationshipDisjoint
 }
 
-// RelationshipToPoint determines the spatial relationship of a given [Point]
-// to the line segment.
+// RelationshipToLineSegment determines the high-level spatial relationship between two line segments.
 //
-// This method evaluates the relationship between the line segment AB and the
-// provided [Point] p by internally delegating the evaluation to the point's
-// [Point.RelationshipToLineSegment] method. It checks whether the [Point] lies
-// on the infinite line, on the segment, coincides with one of the endpoints,
-// or is entirely disjoint.
+// It categorizes the relationship as:
+//   - Disjoint (no intersection or overlap).
+//   - Intersection (the segments intersect at one or more points).
+//   - Equal (both segments are collinear and share the same endpoints).
 //
 // Parameters:
-//   - p ([Point][T]): The [Point] to analyze relative to the line segment.
+//   - other ([LineSegment][T]): The line segment to compare against the current one.
 //   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the point's location relative
-//     to the line segment, improving robustness in floating-point calculations.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing points and collinearity calculations,
+//     allowing for robust handling of floating-point precision errors.
+//
+// Behavior:
+//
+// The detailed relationship mapped to a [Relationship] constant:
+//   - RelationshipDisjoint: If the segments are collinear but disjoint, or if they miss entirely.
+//   - RelationshipIntersection: The segments intersect at one or more points.
+//   - RelationshipEqual: If the segments are collinear and exactly equal (share the same endpoints).
 //
 // Returns:
-//   - [RelationshipPointLineSegment]: A constant that describes the relationship between the line segment
-//     and the point.
+//   - [Relationship]: A constant describing the high-level relationship between the two line segments.
 //
 // Notes:
-//   - This function supports epsilon adjustments to account for floating-point precision errors.
-//   - The function checks whether the point is entirely disjoint, coincides with one of the endpoints,
-//     lies within the segment bounds, or lies on the infinite extension of the segment.
-func (l LineSegment[T]) RelationshipToPoint(p Point[T], opts ...Option) RelationshipPointLineSegment {
+//   - The use of epsilon adjustments ensures robustness against floating-point imprecision.
+func (l LineSegment[T]) RelationshipToLineSegment(other LineSegment[T], opts ...Option) Relationship {
+	rel := l.detailedRelationshipToLineSegment(other, opts...)
+	switch rel {
+	case lsrCollinearDisjoint, lsrMiss:
+		return RelationshipDisjoint
+	case lsrCollinearEqual:
+		return RelationshipEqual
+	default:
+		return RelationshipIntersection
+	}
+}
+
+// RelationshipToPoint determines the high-level spatial relationship between a line segment and a point.
+//
+// This function evaluates how a line segment relates to a point by delegating the computation to the
+// [Point.RelationshipToLineSegment] method. The relationship is determined based on whether the point
+// lies on the segment, coincides with an endpoint, or is disjoint from the segment.
+//
+// Parameters:
+//   - p ([Point][T]): The point to compare against the line segment.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing distances and collinearity calculations,
+//     ensuring robust handling of floating-point precision errors.
+//
+// Behavior:
+//   - The function calls the [Point.RelationshipToLineSegment] method for computation.
+//   - The returned relationship constant describes whether the point is on the line segment ([RelationshipIntersection]), or
+//     disjoint from the line segment ([RelationshipDisjoint]).
+//
+// Returns:
+//   - [Relationship]: A constant describing the relationship between the line segment and the point.
+//
+// Notes:
+//   - Epsilon adjustment ensures robustness against floating-point imprecision.
+func (l LineSegment[T]) RelationshipToPoint(p Point[T], opts ...Option) Relationship {
 	return p.RelationshipToLineSegment(l, opts...)
 }
 
-// RelationshipToRectangle determines the spatial relationship between a line segment and a [Rectangle].
+// RelationshipToPolyTree determines the relationship between a line segment and each polygon in a [PolyTree].
+//
+// This function evaluates how a line segment relates to the polygons in the tree, computing whether the segment
+// is disjoint, intersects any edge, or is fully contained within a polygon. The result is returned as a map,
+// where each key is a pointer to a polygon in the [PolyTree], and the value is the relationship between the
+// line segment and that polygon.
 //
 // Parameters:
-//   - r ([Rectangle][T]): The [Rectangle] to evaluate the relationship against.
-//
-// Returns:
-//   - [RelationshipLineSegmentRectangle]: A constant describing the relationship between
-//     the line segment and the [Rectangle].
+//   - pt (*[PolyTree][T]): The [PolyTree] to analyze for relationships.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing distances and collinearity calculations,
+//     ensuring robust handling of floating-point precision errors.
 //
 // Behavior:
-//   - This function internally calls the rectangle's [Rectangle.RelationshipToLineSegment]
-//     method to determine the relationship.
-//   - The relationship is computed based on the position of the line segment relative to
-//     the rectangle's edges and vertices.
+//
+// The function first checks if the line segment intersects any edge of each polygon.
+//   - If an intersection or equality is found, the relationship is set to [RelationshipIntersection].
+//   - If the segment's start and end points are both contained within a polygon, the relationship is set to [RelationshipContainedBy].
+//   - If neither of the above conditions is satisfied, the relationship defaults to [RelationshipDisjoint].
+//
+// Returns:
+//   - map[*PolyTree[T]]Relationship: A map where the keys are polygons in the [PolyTree] and the values are their
+//     relationships with the line segment.
 //
 // Notes:
-//   - The function relies on the rectangle's ability to evaluate the relationship
-//     between itself and the line segment.
-func (l LineSegment[T]) RelationshipToRectangle(r Rectangle[T]) RelationshipLineSegmentRectangle {
-	return r.RelationshipToLineSegment(l)
+//   - Epsilon adjustment ensures robustness against floating-point imprecision.
+//   - The function assumes polygons in the [PolyTree] have doubled points for accurate containment checks.
+func (l LineSegment[T]) RelationshipToPolyTree(pt *PolyTree[T], opts ...Option) map[*PolyTree[T]]Relationship {
+	lDoubled := NewLineSegment[T](NewPoint[T](l.start.x*2, l.start.y*2), NewPoint[T](l.end.x*2, l.end.y*2))
+	output := make(map[*PolyTree[T]]Relationship, pt.Len())
+RelationshipToPolyTreeIterPolys:
+	for poly := range pt.iterPolys {
+
+		// check for intersection
+		for edge := range poly.contour.iterEdges {
+			rel := lDoubled.RelationshipToLineSegment(edge, opts...)
+			if rel == RelationshipIntersection || rel == RelationshipEqual {
+				output[poly] = RelationshipIntersection
+				continue RelationshipToPolyTreeIterPolys
+			}
+		}
+
+		// check for containment
+		lineStartInPoly := poly.contour.isPointInside(lDoubled.start)
+		lineEndInPoly := poly.contour.isPointInside(lDoubled.end)
+		if lineStartInPoly && lineEndInPoly {
+			output[poly] = RelationshipContainedBy
+			continue RelationshipToPolyTreeIterPolys
+		}
+
+		// otherwise, disjoint
+		output[poly] = RelationshipDisjoint
+	}
+	return output
+}
+
+// RelationshipToRectangle determines the high-level spatial relationship between a line segment and a rectangle.
+//
+// This function evaluates how a line segment relates to a rectangle, considering possible intersections,
+// containment, or disjoint relationships. The function iterates through the rectangle's edges to check for
+// intersections with the line segment and verifies whether the line segment is entirely contained within
+// the rectangle.
+//
+// Parameters:
+//   - r ([Rectangle][T]): The rectangle to compare against the line segment.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing points and collinearity calculations,
+//     ensuring robust handling of floating-point precision errors.
+//
+// Behavior:
+//
+// The function checks each edge of the rectangle against the line segment:
+//   - If any edge intersects or is equal to the line segment, the function returns [RelationshipIntersection].
+//   - If both endpoints of the line segment are contained within the rectangle, the function returns [RelationshipContainedBy].
+//   - If no intersection or containment is found, the function returns [RelationshipDisjoint].
+//
+// Returns:
+//   - [Relationship]: A constant describing the relationship between the line segment and the rectangle.
+//
+// Notes:
+//   - Epsilon adjustment ensures robustness against floating-point imprecision.
+func (l LineSegment[T]) RelationshipToRectangle(r Rectangle[T], opts ...Option) Relationship {
+	for _, edge := range r.Edges() {
+		rel := edge.RelationshipToLineSegment(l, opts...)
+		if rel == RelationshipIntersection || rel == RelationshipEqual {
+			return RelationshipIntersection
+		}
+	}
+	if r.ContainsPoint(l.start) && r.ContainsPoint(l.end) {
+		return RelationshipContainedBy
+	}
+	return RelationshipDisjoint
 }
 
 // Rotate rotates the LineSegment around a given pivot [Point] by a specified angle in radians.

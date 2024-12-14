@@ -237,161 +237,111 @@ func ExampleLineSegment_Reflect() {
 }
 
 func ExampleLineSegment_RelationshipToCircle() {
-	// Define a circle with center (5, 5) and radius 3
-	circle := geom2d.NewCircle(
-		geom2d.NewPoint[float64](5, 5),
-		3.0,
-	)
+	// Define a circle with center (5, 5) and radius 5
+	circle := geom2d.NewCircle(geom2d.NewPoint(5, 5), 5.0)
 
-	// Define various line segments to test against the circle
-	lineOutside := geom2d.NewLineSegment(
-		geom2d.NewPoint[float64](0, 0),
-		geom2d.NewPoint[float64](1, 1),
-	)
-	lineTangent := geom2d.NewLineSegment(
-		geom2d.NewPoint[float64](2, 8),
-		geom2d.NewPoint[float64](2, 2),
+	// Define various line segments
+	lineDisjoint := geom2d.NewLineSegment(
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(-2, -2),
 	)
 	lineIntersecting := geom2d.NewLineSegment(
-		geom2d.NewPoint[float64](2, 2),
-		geom2d.NewPoint[float64](8, 8),
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(10, 10),
 	)
-	lineInside := geom2d.NewLineSegment(
-		geom2d.NewPoint[float64](4, 4),
-		geom2d.NewPoint[float64](6, 6),
-	)
-	lineOneEndOnCircumferenceOutside := geom2d.NewLineSegment(
-		geom2d.NewPoint[float64](5, 8),
-		geom2d.NewPoint[float64](10, 10),
-	)
-	lineOneEndOnCircumferenceInside := geom2d.NewLineSegment(
-		geom2d.NewPoint[float64](5, 8),
-		geom2d.NewPoint[float64](5, 6),
-	)
-	lineBothEndsOnCircumference := geom2d.NewLineSegment(
-		geom2d.NewPoint[float64](5, 8),
-		geom2d.NewPoint[float64](5, 2),
+	lineContained := geom2d.NewLineSegment(
+		geom2d.NewPoint(5, 6),
+		geom2d.NewPoint(5, 4),
 	)
 
-	// Analyze relationships
-	fmt.Println(
-		"Line Outside:",
-		lineOutside.RelationshipToCircle(
-			circle, geom2d.WithEpsilon(1e-10),
-		).String(),
-	)
-	fmt.Println(
-		"Line Tangent:",
-		lineTangent.RelationshipToCircle(
-			circle, geom2d.WithEpsilon(1e-10),
-		).String(),
-	)
-	fmt.Println(
-		"Line Intersecting:",
-		lineIntersecting.RelationshipToCircle(
-			circle, geom2d.WithEpsilon(1e-10),
-		).String(),
-	)
-	fmt.Println(
-		"Line Inside:",
-		lineInside.RelationshipToCircle(
-			circle, geom2d.WithEpsilon(1e-10),
-		).String(),
-	)
-	fmt.Println(
-		"One End On Circumference Outside:",
-		lineOneEndOnCircumferenceOutside.RelationshipToCircle(
-			circle, geom2d.WithEpsilon(1e-10),
-		).String(),
-	)
-	fmt.Println(
-		"One End On Circumference Inside:",
-		lineOneEndOnCircumferenceInside.RelationshipToCircle(
-			circle, geom2d.WithEpsilon(1e-10),
-		).String(),
-	)
-	fmt.Println(
-		"Both Ends On Circumference:",
-		lineBothEndsOnCircumference.RelationshipToCircle(
-			circle, geom2d.WithEpsilon(1e-10),
-		).String(),
-	)
-
+	// Evaluate relationships
+	fmt.Println("Disjoint:", lineDisjoint.RelationshipToCircle(circle))
+	fmt.Println("Intersecting:", lineIntersecting.RelationshipToCircle(circle))
+	fmt.Println("Contained:", lineContained.RelationshipToCircle(circle))
 	// Output:
-	// Line Outside: RelationshipLineSegmentCircleMiss
-	// Line Tangent: RelationshipLineSegmentCircleTangentToCircle
-	// Line Intersecting: RelationshipLineSegmentCircleIntersecting
-	// Line Inside: RelationshipLineSegmentCircleContainedByCircle
-	// One End On Circumference Outside: RelationshipLineSegmentCircleEndOnCircumferenceOutside
-	// One End On Circumference Inside: RelationshipLineSegmentCircleEndOnCircumferenceInside
-	// Both Ends On Circumference: RelationshipLineSegmentCircleBothEndsOnCircumference
+	// Disjoint: RelationshipDisjoint
+	// Intersecting: RelationshipIntersection
+	// Contained: RelationshipContainedBy
 }
 
 func ExampleLineSegment_RelationshipToLineSegment() {
-	// Define a set of line segments to test
-	AB := geom2d.NewLineSegment(
-		geom2d.NewPoint[float64](0, 0),
-		geom2d.NewPoint[float64](10, 0),
-	)
-	CD := geom2d.NewLineSegment(
-		geom2d.NewPoint[float64](11, 0),
-		geom2d.NewPoint[float64](15, 0),
-	)
-	EF := geom2d.NewLineSegment(
-		geom2d.NewPoint[float64](0, 0),
-		geom2d.NewPoint[float64](10, 10),
-	)
-	GH := geom2d.NewLineSegment(
-		geom2d.NewPoint[float64](0, 10),
-		geom2d.NewPoint[float64](10, 0),
-	)
-	IJ := geom2d.NewLineSegment(
-		geom2d.NewPoint[float64](0, 0),
-		geom2d.NewPoint[float64](0, 10),
+	// Define two line segments
+	line1 := geom2d.NewLineSegment(geom2d.NewPoint(0, 0), geom2d.NewPoint(10, 10))
+	line2 := geom2d.NewLineSegment(geom2d.NewPoint(5, 5), geom2d.NewPoint(15, 15))
+	line3 := geom2d.NewLineSegment(geom2d.NewPoint(20, 20), geom2d.NewPoint(30, 30))
+	line4 := geom2d.NewLineSegment(geom2d.NewPoint(0, 0), geom2d.NewPoint(10, 10))
+
+	// Evaluate relationships
+	fmt.Println("Line1 vs Line2:", line1.RelationshipToLineSegment(line2))
+	fmt.Println("Line1 vs Line3:", line1.RelationshipToLineSegment(line3))
+	fmt.Println("Line1 vs Line4:", line1.RelationshipToLineSegment(line4))
+	// Output:
+	// Line1 vs Line2: RelationshipIntersection
+	// Line1 vs Line3: RelationshipDisjoint
+	// Line1 vs Line4: RelationshipEqual
+}
+
+func ExampleLineSegment_RelationshipToPolyTree() {
+	// Define a PolyTree with a root polygon and a hole
+	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(10, 0),
+		geom2d.NewPoint(10, 10),
+		geom2d.NewPoint(0, 10),
+	}, geom2d.PTSolid)
+
+	hole, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(4, 4),
+		geom2d.NewPoint(6, 4),
+		geom2d.NewPoint(6, 6),
+		geom2d.NewPoint(4, 6),
+	}, geom2d.PTHole)
+	_ = root.AddChild(hole)
+
+	// Note: While errors are ignored in this example for simplicity, it is important to handle errors properly in
+	// production code to ensure robustness and reliability.
+
+	// Define a line segment
+	segment := geom2d.NewLineSegment(
+		geom2d.NewPoint(2, 2),
+		geom2d.NewPoint(8, 8),
 	)
 
-	// Analyze relationships
-	fmt.Println("Collinear Disjoint:", AB.RelationshipToLineSegment(CD, geom2d.WithEpsilon(1e-10)).String())
-	fmt.Println("Intersects:", EF.RelationshipToLineSegment(GH, geom2d.WithEpsilon(1e-10)).String())
-	fmt.Println("AeqC:", AB.RelationshipToLineSegment(IJ, geom2d.WithEpsilon(1e-10)).String())
-	fmt.Println("Equal:", AB.RelationshipToLineSegment(AB, geom2d.WithEpsilon(1e-10)).String())
+	// Evaluate relationships
+	relationships := segment.RelationshipToPolyTree(root)
+
+	// Print results
+	fmt.Printf("Root polygon relationship: %v\n", relationships[root])
+	fmt.Printf("Hole polygon relationship: %v\n", relationships[hole])
 	// Output:
-	// Collinear Disjoint: RelationshipLineSegmentLineSegmentCollinearDisjoint
-	// Intersects: RelationshipLineSegmentLineSegmentIntersects
-	// AeqC: RelationshipLineSegmentLineSegmentAeqC
-	// Equal: RelationshipLineSegmentLineSegmentCollinearEqual
+	// Root polygon relationship: RelationshipContainedBy
+	// Hole polygon relationship: RelationshipIntersection
 }
 
 func ExampleLineSegment_RelationshipToPoint() {
-	// Define a line segment AB
-	AB := geom2d.NewLineSegment(
+	// Define a line segment
+	segment := geom2d.NewLineSegment(
 		geom2d.NewPoint[float64](0, 0),
-		geom2d.NewPoint[float64](10, 0),
+		geom2d.NewPoint[float64](10, 10),
 	)
 
-	// Define various test points
-	startPoint := geom2d.NewPoint[float64](0, 0)
-	endPoint := geom2d.NewPoint[float64](10, 0)
-	onSegment := geom2d.NewPoint[float64](5, 0)
-	onLineNotSegment := geom2d.NewPoint[float64](15, 0)
-	missingPoint := geom2d.NewPoint[float64](5, 5)
+	// Define some points
+	point1 := geom2d.NewPoint[float64](5, 5)  // On the segment
+	point2 := geom2d.NewPoint[float64](10, 0) // Disjoint
+	point3 := geom2d.NewPoint[float64](0, 0)  // Coincides with an endpoint
 
-	// Analyze relationships
-	fmt.Println("Point at Start:", AB.RelationshipToPoint(startPoint).String())
-	fmt.Println("Point at End:", AB.RelationshipToPoint(endPoint).String())
-	fmt.Println("Point on Segment:", AB.RelationshipToPoint(onSegment).String())
-	fmt.Println("Point on Infinite Line, Not Segment:", AB.RelationshipToPoint(onLineNotSegment).String())
-	fmt.Println("Point Misses Segment:", AB.RelationshipToPoint(missingPoint).String())
+	// Evaluate relationships
+	fmt.Println("Point1 vs Line Segment:", segment.RelationshipToPoint(point1))
+	fmt.Println("Point2 vs Line Segment:", segment.RelationshipToPoint(point2))
+	fmt.Println("Point3 vs Line Segment:", segment.RelationshipToPoint(point3))
 	// Output:
-	// Point at Start: RelationshipPointLineSegmentPointEqStart
-	// Point at End: RelationshipPointLineSegmentPointEqEnd
-	// Point on Segment: RelationshipPointLineSegmentPointOnLineSegment
-	// Point on Infinite Line, Not Segment: RelationshipPointLineSegmentCollinearDisjoint
-	// Point Misses Segment: RelationshipPointLineSegmentMiss
+	// Point1 vs Line Segment: RelationshipIntersection
+	// Point2 vs Line Segment: RelationshipDisjoint
+	// Point3 vs Line Segment: RelationshipIntersection
 }
 
 func ExampleLineSegment_RelationshipToRectangle() {
-	// Define a rectangle with corners (0, 0), (10, 0), (10, 10), (0, 10)
+	// Define a rectangle
 	rect := geom2d.NewRectangle([]geom2d.Point[int]{
 		geom2d.NewPoint(0, 0),
 		geom2d.NewPoint(10, 0),
@@ -399,34 +349,19 @@ func ExampleLineSegment_RelationshipToRectangle() {
 		geom2d.NewPoint(0, 10),
 	})
 
-	// Define various line segments to test
-	lineOutside := geom2d.NewLineSegment(
-		geom2d.NewPoint(15, 15),
-		geom2d.NewPoint(20, 20),
-	)
-	lineInside := geom2d.NewLineSegment(
-		geom2d.NewPoint(2, 2),
-		geom2d.NewPoint(8, 8),
-	)
-	lineIntersects := geom2d.NewLineSegment(
-		geom2d.NewPoint(5, -5),
-		geom2d.NewPoint(5, 15),
-	)
-	lineTouchesVertex := geom2d.NewLineSegment(
-		geom2d.NewPoint(0, 10),
-		geom2d.NewPoint(-5, 15),
-	)
+	// Define some line segments
+	line1 := geom2d.NewLineSegment(geom2d.NewPoint(5, 5), geom2d.NewPoint(15, 15))   // Intersects
+	line2 := geom2d.NewLineSegment(geom2d.NewPoint(1, 1), geom2d.NewPoint(9, 9))     // Contained
+	line3 := geom2d.NewLineSegment(geom2d.NewPoint(20, 20), geom2d.NewPoint(30, 30)) // Disjoint
 
-	// Analyze relationships
-	fmt.Println("Line Outside:", lineOutside.RelationshipToRectangle(rect).String())
-	fmt.Println("Line Inside:", lineInside.RelationshipToRectangle(rect).String())
-	fmt.Println("Line Intersects:", lineIntersects.RelationshipToRectangle(rect).String())
-	fmt.Println("Line Touches Vertex:", lineTouchesVertex.RelationshipToRectangle(rect).String())
+	// Evaluate relationships
+	fmt.Println("Line1 vs Rectangle:", line1.RelationshipToRectangle(rect))
+	fmt.Println("Line2 vs Rectangle:", line2.RelationshipToRectangle(rect))
+	fmt.Println("Line3 vs Rectangle:", line3.RelationshipToRectangle(rect))
 	// Output:
-	// Line Outside: RelationshipLineSegmentRectangleMiss
-	// Line Inside: RelationshipLineSegmentRectangleContainedByRectangle
-	// Line Intersects: RelationshipLineSegmentRectangleEntersAndExits
-	// Line Touches Vertex: RelationshipLineSegmentRectangleEndTouchesVertexExternally
+	// Line1 vs Rectangle: RelationshipIntersection
+	// Line2 vs Rectangle: RelationshipContainedBy
+	// Line3 vs Rectangle: RelationshipDisjoint
 }
 
 func ExampleLineSegment_Rotate() {
@@ -469,7 +404,7 @@ func ExampleLineSegment_Scale() {
 
 	// Scale the line segment by a shrinking factor of 0.5, converting to floating-point type
 	lineFloat := line.AsFloat()
-	shrunkLine := lineFloat.Scale(ref.AsFloat(), 0.5)
+	shrunkLine := lineFloat.Scale(ref.AsFloat64(), 0.5)
 
 	// Print the shrunk line segment's start and end points
 	fmt.Printf("Shrunk Line Start: %v\n", shrunkLine.Points()[0])
@@ -548,11 +483,4 @@ func ExampleLineSegment_Translate() {
 	// Translated Line Segment:
 	// Start Point: Point[(3, 4)]
 	// End Point: Point[(6, 7)]
-}
-
-func ExampleRelationshipLineSegmentLineSegment_String() {
-	rel := geom2d.RelationshipLineSegmentLineSegmentIntersects
-	fmt.Println(rel.String())
-	// Output:
-	// RelationshipLineSegmentLineSegmentIntersects
 }

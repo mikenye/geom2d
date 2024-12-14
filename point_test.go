@@ -1,7 +1,6 @@
 package geom2d
 
 import (
-	"github.com/stretchr/testify/require"
 	"image"
 	"math"
 	"testing"
@@ -53,7 +52,7 @@ func TestPoint_AsFloat(t *testing.T) {
 	// Run test cases
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.point.AsFloat()
+			result := tt.point.AsFloat64()
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -658,61 +657,132 @@ func TestPoint_Reflect(t *testing.T) {
 	})
 }
 
-func TestPoint_RelationshipToLineSegment(t *testing.T) {
-	tests := map[string]struct {
-		point       Point[int]
-		segment     LineSegment[int]
-		epsilon     float64
-		expectedRel RelationshipPointLineSegment
+func TestPoint_RelationshipToCircle(t *testing.T) {
+	testCases := map[string]struct {
+		point       Point[float64]
+		circle      Circle[float64]
+		expectedRel Relationship
 	}{
-		"Point equals start of segment": {
-			point:       NewPoint(0, 0),
-			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
-			expectedRel: RelationshipPointLineSegmentPointEqStart,
+		"Point inside circle": {
+			point:       NewPoint[float64](2, 2),
+			circle:      NewCircle(NewPoint[float64](0, 0), 5),
+			expectedRel: RelationshipContainedBy,
 		},
-		"Point equals end of segment": {
-			point:       NewPoint(10, 10),
-			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
-			expectedRel: RelationshipPointLineSegmentPointEqEnd,
+		"Point on circle boundary": {
+			point:       NewPoint[float64](3, 4),
+			circle:      NewCircle(NewPoint[float64](0, 0), 5),
+			expectedRel: RelationshipIntersection,
 		},
-		"Point on the segment": {
-			point:       NewPoint(5, 5),
-			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
-			expectedRel: RelationshipPointLineSegmentPointOnLineSegment,
-		},
-		"Point outside bounding box but collinear": {
-			point:       NewPoint(-5, -5),
-			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
-			expectedRel: RelationshipPointLineSegmentCollinearDisjoint,
-		},
-		"Point not on line": {
-			point:       NewPoint(5, 6),
-			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
-			expectedRel: RelationshipPointLineSegmentMiss,
-		},
-		"Point on the segment with epsilon": {
-			point:       NewPoint(5, 5),
-			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
-			epsilon:     1e-10,
-			expectedRel: RelationshipPointLineSegmentPointOnLineSegment,
-		},
-		"Point just outside segment with small epsilon": {
-			point:       NewPoint(5, 5),
-			segment:     NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
-			epsilon:     -1e-10, // No tolerance
-			expectedRel: RelationshipPointLineSegmentPointOnLineSegment,
+		"Point outside circle": {
+			point:       NewPoint[float64](6, 8),
+			circle:      NewCircle(NewPoint[float64](0, 0), 5),
+			expectedRel: RelationshipDisjoint,
 		},
 	}
 
-	for name, test := range tests {
+	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			opts := []Option{}
-			if test.epsilon != 0 {
-				opts = append(opts, WithEpsilon(test.epsilon))
-			}
+			result := tc.point.RelationshipToCircle(tc.circle, WithEpsilon(1e-10))
+			assert.Equal(t, tc.expectedRel, result, "unexpected relationship")
+		})
+	}
+}
 
-			rel := test.point.RelationshipToLineSegment(test.segment, opts...)
-			require.Equal(t, test.expectedRel, rel, "Relationship mismatch for test: %s", name)
+func TestPoint_RelationshipToLineSegment(t *testing.T) {
+	segment := NewLineSegment(
+		NewPoint(0, 0),
+		NewPoint(10, 0),
+	)
+
+	tests := map[string]struct {
+		point       Point[int]
+		expectedRel Relationship
+	}{
+		"Point lies on the segment": {
+			point:       NewPoint(5, 0),
+			expectedRel: RelationshipIntersection,
+		},
+		"Point lies on the segment start": {
+			point:       NewPoint(0, 0),
+			expectedRel: RelationshipIntersection,
+		},
+		"Point lies on the segment end": {
+			point:       NewPoint(10, 0),
+			expectedRel: RelationshipIntersection,
+		},
+		"Point lies outside the segment": {
+			point:       NewPoint(15, 0),
+			expectedRel: RelationshipDisjoint,
+		},
+		"Point lies above the segment": {
+			point:       NewPoint(5, 2),
+			expectedRel: RelationshipDisjoint,
+		},
+		"Point lies below the segment": {
+			point:       NewPoint(5, -2),
+			expectedRel: RelationshipDisjoint,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			rel := tt.point.RelationshipToLineSegment(segment, WithEpsilon(1e-10))
+			assert.Equal(t, tt.expectedRel, rel, "unexpected relationship")
+		})
+	}
+}
+
+func TestPoint_RelationshipToPoint(t *testing.T) {
+	tests := map[string]struct {
+		pointA      Point[int]
+		pointB      Point[int]
+		expectedRel Relationship
+	}{
+		"Points are equal": {
+			pointA:      NewPoint(5, 5),
+			pointB:      NewPoint(5, 5),
+			expectedRel: RelationshipEqual,
+		},
+		"Points are disjoint": {
+			pointA:      NewPoint(5, 5),
+			pointB:      NewPoint(10, 10),
+			expectedRel: RelationshipDisjoint,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			rel := tt.pointA.RelationshipToPoint(tt.pointB, WithEpsilon(1e-10))
+			assert.Equal(t, tt.expectedRel, rel, "unexpected relationship")
+		})
+	}
+}
+
+func TestPoint_RelationshipToRectangle(t *testing.T) {
+	rect := NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 10))
+
+	tests := map[string]struct {
+		point       Point[int]
+		expectedRel Relationship
+	}{
+		"Point inside rectangle": {
+			point:       NewPoint(5, 5),
+			expectedRel: RelationshipContainedBy,
+		},
+		"Point on rectangle edge": {
+			point:       NewPoint(10, 5),
+			expectedRel: RelationshipIntersection,
+		},
+		"Point outside rectangle": {
+			point:       NewPoint(15, 5),
+			expectedRel: RelationshipDisjoint,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			rel := tt.point.RelationshipToRectangle(rect, WithEpsilon(1e-10))
+			assert.Equal(t, tt.expectedRel, rel, "unexpected relationship")
 		})
 	}
 }
@@ -800,7 +870,7 @@ func TestPoint_Scale(t *testing.T) {
 			switch point := tt.point.(type) {
 			case Point[int]:
 				ref := tt.refPoint.(Point[int])
-				result := point.AsFloat().Scale(ref.AsFloat(), tt.scale)
+				result := point.AsFloat64().Scale(ref.AsFloat64(), tt.scale)
 				assert.InDelta(t, tt.expected.x, result.x, 0.001)
 				assert.InDelta(t, tt.expected.y, result.y, 0.001)
 

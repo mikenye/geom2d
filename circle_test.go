@@ -45,7 +45,7 @@ func TestCircle_AsFloat(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			result := tt.circle.AsFloat()
+			result := tt.circle.AsFloat64()
 			assert.Equal(t, tt.expected.center, result.center)
 			assert.Equal(t, tt.expected.radius, result.radius)
 		})
@@ -112,6 +112,48 @@ func TestCircle_AsIntRounded(t *testing.T) {
 			result := tt.circle.AsIntRounded()
 			assert.Equal(t, tt.expected.center, result.center)
 			assert.Equal(t, tt.expected.radius, result.radius)
+		})
+	}
+}
+
+func TestCircle_BoundingBox(t *testing.T) {
+	tests := map[string]struct {
+		circle   Circle[int]
+		expected Rectangle[int]
+	}{
+		"Unit Circle": {
+			circle: NewCircle(NewPoint(0, 0), 1),
+			expected: NewRectangle([]Point[int]{
+				NewPoint(-1, -1),
+				NewPoint(1, -1),
+				NewPoint(1, 1),
+				NewPoint(-1, 1),
+			}),
+		},
+		"Circle at (10, 10) with radius 5": {
+			circle: NewCircle(NewPoint(10, 10), 5),
+			expected: NewRectangle([]Point[int]{
+				NewPoint(5, 5),
+				NewPoint(15, 5),
+				NewPoint(15, 15),
+				NewPoint(5, 15),
+			}),
+		},
+		"Circle at (-10, -10) with radius 3": {
+			circle: NewCircle(NewPoint(-10, -10), 3),
+			expected: NewRectangle([]Point[int]{
+				NewPoint(-13, -13),
+				NewPoint(-7, -13),
+				NewPoint(-7, -7),
+				NewPoint(-13, -7),
+			}),
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			boundingBox := tt.circle.BoundingBox()
+			assert.Equal(t, tt.expected, boundingBox)
 		})
 	}
 }
@@ -228,233 +270,191 @@ func TestCircle_Radius(t *testing.T) {
 }
 
 func TestCircle_RelationshipToCircle(t *testing.T) {
+	circleA := NewCircle(NewPoint[int](0, 0), 10)
+	circleB := NewCircle(NewPoint[int](0, 0), 10)
+	circleC := NewCircle(NewPoint[int](0, 0), 5)
+	circleD := NewCircle(NewPoint[int](20, 0), 10)
+	circleE := NewCircle(NewPoint[int](15, 0), 5)
+	circleF := NewCircle(NewPoint[int](25, 0), 5)
+
 	tests := map[string]struct {
-		c1       Circle[float64]
-		c2       Circle[float64]
-		epsilon  float64
-		expected RelationshipCircleCircle
+		circle1  Circle[int]
+		circle2  Circle[int]
+		expected Relationship
 	}{
-		"Disjoint Circles": {
-			c1:       NewCircle[float64](NewPoint[float64](0, 0), 5),
-			c2:       NewCircle[float64](NewPoint[float64](15, 0), 5),
-			epsilon:  1e-10,
-			expected: RelationshipCircleCircleMiss,
-		},
-		"Externally Tangent Circles": {
-			c1:       NewCircle[float64](NewPoint[float64](0, 0), 5),
-			c2:       NewCircle[float64](NewPoint[float64](10, 0), 5),
-			epsilon:  1e-10,
-			expected: RelationshipCircleCircleExternallyTangent,
-		},
-		"Overlapping Circles": {
-			c1:       NewCircle[float64](NewPoint[float64](0, 0), 5),
-			c2:       NewCircle[float64](NewPoint[float64](6, 0), 5),
-			epsilon:  1e-10,
-			expected: RelationshipCircleCircleIntersection,
-		},
-		"Internally Tangent Circles": {
-			c1:       NewCircle[float64](NewPoint[float64](0, 0), 5),
-			c2:       NewCircle[float64](NewPoint[float64](2, 0), 3),
-			epsilon:  1e-10,
-			expected: RelationshipCircleCircleInternallyTangent,
-		},
-		"Circle Fully Contained in Another": {
-			c1:       NewCircle[float64](NewPoint[float64](0, 0), 10),
-			c2:       NewCircle[float64](NewPoint[float64](2, 2), 5),
-			epsilon:  1e-10,
-			expected: RelationshipCircleCircleContained,
-		},
-		"Circle Fully Contains Another": {
-			c1:       NewCircle[float64](NewPoint[float64](2, 2), 5),
-			c2:       NewCircle[float64](NewPoint[float64](0, 0), 10),
-			epsilon:  1e-10,
-			expected: RelationshipCircleCircleContained,
-		},
 		"Equal Circles": {
-			c1:       NewCircle[float64](NewPoint[float64](0, 0), 5),
-			c2:       NewCircle[float64](NewPoint[float64](0, 0), 5),
-			epsilon:  1e-10,
-			expected: RelationshipCircleCircleEqual,
+			circle1:  circleA,
+			circle2:  circleB,
+			expected: RelationshipEqual,
+		},
+		"ContainedBy Circle": {
+			circle1:  circleC,
+			circle2:  circleA,
+			expected: RelationshipContainedBy,
+		},
+		"Contains Circle": {
+			circle1:  circleA,
+			circle2:  circleC,
+			expected: RelationshipContains,
+		},
+		"Intersecting Circles": {
+			circle1:  circleA,
+			circle2:  circleD,
+			expected: RelationshipIntersection,
+		},
+		"Tangential Circles (Intersection)": {
+			circle1:  circleA,
+			circle2:  circleE,
+			expected: RelationshipIntersection,
+		},
+		"Disjoint Circles": {
+			circle1:  circleA,
+			circle2:  circleF,
+			expected: RelationshipDisjoint,
 		},
 	}
 
-	for name, tc := range tests {
+	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			result := tc.c1.RelationshipToCircle(tc.c2, WithEpsilon(tc.epsilon))
-			assert.Equal(t, tc.expected, result, "Expected %v, got %v", tc.expected, result)
+			result := tt.circle1.RelationshipToCircle(tt.circle2, WithEpsilon(1e-10))
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
 func TestCircle_RelationshipToLineSegment(t *testing.T) {
+	circle := NewCircle(NewPoint[int](0, 0), 10)
+
 	tests := map[string]struct {
-		segment  LineSegment[float64]
-		circle   Circle[float64]
-		epsilon  float64
-		expected RelationshipLineSegmentCircle
+		line     LineSegment[int]
+		expected Relationship
 	}{
-		"segment completely inside circle": {
-			segment:  NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](2, 2)),
-			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			epsilon:  0,
-			expected: RelationshipLineSegmentCircleContainedByCircle,
+		"Line Segment Outside Circle": {
+			line:     NewLineSegment(NewPoint(15, 0), NewPoint(20, 0)),
+			expected: RelationshipDisjoint,
 		},
-		"segment completely outside circle": {
-			segment:  NewLineSegment(NewPoint[float64](10, 10), NewPoint[float64](15, 15)),
-			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			epsilon:  0,
-			expected: RelationshipLineSegmentCircleMiss,
+		"Line Segment Intersects Circle": {
+			line:     NewLineSegment(NewPoint(0, -15), NewPoint(0, 15)),
+			expected: RelationshipIntersection,
 		},
-		"segment intersects circle at two points": {
-			segment:  NewLineSegment(NewPoint[float64](-6, 0), NewPoint[float64](6, 0)),
-			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			epsilon:  0,
-			expected: RelationshipLineSegmentCircleIntersecting,
-		},
-		"segment is tangent to circle": {
-			segment:  NewLineSegment(NewPoint[float64](5, -5), NewPoint[float64](5, 5)),
-			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			epsilon:  1e-10,
-			expected: RelationshipLineSegmentCircleTangentToCircle,
-		},
-		"segment partially inside circle": {
-			segment:  NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](10, 10)),
-			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			epsilon:  0,
-			expected: RelationshipLineSegmentCircleIntersecting,
-		},
-		"segment with one endpoint on circumference and other outside": {
-			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](10, 10)),
-			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			epsilon:  1e-10,
-			expected: RelationshipLineSegmentCircleEndOnCircumferenceOutside,
-		},
-		"segment with one endpoint on circumference and other inside": {
-			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](2, 2)),
-			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			epsilon:  1e-10,
-			expected: RelationshipLineSegmentCircleEndOnCircumferenceInside,
-		},
-		"segment with both endpoints on circumference": {
-			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](-5, 0)),
-			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			epsilon:  1e-10,
-			expected: RelationshipLineSegmentCircleBothEndsOnCircumference,
-		},
-		"degenerate segment inside circle": {
-			segment:  NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](1, 1)),
-			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			epsilon:  0,
-			expected: RelationshipLineSegmentCircleContainedByCircle,
-		},
-		"degenerate segment on circle boundary": {
-			segment:  NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](5, 0)),
-			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			epsilon:  1e-10,
-			expected: RelationshipLineSegmentCircleBothEndsOnCircumference,
-		},
-		"degenerate segment outside circle": {
-			segment:  NewLineSegment(NewPoint[float64](10, 10), NewPoint[float64](10, 10)),
-			circle:   Circle[float64]{center: NewPoint[float64](0, 0), radius: 5},
-			epsilon:  0,
-			expected: RelationshipLineSegmentCircleMiss,
+		"Line Segment Fully Contained in Circle": {
+			line:     NewLineSegment(NewPoint(5, 5), NewPoint(-5, -5)),
+			expected: RelationshipContains,
 		},
 	}
 
-	for name, tc := range tests {
+	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			result := tc.circle.RelationshipToLineSegment(tc.segment, WithEpsilon(tc.epsilon))
-			assert.Equal(t, tc.expected, result)
+			result := circle.RelationshipToLineSegment(tt.line, WithEpsilon(1e-10))
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
 func TestCircle_RelationshipToPoint(t *testing.T) {
+	circle := NewCircle(NewPoint[int](0, 0), 10)
+
 	tests := map[string]struct {
-		circle   Circle[float64]
-		point    Point[float64]
-		epsilon  float64
-		expected RelationshipPointCircle
+		point    Point[int]
+		expected Relationship
 	}{
-		"point inside circle": {
-			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
-			point:    NewPoint[float64](-3.0, -2.0),
-			epsilon:  0,
-			expected: RelationshipPointCircleContainedByCircle,
+		"Point Outside Circle": {
+			point:    NewPoint(15, 0),
+			expected: RelationshipDisjoint,
 		},
-		"point on circle boundary": {
-			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
-			point:    NewPoint[float64](3.0, 4.0),
-			epsilon:  1e-10,
-			expected: RelationshipPointCircleOnCircumference,
+		"Point On Circle Boundary": {
+			point:    NewPoint(10, 0),
+			expected: RelationshipIntersection,
 		},
-		"point outside circle": {
-			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
-			point:    NewPoint[float64](6.0, 8.0),
-			epsilon:  0,
-			expected: RelationshipPointCircleMiss,
-		},
-		"point at center of circle": {
-			circle:   NewCircle(NewPoint[float64](0.0, 0.0), 5.0),
-			point:    NewPoint[float64](0.0, 0.0),
-			epsilon:  0,
-			expected: RelationshipPointCircleContainedByCircle,
+		"Point Inside Circle": {
+			point:    NewPoint(5, 0),
+			expected: RelationshipContains,
 		},
 	}
 
-	for name, tc := range tests {
+	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			result := tc.circle.RelationshipToPoint(tc.point, WithEpsilon(tc.epsilon))
-			assert.Equal(t, tc.expected, result)
+			result := circle.RelationshipToPoint(tt.point, WithEpsilon(1e-10))
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
-func TestCircle_RelationshipToRectangle(t *testing.T) {
-	tests := map[string]struct {
-		circle      Circle[int]
-		rectangle   Rectangle[int]
-		epsilon     float64
-		expectedRel RelationshipRectangleCircle
-	}{
-		"Disjoint": {
-			circle:      NewCircle(NewPoint(50, 50), 10),
-			rectangle:   NewRectangle([]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)}),
-			epsilon:     1e-10,
-			expectedRel: RelationshipRectangleCircleMiss,
-		},
-		"Circle Inside Rectangle": {
-			circle:      NewCircle(NewPoint(5, 5), 4),
-			rectangle:   NewRectangle([]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)}),
-			epsilon:     1e-10,
-			expectedRel: RelationshipRectangleCircleContainedByRectangle,
-		},
-		"Rectangle Inside Circle": {
-			circle:      NewCircle(NewPoint(5, 5), 10),
-			rectangle:   NewRectangle([]Point[int]{NewPoint(3, 3), NewPoint(7, 3), NewPoint(7, 7), NewPoint(3, 7)}),
-			epsilon:     1e-10,
-			expectedRel: RelationshipRectangleCircleContainedByCircle,
-		},
-		"Circle exactly in Rect (Circle Touching Edges)": {
-			circle:      NewCircle(NewPoint(5, 5), 5),
-			rectangle:   NewRectangle([]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)}),
-			epsilon:     1e-10,
-			expectedRel: RelationshipRectangleCircleContainedByRectangle,
-		},
-		"Intersecting (Circle Center On Edge)": {
-			circle:      NewCircle(NewPoint(5, 0), 5),
-			rectangle:   NewRectangle([]Point[int]{NewPoint(0, 0), NewPoint(10, 0), NewPoint(10, 10), NewPoint(0, 10)}),
-			epsilon:     1e-10,
-			expectedRel: RelationshipRectangleCircleIntersection,
-		},
-	}
+func TestCircle_RelationshipToPolyTree(t *testing.T) {
+	// Create a PolyTree
+	root, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 0), NewPoint(0, 100), NewPoint(100, 100), NewPoint(100, 0),
+	}, PTSolid)
+	require.NoError(t, err)
+	hole, err := NewPolyTree([]Point[int]{
+		NewPoint(20, 20), NewPoint(20, 80), NewPoint(80, 80), NewPoint(80, 20),
+	}, PTHole)
+	require.NoError(t, err)
+	err = root.AddChild(hole)
+	require.NoError(t, err)
 
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
-			actualRel := test.circle.RelationshipToRectangle(test.rectangle, WithEpsilon(test.epsilon))
-			require.Equal(t, test.expectedRel, actualRel, "Relationship mismatch for test: %s", name)
-		})
-	}
+	t.Run("Circle contains root polygon", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](50, 50), 600)
+		rels := circle.RelationshipToPolyTree(root)
+		assert.Equal(t, RelationshipContains, rels[root])
+		assert.Equal(t, RelationshipContains, rels[hole])
+	})
+
+	t.Run("Circle intersects root polygon", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](0, 0), 5)
+		rels := circle.RelationshipToPolyTree(root)
+		assert.Equal(t, RelationshipIntersection, rels[root])
+		assert.Equal(t, RelationshipDisjoint, rels[hole])
+	})
+
+	t.Run("Circle disjoint from root polygon", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](200, 200), 10)
+		rels := circle.RelationshipToPolyTree(root)
+		assert.Equal(t, RelationshipDisjoint, rels[root])
+	})
+
+	t.Run("Polygon contains circle", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](50, 50), 10)
+		rels := circle.RelationshipToPolyTree(root)
+		assert.Equal(t, RelationshipContainedBy, rels[root])
+	})
+
+	t.Run("Circle intersects hole", func(t *testing.T) {
+		circle := NewCircle(NewPoint[int](50, 50), 70)
+		rels := circle.RelationshipToPolyTree(root)
+		assert.Equal(t, RelationshipContains, rels[hole])
+		assert.Equal(t, RelationshipIntersection, rels[root])
+	})
+}
+
+func TestCircle_RelationshipToRectangle(t *testing.T) {
+	// Define a rectangle
+	rect := NewRectangle([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(100, 0),
+		NewPoint(100, 100),
+		NewPoint(0, 100),
+	})
+
+	t.Run("Disjoint", func(t *testing.T) {
+		circle := NewCircle(NewPoint(-50, -50), 10)
+		assert.Equal(t, RelationshipDisjoint, circle.RelationshipToRectangle(rect), "Expected RelationshipDisjoint")
+	})
+
+	t.Run("Intersection", func(t *testing.T) {
+		circle := NewCircle(NewPoint(50, 120), 30)
+		assert.Equal(t, RelationshipIntersection, circle.RelationshipToRectangle(rect), "Expected RelationshipIntersection")
+	})
+
+	t.Run("Circle Contains Rectangle", func(t *testing.T) {
+		circle := NewCircle(NewPoint(50, 50), 200)
+		assert.Equal(t, RelationshipContains, circle.RelationshipToRectangle(rect), "Expected RelationshipContains")
+	})
+
+	t.Run("Rectangle Contains Circle", func(t *testing.T) {
+		circle := NewCircle(NewPoint(50, 50), 20)
+		assert.Equal(t, RelationshipContainedBy, circle.RelationshipToRectangle(rect), "Expected RelationshipContainedBy")
+	})
 }
 
 func TestCircle_Rotate(t *testing.T) {

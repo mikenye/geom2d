@@ -26,7 +26,7 @@ func ExampleCircle_Area() {
 
 func ExampleCircle_AsFloat() {
 	intCircle := geom2d.NewCircle(geom2d.NewPoint(3, 4), 5)
-	fltCircle := intCircle.AsFloat()
+	fltCircle := intCircle.AsFloat64()
 	fmt.Printf("intCircle is %v of type: %T\n", intCircle, intCircle)
 	fmt.Printf("fltCircle is %v of type: %T\n", fltCircle, fltCircle)
 	// Output:
@@ -52,6 +52,19 @@ func ExampleCircle_AsIntRounded() {
 	// Output:
 	// fltCircle is Circle[center=(3.7, 4.2), radius=5.6] of type: geom2d.Circle[float64]
 	// intCircle is Circle[center=(4, 4), radius=6] of type: geom2d.Circle[int]
+}
+
+func ExampleCircle_BoundingBox() {
+	// Create a circle centered at (10, 10) with a radius of 5
+	circle := geom2d.NewCircle(geom2d.NewPoint(10, 10), 5)
+
+	// Calculate its bounding box
+	boundingBox := circle.BoundingBox()
+
+	// Output the bounding box
+	fmt.Println("Bounding box:", boundingBox)
+	// Output:
+	// Bounding box: Rectangle[(5, 5), (15, 5), (15, 15), (5, 15)]
 }
 
 func ExampleCircle_Center() {
@@ -97,204 +110,98 @@ func ExampleCircle_Radius() {
 	// 5
 }
 
-func ExampleCircle_RelationshipToCircle_ccrmiss() {
-	c1 := geom2d.NewCircle(geom2d.NewPoint(-6, 0), 5)
-	c2 := geom2d.NewCircle(geom2d.NewPoint(6, 0), 5)
-	rel := c1.RelationshipToCircle(c2, geom2d.WithEpsilon(1e-10))
-	fmt.Println(rel == geom2d.RelationshipCircleCircleMiss)
+func ExampleCircle_RelationshipToCircle() {
+	circle1 := geom2d.NewCircle(geom2d.NewPoint(0, 0), 10)
+	circle2 := geom2d.NewCircle(geom2d.NewPoint(0, 0), 10)
+	circle3 := geom2d.NewCircle(geom2d.NewPoint(3, 0), 5)
+	circle4 := geom2d.NewCircle(geom2d.NewPoint(20, 0), 5)
+
+	fmt.Println(circle1.RelationshipToCircle(circle2))
+	fmt.Println(circle1.RelationshipToCircle(circle3))
+	fmt.Println(circle3.RelationshipToCircle(circle1))
+	fmt.Println(circle1.RelationshipToCircle(circle4))
 	// Output:
-	// true
+	// RelationshipEqual
+	// RelationshipContains
+	// RelationshipContainedBy
+	// RelationshipDisjoint
 }
 
-func ExampleCircle_RelationshipToCircle_ccrtouchingexternal() {
-	c1 := geom2d.NewCircle(geom2d.NewPoint(-5, 0), 5)
-	c2 := geom2d.NewCircle(geom2d.NewPoint(5, 0), 5)
-	rel := c1.RelationshipToCircle(c2, geom2d.WithEpsilon(1e-10))
-	fmt.Println(rel == geom2d.RelationshipCircleCircleExternallyTangent)
+func ExampleCircle_RelationshipToLineSegment() {
+	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 10)
+
+	line1 := geom2d.NewLineSegment(geom2d.NewPoint(15, 0), geom2d.NewPoint(20, 0))  // Outside
+	line2 := geom2d.NewLineSegment(geom2d.NewPoint(0, -15), geom2d.NewPoint(0, 15)) // Intersects
+	line3 := geom2d.NewLineSegment(geom2d.NewPoint(5, 5), geom2d.NewPoint(-5, -5))  // Fully contained
+
+	fmt.Println(circle.RelationshipToLineSegment(line1))
+	fmt.Println(circle.RelationshipToLineSegment(line2))
+	fmt.Println(circle.RelationshipToLineSegment(line3))
 	// Output:
-	// true
+	// RelationshipDisjoint
+	// RelationshipIntersection
+	// RelationshipContains
 }
 
-func ExampleCircle_RelationshipToCircle_ccroverlapping() {
-	c1 := geom2d.NewCircle(geom2d.NewPoint(-4, 0), 5)
-	c2 := geom2d.NewCircle(geom2d.NewPoint(4, 0), 5)
-	rel := c1.RelationshipToCircle(c2, geom2d.WithEpsilon(1e-10))
-	fmt.Println(rel == geom2d.RelationshipCircleCircleIntersection)
+func ExampleCircle_RelationshipToPoint() {
+	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 10)
+
+	point1 := geom2d.NewPoint(15, 0) // Outside the circle
+	point2 := geom2d.NewPoint(10, 0) // On the circle boundary
+	point3 := geom2d.NewPoint(5, 0)  // Inside the circle
+
+	fmt.Println(circle.RelationshipToPoint(point1))
+	fmt.Println(circle.RelationshipToPoint(point2))
+	fmt.Println(circle.RelationshipToPoint(point3))
 	// Output:
-	// true
+	// RelationshipDisjoint
+	// RelationshipIntersection
+	// RelationshipContains
 }
 
-func ExampleCircle_RelationshipToCircle_ccrtouchinginternal() {
-	c1 := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	c2 := geom2d.NewCircle(geom2d.NewPoint(3, 0), 2)
-	rel := c1.RelationshipToCircle(c2, geom2d.WithEpsilon(1e-10))
-	fmt.Println(rel == geom2d.RelationshipCircleCircleInternallyTangent)
+func ExampleCircle_RelationshipToPolyTree() {
+	// Create a polygon as a PolyTree
+	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(0, 100),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(100, 0),
+	}, geom2d.PTSolid)
+
+	// Note: While errors are ignored in this example for simplicity, it is important to handle errors properly in
+	// production code to ensure robustness and reliability.
+
+	// Create a circle
+	circle := geom2d.NewCircle(geom2d.NewPoint(50, 50), 10)
+
+	// Check relationships
+	relationships := circle.RelationshipToPolyTree(root)
+
+	// Output the relationship
+	fmt.Printf("Circle's relationship to root polygon is: %v\n", relationships[root])
 	// Output:
-	// true
+	// Circle's relationship to root polygon is: RelationshipContainedBy
 }
 
-func ExampleCircle_RelationshipToCircle_ccrcontained() {
-	c1 := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	c2 := geom2d.NewCircle(geom2d.NewPoint(0, 0), 2)
-	rel := c1.RelationshipToCircle(c2, geom2d.WithEpsilon(1e-10))
-	fmt.Println(rel == geom2d.RelationshipCircleCircleContained)
-	// Output:
-	// true
-}
-
-func ExampleCircle_RelationshipToCircle_ccrequal() {
-	c1 := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	c2 := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	rel := c1.RelationshipToCircle(c2, geom2d.WithEpsilon(1e-10))
-	fmt.Println(rel == geom2d.RelationshipCircleCircleEqual)
-	// Output:
-	// true
-}
-
-func ExampleCircle_RelationshipToLineSegment_clroutside() {
-	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	lineSeg := geom2d.NewLineSegment(geom2d.NewPoint(6, -6), geom2d.NewPoint(6, 6))
-	relationship := circle.RelationshipToLineSegment(lineSeg, geom2d.WithEpsilon(1e-10))
-	fmt.Println(relationship.String())
-	// Output:
-	// RelationshipLineSegmentCircleMiss
-}
-
-func ExampleCircle_RelationshipToLineSegment_clrinside() {
-	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	lineSeg := geom2d.NewLineSegment(geom2d.NewPoint(0, 0), geom2d.NewPoint(0, 4))
-	relationship := circle.RelationshipToLineSegment(lineSeg, geom2d.WithEpsilon(1e-10))
-	fmt.Println(relationship.String())
-	// Output:
-	// RelationshipLineSegmentCircleContainedByCircle
-}
-
-func ExampleCircle_RelationshipToLineSegment_clrintersecting() {
-	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	lineSeg := geom2d.NewLineSegment(geom2d.NewPoint(0, 0), geom2d.NewPoint(0, 10))
-	relationship := circle.RelationshipToLineSegment(lineSeg, geom2d.WithEpsilon(1e-10))
-	fmt.Println(relationship.String())
-	// Output:
-	// RelationshipLineSegmentCircleIntersecting
-}
-
-func ExampleCircle_RelationshipToLineSegment_clrtangent() {
-	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	lineSeg := geom2d.NewLineSegment(geom2d.NewPoint(5, -6), geom2d.NewPoint(5, 6))
-	relationship := circle.RelationshipToLineSegment(lineSeg, geom2d.WithEpsilon(1e-10))
-	fmt.Println(relationship.String())
-	// Output:
-	// RelationshipLineSegmentCircleTangentToCircle
-}
-
-func ExampleCircle_RelationshipToLineSegment_clroneendoncircumferenceoutside() {
-	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	lineSeg := geom2d.NewLineSegment(geom2d.NewPoint(-10, 0), geom2d.NewPoint(-5, 0))
-	relationship := circle.RelationshipToLineSegment(lineSeg, geom2d.WithEpsilon(1e-10))
-	fmt.Println(relationship.String())
-	// Output:
-	// RelationshipLineSegmentCircleEndOnCircumferenceOutside
-}
-
-func ExampleCircle_RelationshipToLineSegment_clroneendoncircumferenceinside() {
-	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	lineSeg := geom2d.NewLineSegment(geom2d.NewPoint(0, 0), geom2d.NewPoint(-5, 0))
-	relationship := circle.RelationshipToLineSegment(lineSeg, geom2d.WithEpsilon(1e-10))
-	fmt.Println(relationship.String())
-	// Output:
-	// RelationshipLineSegmentCircleEndOnCircumferenceInside
-}
-
-func ExampleCircle_RelationshipToLineSegment_clrbothendsoncircumference() {
-	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	lineSeg := geom2d.NewLineSegment(geom2d.NewPoint(-4, 3), geom2d.NewPoint(4, -3))
-	relationship := circle.RelationshipToLineSegment(lineSeg, geom2d.WithEpsilon(1e-10))
-	fmt.Println(relationship.String())
-	// Output:
-	// RelationshipLineSegmentCircleBothEndsOnCircumference
-}
-
-func ExampleCircle_RelationshipToPoint_pcroutside() {
-	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	point := geom2d.NewPoint(4, 4)
-	relationship := circle.RelationshipToPoint(point, geom2d.WithEpsilon(1e-10))
-	fmt.Println(relationship.String())
-	// Output:
-	// RelationshipPointCircleMiss
-}
-
-func ExampleCircle_RelationshipToPoint_pcroncircumference() {
-	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	point := geom2d.NewPoint(0, -5)
-	relationship := circle.RelationshipToPoint(point, geom2d.WithEpsilon(1e-10))
-	fmt.Println(relationship.String())
-	// Output:
-	// RelationshipPointCircleOnCircumference
-}
-
-func ExampleCircle_RelationshipToPoint_pcrinside() {
-	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	point := geom2d.NewPoint(2, 3)
-	relationship := circle.RelationshipToPoint(point, geom2d.WithEpsilon(1e-10))
-	fmt.Println(relationship.String())
-	// Output:
-	// RelationshipPointCircleContainedByCircle
-}
-
-func ExampleCircle_RelationshipToRectangle_crrmiss() {
-	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	rectangle := geom2d.NewRectangle([]geom2d.Point[int]{
-		geom2d.NewPoint(-9, -6),
-		geom2d.NewPoint(-4, -6),
-		geom2d.NewPoint(-4, -4),
-		geom2d.NewPoint(-9, -4),
+func ExampleCircle_RelationshipToRectangle() {
+	// Define a rectangle
+	rect := geom2d.NewRectangle([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(100, 0),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(0, 100),
 	})
-	relationship := circle.RelationshipToRectangle(rectangle)
-	fmt.Println(relationship.String())
-	// Output:
-	// RelationshipRectangleCircleMiss
-}
 
-func ExampleCircle_RelationshipToRectangle_crrcircleinrect() {
-	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	rectangle := geom2d.NewRectangle([]geom2d.Point[int]{
-		geom2d.NewPoint(-6, -6),
-		geom2d.NewPoint(6, -6),
-		geom2d.NewPoint(6, 6),
-		geom2d.NewPoint(-6, 6),
-	})
-	relationship := circle.RelationshipToRectangle(rectangle)
-	fmt.Println(relationship.String())
-	// Output:
-	// RelationshipRectangleCircleContainedByRectangle
-}
+	// Define a circle
+	circle := geom2d.NewCircle(geom2d.NewPoint(50, 50), 30)
 
-func ExampleCircle_RelationshipToRectangle_crrrectincircle() {
-	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	rectangle := geom2d.NewRectangle([]geom2d.Point[int]{
-		geom2d.NewPoint(-3, -3),
-		geom2d.NewPoint(3, -3),
-		geom2d.NewPoint(3, 3),
-		geom2d.NewPoint(-3, 3),
-	})
-	relationship := circle.RelationshipToRectangle(rectangle)
-	fmt.Println(relationship.String())
-	// Output:
-	// RelationshipRectangleCircleContainedByCircle
-}
+	// Determine the relationship
+	rel := circle.RelationshipToRectangle(rect)
 
-func ExampleCircle_RelationshipToRectangle_crrintersection() {
-	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
-	rectangle := geom2d.NewRectangle([]geom2d.Point[int]{
-		geom2d.NewPoint(-4, -4),
-		geom2d.NewPoint(4, -4),
-		geom2d.NewPoint(4, 4),
-		geom2d.NewPoint(-4, 4),
-	})
-	relationship := circle.RelationshipToRectangle(rectangle)
-	fmt.Println(relationship.String())
+	// Print the result
+	fmt.Println("Relationship:", rel)
 	// Output:
-	// RelationshipRectangleCircleIntersection
+	// Relationship: RelationshipContainedBy
 }
 
 func ExampleCircle_Rotate() {

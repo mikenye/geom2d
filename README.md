@@ -16,31 +16,24 @@ Geom2D aims to provide a robust, flexible, and efficient implementation of 2D ge
     - **Polygon**: Supports polygons with holes and nested structures, with methods for orientation, correction, and Boolean operations.
 - **Generics**: The library leverages Go's generics to allow users to work with both integers (`int`) and floating-point (`float64`) types, offering precision and flexibility depending on the application's requirements.
 
-## **Getting Started**
+## Getting Started
 
 Detailed installation instructions, usage examples, and API documentation will be provided as the library approaches stability. For now, explore the codebase and experiment with the provided types and methods.
 
-### **Example: Working with Generics**
+## Geometric Relationships
 
-```go
-package main
+# Geometric Relationships Table
 
-import (
-	"fmt"
-	"github.com/mikenye/geom2d"
-)
+This table describes the **relationship of the left-side type (column) to the top-side type (row)**.  
+Each cell indicates the valid relationship types.
 
-func main() {
-	// Create points using int
-	p1 := geom2d.NewPoint[int](2, 3)
-	p2 := geom2d.NewPoint[int](5, 7)
-
-	// Create points using float64
-	p3 := geom2d.NewPoint[float64](1.2, 3.4)
-
-	fmt.Println(p1, p2, p3)
-}
-```
+| **Left ↓, Right →**         | Point                                                                    | Line Segment                                                             | Circle                                                                                                                   | Rectangle                                                                                                                | Polygon within PolyTree                                                                                                  |
+|-----------------------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| **Point**                   | RelationshipDisjoint<br>RelationshipEqual                                | RelationshipDisjoint<br>RelationshipIntersection                         | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContainedBy                                              | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContainedBy                                              | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContainedBy                                              |
+| **Line Segment**            | RelationshipDisjoint<br>RelationshipIntersection                         | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipEqual    | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContainedBy                                              | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContainedBy                                              | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContainedBy                                              |
+| **Circle**                  | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContains | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContains | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContainedBy<br>RelationshipContains<br>RelationshipEqual | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContainedBy<br>RelationshipContains                      | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContainedBy<br>RelationshipContains                      |
+| **Rectangle**               | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContains | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContains | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContainedBy<br>RelationshipContains                      | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContainedBy<br>RelationshipContains<br>RelationshipEqual | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContainedBy<br>RelationshipContains                      |
+| **Polygon within PolyTree** | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContains | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContains | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContainedBy<br>RelationshipContains                      | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContainedBy<br>RelationshipContains                      | RelationshipDisjoint<br>RelationshipIntersection<br>RelationshipContainedBy<br>RelationshipContains<br>RelationshipEqual |
 
 ## Acknowledgments
 

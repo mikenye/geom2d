@@ -2,7 +2,6 @@ package geom2d
 
 import (
 	"fmt"
-	"math"
 	"slices"
 	"strings"
 )
@@ -411,7 +410,7 @@ type polyEdge[T SignedNumber] struct {
 	// rel specifies the relationship of this edge with a ray during point-in-polygon tests.
 	// This field is primarily used for algorithms like ray-casting to determine whether
 	// a point is inside or outside the polygon.
-	rel RelationshipLineSegmentLineSegment
+	rel detailedLineSegmentRelationship
 }
 
 // polyIntersectionType defines the type of intersection point in polygon operations,
@@ -806,7 +805,7 @@ func (c *contour[T]) insertIntersectionPoint(start, end int, intersection polyTr
 //   - If any point of c2 is found to be outside c, the function returns false immediately.
 //   - The function assumes that the orientation of c and c2 is correct (i.e., counter-clockwise for solids and clockwise for holes).
 func (c *contour[T]) isContourInside(other contour[T]) bool {
-	// Iterate over each point in other.
+	// Iterate over each point in "other".
 	for _, p := range other {
 		// Check if the point is not inside c.
 		if !c.isPointInside(p.point) {
@@ -857,7 +856,7 @@ func (c *contour[T]) isPointInside(point Point[T]) bool {
 		}
 
 		// Determine the relationship of the edge to the ray.
-		edges[i].rel = ray.RelationshipToLineSegment(edges[i].lineSegment)
+		edges[i].rel = ray.detailedRelationshipToLineSegment(edges[i].lineSegment)
 	}
 
 	// Analyze the relationships and count ray crossings.
@@ -866,27 +865,27 @@ func (c *contour[T]) isPointInside(point Point[T]) bool {
 		iNext := (i + 1) % len(edges)
 
 		switch edges[i].rel {
-		case RelationshipLineSegmentLineSegmentIntersects: // Ray intersects the edge.
+		case lsrIntersects: // Ray intersects the edge.
 			crosses++
 
-		case RelationshipLineSegmentLineSegmentCollinearCDinAB: // Ray is collinear with the edge and overlaps it.
+		case lsrCollinearCDinAB: // Ray is collinear with the edge and overlaps it.
 			crosses += 2
 
-		case RelationshipLineSegmentLineSegmentConAB: // Ray starts on the edge.
+		case lsrConAB: // Ray starts on the edge.
 			crosses++
 
 			// Handle potential overlaps with the next edge.
-			if edges[iNext].rel == RelationshipLineSegmentLineSegmentDonAB {
+			if edges[iNext].rel == lsrDonAB {
 				if inOrder(edges[i].lineSegment.start.y, point.y, edges[iNext].lineSegment.end.y) {
 					crosses++
 				}
 			}
 
-		case RelationshipLineSegmentLineSegmentDonAB: // Ray ends on the edge.
+		case lsrDonAB: // Ray ends on the edge.
 			crosses++
 
 			// Handle potential overlaps with the next edge.
-			if edges[iNext].rel == RelationshipLineSegmentLineSegmentConAB {
+			if edges[iNext].rel == lsrConAB {
 				if inOrder(edges[i].lineSegment.start.y, point.y, edges[iNext].lineSegment.end.y) {
 					crosses++
 				}
@@ -1049,6 +1048,119 @@ func (p *polyIntersectionType) String() string {
 	return ""
 }
 
+// AddChild adds a child PolyTree to the current PolyTree.
+//
+// Parameters:
+// - child: A pointer to the PolyTree to be added as a child.
+//
+// Returns:
+// - error: An error if the operation fails. Possible error scenarios include:
+//   - The child is nil.
+//   - The child has the same PolygonType as the parent.
+//   - The child polygon does not fit entirely within the parent's contour.
+//   - The child polygon overlaps with existing children.
+func (pt *PolyTree[T]) AddChild(child *PolyTree[T]) error {
+	// Check if the child is nil
+	if child == nil {
+		return fmt.Errorf("attempt to add nil child")
+	}
+
+	// Ensure the polygon types are compatible
+	if pt.polygonType == child.polygonType {
+		return fmt.Errorf(
+			"cannot add child: mismatched polygon types (parent: %v, child: %v)",
+			pt.polygonType,
+			child.polygonType,
+		)
+	}
+
+	// Check if the child fits within the parent's contour
+	if !pt.contour.isContourInside(child.contour) {
+		return fmt.Errorf("child polygon does not fit entirely within the parent polygon")
+	}
+
+	// Check if the child overlaps with existing children
+	for _, sibling := range pt.children {
+		for siblingEdge := range sibling.contour.iterEdges {
+			for childEdge := range child.contour.iterEdges {
+				if siblingEdge.detailedRelationshipToLineSegment(childEdge) > lsrMiss {
+					return fmt.Errorf("child polygon overlaps with an existing sibling polygon")
+				}
+			}
+		}
+	}
+
+	// Set the parent of the child
+	child.parent = pt
+
+	// Append the child to the children slice
+	pt.children = append(pt.children, child)
+
+	// Order siblings and children for consistency
+	pt.orderSiblingsAndChildren()
+
+	return nil
+}
+
+// AddSibling adds a sibling PolyTree to the current PolyTree.
+//
+// Parameters:
+// - sibling: A pointer to the PolyTree to be added as a sibling.
+//
+// Returns:
+// - error: An error if the operation fails. Possible error scenarios include:
+//   - The sibling is nil.
+//   - The sibling has a different PolygonType than the current PolyTree.
+//   - The sibling polygon overlaps with existing siblings.
+func (pt *PolyTree[T]) AddSibling(sibling *PolyTree[T]) error {
+	// Check if the sibling is nil
+	if sibling == nil {
+		return fmt.Errorf("attempt to add nil sibling")
+	}
+
+	// Ensure the polygon types match
+	if pt.polygonType != sibling.polygonType {
+		return fmt.Errorf("cannot add sibling: mismatched polygon types")
+	}
+
+	// Check if the sibling overlaps with existing siblings
+	for _, existingSibling := range pt.siblings {
+		for existingSiblingEdge := range existingSibling.contour.iterEdges {
+			for siblingEdge := range sibling.contour.iterEdges {
+				if siblingEdge.detailedRelationshipToLineSegment(existingSiblingEdge) > lsrMiss {
+					return fmt.Errorf("child polygon overlaps with an existing sibling polygon")
+				}
+			}
+		}
+	}
+
+	// Add the new sibling to the sibling lists of existing siblings
+	for _, existingSibling := range pt.siblings {
+		// Update sibling relationships
+		existingSibling.siblings = append(existingSibling.siblings, sibling)
+
+		// Maintain consistent ordering
+		existingSibling.orderSiblingsAndChildren()
+
+		// Add the existing sibling to the new sibling's sibling list
+		sibling.siblings = append(sibling.siblings, existingSibling)
+	}
+
+	// Add the current `PolyTree` to the new sibling's sibling list
+	sibling.siblings = append(sibling.siblings, pt)
+
+	// Maintain consistent ordering
+	sibling.orderSiblingsAndChildren()
+
+	// Add the new sibling to the current `PolyTree`'s sibling list
+	pt.siblings = append(pt.siblings, sibling)
+
+	// Maintain consistent ordering
+	pt.orderSiblingsAndChildren()
+
+	return nil
+}
+
 // BooleanOperation performs a Boolean operation (union, intersection, or subtraction)
 // between the current polygon (p) and another polygon (other). The result is
 // returned as a new PolyTree, or an error is returned if the operation fails.
@@ -1071,24 +1183,24 @@ func (p *polyIntersectionType) String() string {
 //   - Computes intersection points and marks entry/exit points for traversal.
 //   - Traverses the polygons to construct the result of the operation.
 //   - Returns a nested PolyTree structure representing the operation result.
-func (p *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOperation) (*PolyTree[T], error) {
+func (pt *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOperation) (*PolyTree[T], error) {
 	// Edge Case: Check if the polygons intersect
-	if !p.Intersects(other) {
+	if !pt.Intersects(other) {
 		switch operation {
 		case BooleanUnion:
 			// Non-intersecting polygons: Add other as a sibling
-			if err := p.AddSibling(other); err != nil {
+			if err := pt.AddSibling(other); err != nil {
 				return nil, fmt.Errorf("failed to add sibling: %w", err)
 			}
-			return p, nil
+			return pt, nil
 
 		case BooleanIntersection:
 			// Non-intersecting polygons: No intersection, return nil
 			return nil, nil
 
 		case BooleanSubtraction:
-			// Non-intersecting polygons: No change to p
-			return p, nil
+			// Non-intersecting polygons: No change to pt
+			return pt, nil
 
 		default:
 			// Invalid or unsupported operation
@@ -1097,269 +1209,47 @@ func (p *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOper
 	}
 
 	// Step 1: Find intersection points between all polygons
-	p.findIntersections(other)
+	pt.findIntersections(other)
 
 	// Step 2: Mark entry/exit points for traversal based on the operation
-	p.markEntryExitPoints(other, operation)
+	pt.markEntryExitPoints(other, operation)
 
 	// Step 3: Perform traversal to construct the result of the Boolean operation
-	return nestPointsToPolyTrees(p.booleanOperationTraversal(other, operation))
+	return nestPointsToPolyTrees(pt.booleanOperationTraversal(other, operation))
 }
 
-// Eq compares two PolyTree objects (p and other) for structural and content equality.
-// It identifies mismatches in contours, siblings, and children while avoiding infinite recursion
-// by tracking visited nodes. The comparison results are represented as a boolean and a bitmask.
+// BoundingBox calculates the axis-aligned bounding box (AABB) of the PolyTree.
 //
-// Parameters:
-//   - other: The PolyTree to compare with the current PolyTree.
-//   - opts: Optional configurations for the comparison, such as tracking visited nodes.
+// The bounding box is the smallest rectangle, aligned with the coordinate axes, that completely encloses
+// all polygons in the PolyTree. The calculation uses the convex hull of each polygon in the tree, ensuring
+// efficiency and accuracy.
 //
 // Returns:
-//   - A boolean indicating whether the two PolyTree objects are equal.
-//   - A PolyTreeMismatch bitmask that specifies which aspects (if any) differ.
+//   - [Rectangle][T]: The axis-aligned bounding box that encloses all polygons in the PolyTree.
 //
-// Behavior:
-//   - Handles nil cases for the p and other PolyTree objects.
-//   - Recursively compares contours, siblings, and children, considering different sibling/child orders.
-//   - Uses the visited map to prevent infinite recursion in cyclic structures.
-func (p *PolyTree[T]) Eq(other *PolyTree[T], opts ...polyTreeEqOption[T]) (bool, PolyTreeMismatch) {
-	var mismatches PolyTreeMismatch
-
-	// Handle nil cases
-	switch {
-	case p == nil && other == nil:
-		return true, PTMNoMismatch // Both are nil, no mismatch
-	case p == nil && other != nil:
-		return false, PTMNilPolygonMismatch // One is nil, the other is not
-	case p != nil && other == nil:
-		return false, PTMNilPolygonMismatch // One is nil, the other is not
-	}
-
-	// Initialize comparison configuration
-	config := &polyTreeEqConfig[T]{
-		visited: make(map[*PolyTree[T]]bool),
-	}
-	for _, opt := range opts {
-		opt(config) // Apply configuration options
-	}
-
-	// Avoid comparing the same PolyTree objects multiple times
-	if config.visited[p] || config.visited[other] {
-		return true, PTMNoMismatch // Already compared, no mismatch
-	}
-	config.visited[p] = true
-	config.visited[other] = true
-
-	// Compare contours
-	if !p.contour.eq(other.contour) {
-		mismatches |= PTMContourMismatch
-		fmt.Println("Mismatch in contours detected")
-	}
-
-	// Compare siblings
-	if len(p.siblings) != len(other.siblings) {
-		mismatches |= PTMSiblingMismatch
-		fmt.Println("Mismatch in siblings count detected")
-	} else {
-		// Siblings order doesn't matter, check if each sibling matches
-		for _, sibling := range p.siblings {
-			found := false
-			for _, otherSibling := range other.siblings {
-				if eq, _ := sibling.Eq(otherSibling, withVisited(config.visited)); eq {
-					found = true
-					break
-				}
-			}
-			if !found {
-				mismatches |= PTMSiblingMismatch
-				fmt.Println("Mismatch in siblings content detected")
-				break
-			}
+// Notes:
+//   - The bounding box is computed by iterating through the convex hull points of all polygons in the PolyTree.
+//   - If the PolyTree is empty, the behavior is undefined and should be handled externally by the caller.
+func (pt *PolyTree[T]) BoundingBox() Rectangle[T] {
+	minX := pt.contour[0].point.x / 2
+	maxX := pt.contour[0].point.x / 2
+	minY := pt.contour[0].point.y / 2
+	maxY := pt.contour[0].point.y / 2
+	for poly := range pt.iterPolys {
+		for _, point := range poly.hull.Points {
+			minX = min(minX, point.x)
+			maxX = max(maxX, point.x)
+			minY = min(minY, point.y)
+			maxY = max(maxY, point.y)
 		}
 	}
-
-	// Compare children
-	if len(p.children) != len(other.children) {
-		mismatches |= PTMChildMismatch
-		fmt.Println("Mismatch in children count detected")
-	} else {
-		// Children order doesn't matter, check if each child matches
-		for _, child := range p.children {
-			found := false
-			for _, otherChild := range other.children {
-				if eq, _ := child.Eq(otherChild, withVisited(config.visited)); eq {
-					found = true
-					break
-				}
-			}
-			if !found {
-				mismatches |= PTMChildMismatch
-				fmt.Println("Mismatch in children content detected")
-				break
-			}
-		}
-	}
-
-	// Return whether there are no mismatches and the mismatch bitmask
-	return mismatches == PTMNoMismatch, mismatches
-}
-
-// Intersects checks whether the current PolyTree intersects with another PolyTree.
-//
-// Parameters:
-//   - other: The PolyTree to compare against the current PolyTree.
-//
-// Returns:
-//   - true if the two PolyTree objects intersect, either by containment or edge overlap.
-//   - false if there is no intersection.
-//
-// Behavior:
-//   - Checks if any point from one PolyTree lies inside the contour of the other PolyTree.
-//   - Verifies if any edges of the two PolyTree objects intersect.
-//
-// This method accounts for all potential intersection cases, including:
-//   - One polygon entirely inside the other.
-//   - Overlapping polygons with shared edges.
-//   - Polygons touching at vertices or along edges.
-func (p *PolyTree[T]) Intersects(other *PolyTree[T]) bool {
-	// Check if any point of "other" is inside the contour of "p"
-	for _, otherPoint := range other.contour {
-		if p.contour.isPointInside(otherPoint.point) {
-			return true // Intersection found via point containment
-		}
-	}
-
-	// Check if any point of "p" is inside the contour of "other"
-	for _, point := range p.contour {
-		if other.contour.isPointInside(point.point) {
-			return true // Intersection found via point containment
-		}
-	}
-
-	// Check for edge intersections between "p" and "other"
-	for poly1Edge := range p.contour.iterEdges {
-		for poly2Edge := range other.contour.iterEdges {
-			if poly1Edge.IntersectsLineSegment(poly2Edge) {
-				return true // Intersection found via edge overlap
-			}
-		}
-	}
-
-	// No intersections detected
-	return false
-}
-
-// AddChild adds a child PolyTree to the current PolyTree.
-//
-// Parameters:
-// - child: A pointer to the PolyTree to be added as a child.
-//
-// Returns:
-// - error: An error if the operation fails. Possible error scenarios include:
-//   - The child is nil.
-//   - The child has the same PolygonType as the parent.
-//   - The child polygon does not fit entirely within the parent's contour.
-//   - The child polygon overlaps with existing children.
-func (p *PolyTree[T]) AddChild(child *PolyTree[T]) error {
-	// Check if the child is nil
-	if child == nil {
-		return fmt.Errorf("attempt to add nil child")
-	}
-
-	// Ensure the polygon types are compatible
-	if p.polygonType == child.polygonType {
-		return fmt.Errorf(
-			"cannot add child: mismatched polygon types (parent: %v, child: %v)",
-			p.polygonType,
-			child.polygonType,
-		)
-	}
-
-	// Check if the child fits within the parent's contour
-	if !p.contour.isContourInside(child.contour) {
-		return fmt.Errorf("child polygon does not fit entirely within the parent polygon")
-	}
-
-	// Check if the child overlaps with existing children
-	for _, sibling := range p.children {
-		for siblingEdge := range sibling.contour.iterEdges {
-			for childEdge := range child.contour.iterEdges {
-				if siblingEdge.RelationshipToLineSegment(childEdge) > RelationshipLineSegmentLineSegmentMiss {
-					return fmt.Errorf("child polygon overlaps with an existing sibling polygon")
-				}
-			}
-		}
-	}
-
-	// Set the parent of the child
-	child.parent = p
-
-	// Append the child to the children slice
-	p.children = append(p.children, child)
-
-	// Order siblings and children for consistency
-	p.orderSiblingsAndChildren()
-
-	return nil
-}
-
-// AddSibling adds a sibling PolyTree to the current PolyTree.
-//
-// Parameters:
-// - sibling: A pointer to the PolyTree to be added as a sibling.
-//
-// Returns:
-// - error: An error if the operation fails. Possible error scenarios include:
-//   - The sibling is nil.
-//   - The sibling has a different PolygonType than the current PolyTree.
-//   - The sibling polygon overlaps with existing siblings.
-func (p *PolyTree[T]) AddSibling(sibling *PolyTree[T]) error {
-	// Check if the sibling is nil
-	if sibling == nil {
-		return fmt.Errorf("attempt to add nil sibling")
-	}
-
-	// Ensure the polygon types match
-	if p.polygonType != sibling.polygonType {
-		return fmt.Errorf("cannot add sibling: mismatched polygon types")
-	}
-
-	// Check if the sibling overlaps with existing siblings
-	for _, existingSibling := range p.siblings {
-		for existingSiblingEdge := range existingSibling.contour.iterEdges {
-			for siblingEdge := range sibling.contour.iterEdges {
-				if siblingEdge.RelationshipToLineSegment(existingSiblingEdge) > RelationshipLineSegmentLineSegmentMiss {
-					return fmt.Errorf("child polygon overlaps with an existing sibling polygon")
-				}
-			}
-		}
-	}
-
-	// Add the new sibling to the sibling lists of existing siblings
-	for _, existingSibling := range p.siblings {
-		// Update sibling relationships
-		existingSibling.siblings = append(existingSibling.siblings, sibling)
-
-		// Maintain consistent ordering
-		existingSibling.orderSiblingsAndChildren()
-
-		// Add the existing sibling to the new sibling's sibling list
-		sibling.siblings = append(sibling.siblings, existingSibling)
-	}
-
-	// Add the current `PolyTree` to the new sibling's sibling list
-	sibling.siblings = append(sibling.siblings, p)
-
-	// Maintain consistent ordering
-	sibling.orderSiblingsAndChildren()
-
-	// Add the new sibling to the current `PolyTree`'s sibling list
-	p.siblings = append(p.siblings, sibling)
-
-	// Maintain consistent ordering
-	p.orderSiblingsAndChildren()
-
-	return nil
+	// output points are divided by 2 as points in polytree are doubled
+	return NewRectangle([]Point[T]{
+		NewPoint[T](minX, minY),
+		NewPoint[T](maxX, minY),
+		NewPoint[T](maxX, maxY),
+		NewPoint[T](minX, maxY),
+	})
 }
 
 // booleanOperationTraversal performs a Boolean operation (Union, Intersection, Subtraction) between
@@ -1380,7 +1270,7 @@ func (p *PolyTree[T]) AddSibling(sibling *PolyTree[T]) error {
 // Note:
 //   - Polygons are assumed to have properly marked entry and exit points before calling this function.
 //   - Points are halved during traversal to revert the earlier doubling for precision handling.
-func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation BooleanOperation) [][]Point[T] {
+func (pt *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation BooleanOperation) [][]Point[T] {
 	var direction polyTraversalDirection
 
 	// Initialize the resulting contours
@@ -1388,14 +1278,14 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 
 	for {
 		// Find the starting point for traversal
-		currentPoly, currentPointIndex := p.findTraversalStartingPoint(other)
+		currentPoly, currentPointIndex := pt.findTraversalStartingPoint(other)
 		if currentPoly == nil || currentPointIndex == -1 {
 			// No unvisited entry points, traversal is complete
 			break
 		}
 
 		// Initialize a new contour for the result
-		resultContour := make([]Point[T], 0, len(p.contour)+len(other.contour))
+		resultContour := make([]Point[T], 0, len(pt.contour)+len(other.contour))
 
 		// Set the initial traversal direction
 		direction = polyTraversalForward
@@ -1455,14 +1345,14 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 		switch operation {
 		case BooleanUnion:
 			return [][]Point[T]{
-				p.contour.toPoints(),
+				pt.contour.toPoints(),
 				other.contour.toPoints(),
 			}
 		case BooleanIntersection:
 			return nil // No intersection
 		case BooleanSubtraction:
 			return [][]Point[T]{
-				p.contour.toPoints(),
+				pt.contour.toPoints(),
 			}
 		default:
 			panic(fmt.Errorf("unknown BooleanOperation: %v", operation))
@@ -1470,6 +1360,104 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 	}
 
 	return resultContours
+}
+
+// Eq compares two PolyTree objects (p and other) for structural and content equality.
+// It identifies mismatches in contours, siblings, and children while avoiding infinite recursion
+// by tracking visited nodes. The comparison results are represented as a boolean and a bitmask.
+//
+// Parameters:
+//   - other: The PolyTree to compare with the current PolyTree.
+//   - opts: Optional configurations for the comparison, such as tracking visited nodes.
+//
+// Returns:
+//   - A boolean indicating whether the two PolyTree objects are equal.
+//   - A PolyTreeMismatch bitmask that specifies which aspects (if any) differ.
+//
+// Behavior:
+//   - Handles nil cases for the p and other PolyTree objects.
+//   - Recursively compares contours, siblings, and children, considering different sibling/child orders.
+//   - Uses the visited map to prevent infinite recursion in cyclic structures.
+func (pt *PolyTree[T]) Eq(other *PolyTree[T], opts ...polyTreeEqOption[T]) (bool, PolyTreeMismatch) {
+	var mismatches PolyTreeMismatch
+
+	// Handle nil cases
+	switch {
+	case pt == nil && other == nil:
+		return true, PTMNoMismatch // Both are nil, no mismatch
+	case pt == nil && other != nil:
+		return false, PTMNilPolygonMismatch // One is nil, the other is not
+	case pt != nil && other == nil:
+		return false, PTMNilPolygonMismatch // One is nil, the other is not
+	}
+
+	// Initialize comparison configuration
+	config := &polyTreeEqConfig[T]{
+		visited: make(map[*PolyTree[T]]bool),
+	}
+	for _, opt := range opts {
+		opt(config) // Apply configuration options
+	}
+
+	// Avoid comparing the same PolyTree objects multiple times
+	if config.visited[pt] || config.visited[other] {
+		return true, PTMNoMismatch // Already compared, no mismatch
+	}
+	config.visited[pt] = true
+	config.visited[other] = true
+
+	// Compare contours
+	if !pt.contour.eq(other.contour) {
+		mismatches |= PTMContourMismatch
+		fmt.Println("Mismatch in contours detected")
+	}
+
+	// Compare siblings
+	if len(pt.siblings) != len(other.siblings) {
+		mismatches |= PTMSiblingMismatch
+		fmt.Println("Mismatch in siblings count detected")
+	} else {
+		// Siblings order doesn't matter, check if each sibling matches
+		for _, sibling := range pt.siblings {
+			found := false
+			for _, otherSibling := range other.siblings {
+				if eq, _ := sibling.Eq(otherSibling, withVisited(config.visited)); eq {
+					found = true
+					break
+				}
+			}
+			if !found {
+				mismatches |= PTMSiblingMismatch
+				fmt.Println("Mismatch in siblings content detected")
+				break
+			}
+		}
+	}
+
+	// Compare children
+	if len(pt.children) != len(other.children) {
+		mismatches |= PTMChildMismatch
+		fmt.Println("Mismatch in children count detected")
+	} else {
+		// Children order doesn't matter, check if each child matches
+		for _, child := range pt.children {
+			found := false
+			for _, otherChild := range other.children {
+				if eq, _ := child.Eq(otherChild, withVisited(config.visited)); eq {
+					found = true
+					break
+				}
+			}
+			if !found {
+				mismatches |= PTMChildMismatch
+				fmt.Println("Mismatch in children content detected")
+				break
+			}
+		}
+	}
+
+	// Return whether there are no mismatches and the mismatch bitmask
+	return mismatches == PTMNoMismatch, mismatches
 }
 
 // findIntersections identifies intersection points between the contours of two PolyTrees
@@ -1490,14 +1478,14 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 //
 // Assumptions:
 //   - The input PolyTrees represent closed polygons with properly ordered contours.
-func (p *PolyTree[T]) findIntersections(other *PolyTree[T]) {
+func (pt *PolyTree[T]) findIntersections(other *PolyTree[T]) {
 
 	// Step 1: Reset intersection metadata and reorder both PolyTrees
-	p.resetIntersectionMetadataAndReorder()
+	pt.resetIntersectionMetadataAndReorder()
 	other.resetIntersectionMetadataAndReorder()
 
 	// Step 2: Iterate through all combinations of polygons
-	for poly1 := range p.iterPolys {
+	for poly1 := range pt.iterPolys {
 		for poly2 := range other.iterPolys {
 
 			// Step 3: Check all edge combinations between poly1 and poly2
@@ -1565,17 +1553,17 @@ func (p *PolyTree[T]) findIntersections(other *PolyTree[T]) {
 //
 // Complexity:
 //   - The complexity depends on the number of children polygons and the depth of the polygon hierarchy.
-func (p *PolyTree[T]) findParentPolygon(polyToNest *PolyTree[T]) *PolyTree[T] {
+func (pt *PolyTree[T]) findParentPolygon(polyToNest *PolyTree[T]) *PolyTree[T] {
 	// Step 1: Check if polyToNest is entirely inside the current polygon
-	if p.contour.isContourInside(polyToNest.contour) {
+	if pt.contour.isContourInside(polyToNest.contour) {
 		// Step 2: Recursively check children for a more specific parent
-		for _, child := range p.children {
+		for _, child := range pt.children {
 			if nestedParent := child.findParentPolygon(polyToNest); nestedParent != nil {
 				return nestedParent // Found a more specific parent
 			}
 		}
 		// Step 3: If no child contains polyToNest, the current polygon is the parent
-		return p
+		return pt
 	}
 	// Step 4: If polyToNest is not inside the current polygon, return nil
 	return nil
@@ -1596,9 +1584,9 @@ func (p *PolyTree[T]) findParentPolygon(polyToNest *PolyTree[T]) *PolyTree[T] {
 //   - Iterates through the current polygon (p) and the other polygon (other).
 //   - Searches all polygons in both trees for the first unvisited entry point (marked as intersectionTypeEntry).
 //   - Skips any points that are already visited.
-func (p *PolyTree[T]) findTraversalStartingPoint(other *PolyTree[T]) (*PolyTree[T], int) {
-	// Iterate through both polygons (`p` and `other`) to check their contours for unvisited entry points.
-	for _, ptOuter := range []*PolyTree[T]{p, other} {
+func (pt *PolyTree[T]) findTraversalStartingPoint(other *PolyTree[T]) (*PolyTree[T], int) {
+	// Iterate through both polygons (`pt` and `other`) to check their contours for unvisited entry points.
+	for _, ptOuter := range []*PolyTree[T]{pt, other} {
 		// Iterate through all polygons in the current tree
 		for polyTree := range ptOuter.iterPolys {
 			// Iterate through all points in the current polygon's contour
@@ -1613,6 +1601,51 @@ func (p *PolyTree[T]) findTraversalStartingPoint(other *PolyTree[T]) (*PolyTree[
 
 	// If no unvisited entry points are found, return nil and -1
 	return nil, -1
+}
+
+// Intersects checks whether the current PolyTree intersects with another PolyTree.
+//
+// Parameters:
+//   - other: The PolyTree to compare against the current PolyTree.
+//
+// Returns:
+//   - true if the two PolyTree objects intersect, either by containment or edge overlap.
+//   - false if there is no intersection.
+//
+// Behavior:
+//   - Checks if any point from one PolyTree lies inside the contour of the other PolyTree.
+//   - Verifies if any edges of the two PolyTree objects intersect.
+//
+// This method accounts for all potential intersection cases, including:
+//   - One polygon entirely inside the other.
+//   - Overlapping polygons with shared edges.
+//   - Polygons touching at vertices or along edges.
+func (pt *PolyTree[T]) Intersects(other *PolyTree[T]) bool {
+	// Check if any point of "other" is inside the contour of "pt"
+	for _, otherPoint := range other.contour {
+		if pt.contour.isPointInside(otherPoint.point) {
+			return true // Intersection found via point containment
+		}
+	}
+
+	// Check if any point of "pt" is inside the contour of "other"
+	for _, point := range pt.contour {
+		if other.contour.isPointInside(point.point) {
+			return true // Intersection found via point containment
+		}
+	}
+
+	// Check for edge intersections between "pt" and "other"
+	for poly1Edge := range pt.contour.iterEdges {
+		for poly2Edge := range other.contour.iterEdges {
+			if poly1Edge.IntersectsLineSegment(poly2Edge) {
+				return true // Intersection found via edge overlap
+			}
+		}
+	}
+
+	// No intersections detected
+	return false
 }
 
 // iterPolys iterates over this PolyTree and all its nested polygons, including siblings and children at all levels.
@@ -1633,14 +1666,14 @@ func (p *PolyTree[T]) findTraversalStartingPoint(other *PolyTree[T]) (*PolyTree[
 //	for poly := range p.iterPolys {
 //	    fmt.Printf("Polygon ID: %v, Type: %v\n", poly.ID, poly.polygonType)
 //	}
-func (p *PolyTree[T]) iterPolys(yield func(*PolyTree[T]) bool) {
-	// Yield the current polygon (p)
-	if !yield(p) {
+func (pt *PolyTree[T]) iterPolys(yield func(*PolyTree[T]) bool) {
+	// Yield the current polygon (pt)
+	if !yield(pt) {
 		return // Stop if yield returns false
 	}
 
 	// Yield all siblings and their nested polygons
-	for _, sibling := range p.siblings {
+	for _, sibling := range pt.siblings {
 		for s := range sibling.iterPolys {
 			if !yield(s) {
 				return // Stop if yield returns false
@@ -1649,7 +1682,7 @@ func (p *PolyTree[T]) iterPolys(yield func(*PolyTree[T]) bool) {
 	}
 
 	// Yield all children and their nested polygons
-	for _, child := range p.children {
+	for _, child := range pt.children {
 		for c := range child.iterPolys {
 			if !yield(c) {
 				return // Stop if yield returns false
@@ -1658,9 +1691,9 @@ func (p *PolyTree[T]) iterPolys(yield func(*PolyTree[T]) bool) {
 	}
 }
 
-func (p *PolyTree[T]) Len() int {
+func (pt *PolyTree[T]) Len() int {
 	i := 0
-	for _ = range p.iterPolys {
+	for _ = range pt.iterPolys {
 		i++
 	}
 	return i
@@ -1686,10 +1719,10 @@ func (p *PolyTree[T]) Len() int {
 //   - Uses a lookup table (entryExitPointLookUpTable) to assign entryExit types to both p and other.
 //
 // Links intersection points in p and other to ensure traversal can switch between polygons.
-func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanOperation) {
-	// Iterate through all combinations of polygons in `p` and `other`
+func (pt *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanOperation) {
+	// Iterate through all combinations of polygons in `pt` and `other`
 	poly1i := 0
-	for poly1 := range p.iterPolys {
+	for poly1 := range pt.iterPolys {
 		poly2i := 0
 		for poly2 := range other.iterPolys {
 
@@ -1774,268 +1807,231 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 // Sorting Criteria:
 //   - The compareLowestLeftmost function is used to compare contours based on their
 //     lowest, leftmost points.
-func (p *PolyTree[T]) orderSiblingsAndChildren() {
+func (pt *PolyTree[T]) orderSiblingsAndChildren() {
 	// Sort siblings by the lowest, leftmost point in their contours
-	slices.SortFunc(p.siblings, func(a, b *PolyTree[T]) int {
+	slices.SortFunc(pt.siblings, func(a, b *PolyTree[T]) int {
 		// Compare contours using their lowest, leftmost points
 		return compareLowestLeftmost(a.contour, b.contour)
 	})
 
-	// Sort children by the lowest, leftmost point in their contours
-	slices.SortFunc(p.children, func(a, b *PolyTree[T]) int {
+	// Sort children by the lowest, leftmost point in their contfours
+	slices.SortFunc(pt.children, func(a, b *PolyTree[T]) int {
 		// Compare contours using their lowest, leftmost points
 		return compareLowestLeftmost(a.contour, b.contour)
 	})
 }
 
-// RelationshipToCircle determines the spatial relationship between a [Circle] and a [PolyTree].
+// RelationshipToCircle determines the spatial relationship between a PolyTree and a Circle.
 //
-// This method evaluates the relationship of the given circle to each polygon within the PolyTree
-// and returns a map indicating the relationship for each polygon. The relationships are determined
-// based on the circle's position relative to the polygon edges, such as intersection, tangency,
-// containment, or disjointness.
+// This method evaluates the relationship between the calling PolyTree (pt) and the specified Circle (c)
+// for each polygon in the PolyTree. The relationships include containment, intersection, and disjoint.
 //
 // Parameters:
-//   - circle ([Circle][T]): The circle to evaluate against the PolyTree.
-//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing distances and coordinates, allowing
-//     for robust handling of floating-point precision errors.
-//
-// Returns:
-//   - [RelationshipCirclePolyTree][T]: A map where each key is a pointer to a polygon in the PolyTree
-//     and each value is a [RelationshipCirclePolygon] describing the relationship of the circle to that polygon.
+//   - c (Circle[T]): The Circle to evaluate against the PolyTree.
+//   - opts (Option): A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing points and distances,
+//     allowing for robust handling of floating-point precision errors.
 //
 // Behavior:
-//   - The method iterates through each polygon in the PolyTree and evaluates its edges relative to the circle.
-//   - Relationships such as intersection, touching a vertex, tangency (internal or external), containment, and miss are computed.
+//   - For each polygon in the PolyTree, the function determines whether the Circle lies within, intersects, or
+//     is disjoint from the polygon.
+//   - The containment relationship is flipped to reflect the PolyTree's relationship to the Circle.
+//
+// Returns:
+//   - map[*PolyTree[T]]Relationship: A map where each key is a polygon in the PolyTree, and the value is the
+//     relationship between the PolyTree and the Circle.
 //
 // Notes:
-//   - This method ensures precision by applying epsilon adjustments to floating-point calculations.
-func (p *PolyTree[T]) RelationshipToCircle(circle Circle[T], opts ...Option) RelationshipCirclePolyTree[T] {
-	output := make(RelationshipCirclePolyTree[T], p.Len())
-
-	circleCentreDoubled := NewPoint[T](
-		circle.center.x*2,
-		circle.center.y*2,
-	)
-
-RelationshipToCircleIterPolys:
-	for poly := range p.iterPolys {
-
-		shortestDistanceCircleCenterToPolyEdge := math.MaxFloat64
-		longestDistanceCircleCenterToPolyEdge := -math.MaxFloat64
-
-		for edge := range poly.contour.iterEdges {
-
-			// Halve values for doubled-point format
-			edgeHalved := NewLineSegment(
-				NewPoint(edge.start.x/2, edge.start.y/2),
-				NewPoint(edge.end.x/2, edge.end.y/2),
-			)
-
-			// Update shortest and longest distances
-			distanceCircleCenterToEdge := edgeHalved.DistanceToPoint(circle.center)
-			if shortestDistanceCircleCenterToPolyEdge > distanceCircleCenterToEdge {
-				shortestDistanceCircleCenterToPolyEdge = distanceCircleCenterToEdge
-			}
-			if longestDistanceCircleCenterToPolyEdge < distanceCircleCenterToEdge {
-				longestDistanceCircleCenterToPolyEdge = distanceCircleCenterToEdge
-			}
-
-			// Check edge relationship to circle
-			rel := circle.RelationshipToLineSegment(edgeHalved, opts...)
-			switch rel {
-			case RelationshipLineSegmentCircleMiss, RelationshipLineSegmentCircleContainedByCircle:
-				// No action needed
-			case RelationshipLineSegmentCircleIntersecting:
-				output[poly] = RelationshipCirclePolyTreeIntersection
-				continue RelationshipToCircleIterPolys
-			case RelationshipLineSegmentCircleTangentToCircle:
-				if poly.contour.isPointInside(circleCentreDoubled) {
-					output[poly] = RelationshipCirclePolyTreeInternallyTangent
-				} else {
-					output[poly] = RelationshipCirclePolyTreeExternallyTangent
-				}
-				continue RelationshipToCircleIterPolys
-			case RelationshipLineSegmentCircleEndOnCircumferenceOutside:
-				if poly.contour.isPointInside(circleCentreDoubled) {
-					output[poly] = RelationshipCirclePolyTreeInternallyTouching
-				} else {
-					output[poly] = RelationshipCirclePolyTreeExternallyTouching
-				}
-				continue RelationshipToCircleIterPolys
-			case RelationshipLineSegmentCircleEndOnCircumferenceInside:
-				output[poly] = RelationshipCirclePolyTreeInternallyTangent
-				continue RelationshipToCircleIterPolys
-			case RelationshipLineSegmentCircleBothEndsOnCircumference:
-				output[poly] = RelationshipCirclePolyTreeIntersection
-				continue RelationshipToCircleIterPolys
-			}
-		}
-
-		// Check for full containment
-		switch {
-		case longestDistanceCircleCenterToPolyEdge <= float64(circle.radius):
-			// Polygon is fully contained within the circle
-			output[poly] = RelationshipCirclePolyTreeContainedByCircle
-			continue RelationshipToCircleIterPolys
-		case shortestDistanceCircleCenterToPolyEdge >= float64(circle.radius) && poly.contour.isPointInside(circleCentreDoubled):
-			// Circle is fully contained within the polygon
-			output[poly] = RelationshipCirclePolyTreeContainedByPoly
-			continue RelationshipToCircleIterPolys
-		default:
-			// No containment; assume miss if no stronger relationship is found
-			output[poly] = RelationshipCirclePolyTreeMiss
-			continue RelationshipToCircleIterPolys
-		}
-	}
-
-	return output
-}
-
-// todo: improve coverage, doc comments, example func.
-func (p *PolyTree[T]) RelationshipToLineSegment(segment LineSegment[T], opts ...Option) map[*PolyTree[T]]RelationshipLineSegmentPolygon {
-	// Prepare the output map to store relationships for each polygon in the tree
-	output := make(map[*PolyTree[T]]RelationshipLineSegmentPolygon)
-
-	segmentDoubled := NewLineSegment[T](
-		NewPoint[T](segment.start.x*2, segment.start.y*2),
-		NewPoint[T](segment.end.x*2, segment.end.y*2),
-	)
-
-RelationshipToLineSegmentIterPolys:
-	for poly := range p.iterPolys {
-
-		containsStart := poly.contour.isPointInside(segmentDoubled.start)
-		containsEnd := poly.contour.isPointInside(segmentDoubled.end)
-
-		// Check each edge of the polygon
-		for edge := range poly.contour.iterEdges {
-			relationship := segmentDoubled.RelationshipToLineSegment(edge, opts...)
-			switch relationship {
-			case RelationshipLineSegmentLineSegmentCollinearDisjoint, RelationshipLineSegmentLineSegmentMiss:
-				// Ignore ambiguous or non-intersecting cases
-				continue
-
-			case RelationshipLineSegmentLineSegmentIntersects:
-				// Intersection relationships
-				if !containsStart && !containsEnd {
-					output[poly] = RelationshipLineSegmentPolygonEntersAndExits
-				} else {
-					output[poly] = RelationshipLineSegmentPolygonIntersects
-				}
-				continue RelationshipToLineSegmentIterPolys
-
-			case RelationshipLineSegmentLineSegmentAeqC, RelationshipLineSegmentLineSegmentAeqD,
-				RelationshipLineSegmentLineSegmentBeqC, RelationshipLineSegmentLineSegmentBeqD,
-				RelationshipLineSegmentLineSegmentCollinearAonCD, RelationshipLineSegmentLineSegmentCollinearBonCD:
-				// Vertex touch relationships
-				if (!containsEnd && containsStart) || (containsEnd && !containsStart) {
-					output[poly] = RelationshipLineSegmentPolygonEndTouchesVertexExternally
-				} else {
-					output[poly] = RelationshipLineSegmentPolygonEndTouchesVertexInternally
-				}
-				continue RelationshipToLineSegmentIterPolys
-
-			case RelationshipLineSegmentLineSegmentAonCD, RelationshipLineSegmentLineSegmentBonCD:
-				// Edge touch relationships
-				if !containsEnd != !containsStart {
-					output[poly] = RelationshipLineSegmentPolygonEndTouchesEdgeExternally
-				} else {
-					output[poly] = RelationshipLineSegmentPolygonEndTouchesEdgeInternally
-				}
-				continue RelationshipToLineSegmentIterPolys
-
-			case RelationshipLineSegmentLineSegmentConAB, RelationshipLineSegmentLineSegmentDonAB:
-				// Line segment intersects polygon edge
-				output[poly] = RelationshipLineSegmentPolygonIntersects
-				continue RelationshipToLineSegmentIterPolys
-
-			case RelationshipLineSegmentLineSegmentCollinearABinCD, RelationshipLineSegmentLineSegmentCollinearCDinAB:
-				// Fully collinear with an edge
-				output[poly] = RelationshipLineSegmentPolygonEdgeCollinear
-				continue RelationshipToLineSegmentIterPolys
-
-			case RelationshipLineSegmentLineSegmentCollinearEqual:
-				// Line segment exactly overlaps with an edge
-				output[poly] = RelationshipLineSegmentPolygonEdgeCollinearTouchingVertex
-				continue RelationshipToLineSegmentIterPolys
-			}
-		}
-
-		// Check if the segment is fully contained within the polygon
-		if containsStart && containsEnd {
-			output[poly] = RelationshipLineSegmentPolygonContainedByPoly
-			continue RelationshipToLineSegmentIterPolys
-		}
-
-		// Default relationship is a miss
-		output[poly] = RelationshipLineSegmentPolygonMiss
+//   - This method assumes that the PolyTree is valid and non-degenerate.
+//   - The flipped containment ensures that the returned relationships describe the PolyTree's relationship
+//     to the Circle, rather than the Circle's relationship to the PolyTree.
+func (pt *PolyTree[T]) RelationshipToCircle(c Circle[T], opts ...Option) map[*PolyTree[T]]Relationship {
+	output := c.RelationshipToPolyTree(pt, opts...)
+	for k := range output {
+		output[k] = output[k].flipContainment()
 	}
 	return output
 }
 
-// RelationshipToPoint determines the spatial relationship between a given [Point] and
-// each polygon in the [PolyTree]. The function returns a map where the keys are
-// pointers to individual polygons within the tree, and the values are
-// [RelationshipPointPolygon] constants indicating the relationship of the point to
-// each polygon.
+// RelationshipToLineSegment determines the spatial relationship between a PolyTree and a LineSegment.
+//
+// This method evaluates the relationship between the calling PolyTree (pt) and the specified LineSegment (l)
+// for each polygon in the PolyTree. The relationships include containment, intersection, and disjoint.
 //
 // Parameters:
-//   - point ([Point][T]): The point whose relationship to the polygons is to be determined.
-//   - opts: A variadic slice of [Option] functions to customize the behavior of the
-//     relationship check. For example, [WithEpsilon](epsilon float64) allows for a
-//     tolerance when comparing distances or collinearity, improving robustness against
-//     floating-point precision errors.
-//
-// Returns:
-//   - [RelationshipPointPolyTree][T]: A map where the keys are pointers to polygons in
-//     the [PolyTree], and the values are [RelationshipPointPolygon] constants describing
-//     the relationship of the point to each polygon.
+//   - l (LineSegment[T]): The LineSegment to evaluate against the PolyTree.
+//   - opts (Option): A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing points and collinearity calculations,
+//     allowing for robust handling of floating-point precision errors.
 //
 // Behavior:
-//   - For each polygon in the tree, the function first checks the point's relationship
-//     to the edges of the polygon. If the point lies on a vertex or an edge, the
-//     corresponding relationship is set, and no further checks are performed for that
-//     polygon.
-//   - If the point does not lie on an edge or vertex, the function checks whether the
-//     point is inside the polygon using a point-in-polygon test.
-//   - If the point does not satisfy any of the above relationships, it is classified as
-//     being outside the polygon.
-func (p *PolyTree[T]) RelationshipToPoint(point Point[T], opts ...Option) RelationshipPointPolyTree[T] {
-	pointDoubled := NewPoint(point.x*2, point.y*2)
-	output := make(RelationshipPointPolyTree[T])
-
-RelationshipToPointIterPolys:
-	for poly := range p.iterPolys {
-		// Check the relationship of the point to each edge of the polygon
-		for edge := range poly.contour.iterEdges {
-			rel := edge.RelationshipToPoint(pointDoubled, opts...)
-			switch rel {
-			case RelationshipPointLineSegmentCollinearDisjoint, RelationshipPointLineSegmentMiss:
-				// Skip ambiguous cases
-				continue
-			case RelationshipPointLineSegmentPointEqStart, RelationshipPointLineSegmentPointEqEnd:
-				// Point is on a vertex
-				output[poly] = RelationshipPointPolygonPointOnVertex
-				continue RelationshipToPointIterPolys
-			case RelationshipPointLineSegmentPointOnLineSegment:
-				// Point is on an edge
-				output[poly] = RelationshipPointPolygonPointOnEdge
-				continue RelationshipToPointIterPolys
-			}
-		}
-
-		// Check if the point is inside the polygon
-		if poly.contour.isPointInside(pointDoubled) {
-			output[poly] = RelationshipPointPolygonPointInsidePolygon
-			continue RelationshipToPointIterPolys
-		}
-
-		// Default to outside relationship
-		output[poly] = RelationshipPointPolygonMiss
+//   - For each polygon in the PolyTree, the function determines whether the LineSegment lies within, intersects, or
+//     is disjoint from the polygon.
+//   - The containment relationship is flipped to reflect the PolyTree's relationship to the LineSegment.
+//
+// Returns:
+//   - map[*PolyTree[T]]Relationship: A map where each key is a polygon in the PolyTree, and the value is the
+//     relationship between the PolyTree and the LineSegment.
+//
+// Notes:
+//   - This method assumes that the PolyTree is valid and non-degenerate.
+//   - The flipped containment ensures that the returned relationships describe the PolyTree's relationship
+//     to the LineSegment, rather than the LineSegment's relationship to the PolyTree.
+func (pt *PolyTree[T]) RelationshipToLineSegment(l LineSegment[T], opts ...Option) map[*PolyTree[T]]Relationship {
+	output := l.RelationshipToPolyTree(pt, opts...)
+	for k := range output {
+		output[k] = output[k].flipContainment()
 	}
+	return output
+}
 
+// RelationshipToPoint determines the spatial relationship between a PolyTree and a Point.
+//
+// This method evaluates the relationship between the calling PolyTree (pt) and the specified point (p),
+// for each polygon in the PolyTree. The relationships include containment, intersection (point on edge or vertex),
+// and disjoint.
+//
+// Parameters:
+//   - p (Point[T]): The point to evaluate against the PolyTree.
+//   - opts (Option): A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing points and collinearity calculations,
+//     allowing for robust handling of floating-point precision errors.
+//
+// Behavior:
+//   - For each polygon in the PolyTree, the function determines whether the point lies within, intersects, or is
+//     disjoint from the polygon.
+//   - The containment relationship is flipped so that the relationship reflects the PolyTree's relationship to the point.
+//
+// Returns:
+//   - map[*PolyTree[T]]Relationship: A map where each key is a polygon in the PolyTree, and the value is the
+//     relationship between the PolyTree and the point.
+//
+// Notes:
+//   - This method assumes that the PolyTree is valid and non-degenerate.
+//   - The flipped containment ensures that the returned relationships describe the PolyTree's relationship
+//     to the point, rather than the point's relationship to the PolyTree.
+func (pt *PolyTree[T]) RelationshipToPoint(p Point[T], opts ...Option) map[*PolyTree[T]]Relationship {
+	output := p.RelationshipToPolyTree(pt, opts...)
+	for k := range output {
+		output[k] = output[k].flipContainment()
+	}
+	return output
+}
+
+// RelationshipToPolyTree determines the spatial relationship between the polygons in one [PolyTree] (pt)
+// and the polygons in another [PolyTree] (other).
+//
+// This function evaluates pairwise relationships between all polygons in the two PolyTrees
+// and returns a map. Each key in the outer map corresponds to a polygon from the first [PolyTree] (pt),
+// and its value is another map where the keys are polygons from the second [PolyTree] (other) and the values
+// are the relationships between the two polygons.
+//
+// Relationships include:
+//   - [RelationshipEqual]: The two polygons are identical.
+//   - [RelationshipIntersection]: The polygons overlap partially.
+//   - [RelationshipContains]: A polygon in the first [PolyTree] completely encloses a polygon
+//     in the second [PolyTree].
+//   - [RelationshipContainedBy]: A polygon in the first [PolyTree] is completely enclosed
+//     by a polygon in the second [PolyTree].
+//   - [RelationshipDisjoint]: The two polygons have no overlap or containment.
+//
+// Parameters:
+//   - other (*PolyTree[T]): The other [PolyTree] to compare against [PolyTree] pt.
+//   - opts (Option): A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing points and collinearity calculations,
+//     allowing for robust handling of floating-point precision errors.
+//
+// Returns:
+//   - map[*PolyTree[T]]map[*PolyTree[T]]Relationship: A nested map where the first key is a polygon from
+//     the first [PolyTree] (pt), the second key is a polygon from the second [PolyTree] (other), and the value
+//     represents their spatial relationship.
+//
+// Notes:
+//   - For efficiency, the function first checks for equality and then evaluates intersection and containment.
+//   - The function assumes that the input [PolyTree]s have properly formed contours and edges.
+func (pt *PolyTree[T]) RelationshipToPolyTree(other *PolyTree[T], opts ...Option) map[*PolyTree[T]]map[*PolyTree[T]]Relationship {
+	output := make(map[*PolyTree[T]]map[*PolyTree[T]]Relationship, pt.Len())
+
+	for ptPoly := range pt.iterPolys {
+		output[ptPoly] = make(map[*PolyTree[T]]Relationship, other.Len())
+
+	RelationshipToPolyTreeOtherIterPolys:
+		for otherPoly := range other.iterPolys {
+
+			ptPolyInsideOtherPoly := true
+			otherPolyInsidePtPoly := true
+
+			// check equality
+			if ptPoly.contour.eq(otherPoly.contour) {
+				output[ptPoly][otherPoly] = RelationshipEqual
+				continue RelationshipToPolyTreeOtherIterPolys
+			}
+
+			for ptPolyEdge := range ptPoly.contour.iterEdges {
+				for otherPolyEdge := range otherPoly.contour.iterEdges {
+
+					// check intersection
+					rel := ptPolyEdge.RelationshipToLineSegment(otherPolyEdge, opts...)
+					if rel == RelationshipIntersection || rel == RelationshipEqual {
+						output[ptPoly][otherPoly] = RelationshipIntersection
+						continue RelationshipToPolyTreeOtherIterPolys
+					}
+
+					// check containment: otherPoly inside ptPoly
+					if !ptPoly.contour.isPointInside(otherPolyEdge.start) || !ptPoly.contour.isPointInside(otherPolyEdge.end) {
+						otherPolyInsidePtPoly = false
+					}
+				}
+
+				// check containment: ptPoly inside otherPoly
+				if !otherPoly.contour.isPointInside(ptPolyEdge.start) || !otherPoly.contour.isPointInside(ptPolyEdge.end) {
+					ptPolyInsideOtherPoly = false
+				}
+			}
+
+			// check containment
+			if ptPolyInsideOtherPoly {
+				output[ptPoly][otherPoly] = RelationshipContainedBy
+				continue RelationshipToPolyTreeOtherIterPolys
+			}
+			if otherPolyInsidePtPoly {
+				output[ptPoly][otherPoly] = RelationshipContains
+				continue RelationshipToPolyTreeOtherIterPolys
+			}
+
+			// otherwise disjoint
+			output[ptPoly][otherPoly] = RelationshipDisjoint
+		}
+	}
+	return output
+}
+
+// RelationshipToRectangle computes the relationship between the given [Rectangle] (r) and each polygon in the [PolyTree] (pt).
+//
+// The function evaluates whether the rectangle is disjoint from, intersects with, contains, or is contained by
+// each polygon in the [PolyTree]. It uses [Rectangle.RelationshipToPolyTree] to determine the relationship and
+// flips the containment relationships so that they are expressed from the [PolyTree]'s perspective.
+//
+// Parameters:
+//   - r ([Rectangle][T]): The rectangle to evaluate against the polygons in the [PolyTree].
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for geometric calculations, improving robustness
+//     against floating-point imprecision.
+//
+// Returns:
+//   - map[*PolyTree[T]]Relationship: A map where the keys are pointers to the polygons in the [PolyTree],
+//     and the values are the relationships of the rectangle to those polygons, with containment relationships
+//     flipped to reflect the [PolyTree]'s perspective.
+//
+// Notes:
+//   - This method assumes that the [PolyTree] contains valid and non-overlapping polygons.
+//   - The returned relationships are expressed relative to the [PolyTree], meaning containment relationships
+//     are flipped.
+func (pt *PolyTree[T]) RelationshipToRectangle(r Rectangle[T], opts ...Option) map[*PolyTree[T]]Relationship {
+	output := r.RelationshipToPolyTree(pt, opts...)
+	for k := range output {
+		output[k] = output[k].flipContainment()
+	}
 	return output
 }
 
@@ -2049,9 +2045,9 @@ RelationshipToPointIterPolys:
 //  4. Reorders the contour to start at the lowest, leftmost point.
 //
 // This function is typically used as a preparation step before performing a new Boolean operation or traversal.
-func (p *PolyTree[T]) resetIntersectionMetadataAndReorder() {
+func (pt *PolyTree[T]) resetIntersectionMetadataAndReorder() {
 	// Iterate over all polygons in the PolyTree, including nested ones
-	for poly := range p.iterPolys {
+	for poly := range pt.iterPolys {
 
 		// Iterate through the contour points of the polygon
 		for i := 0; i < len(poly.contour); i++ {
@@ -2073,7 +2069,7 @@ func (p *PolyTree[T]) resetIntersectionMetadataAndReorder() {
 	}
 
 	// Reorder the contour to ensure a consistent starting point
-	p.contour.reorder()
+	pt.contour.reorder()
 }
 
 // String returns a string representation of the PolyTree, displaying its hierarchy,
@@ -2084,10 +2080,10 @@ func (p *PolyTree[T]) resetIntersectionMetadataAndReorder() {
 //
 // Returns:
 //   - string: A human-readable representation of the PolyTree.
-func (p *PolyTree[T]) String() string {
+func (pt *PolyTree[T]) String() string {
 	var builder strings.Builder
 
-	for poly := range p.iterPolys {
+	for poly := range pt.iterPolys {
 
 		// Calculate indentation level based on hierarchy depth
 		depth := 0
@@ -2165,7 +2161,7 @@ func (scp *simpleConvexPolygon[T]) ContainsPoint(point Point[T]) bool {
 // The comparison is performed as follows:
 //   - The contour with the point that has the smallest y coordinate is considered "smaller".
 //   - If the y coordinates are equal, the contour with the smallest x coordinate is considered "smaller".
-//   - Returns -1 if a should come before b, 1 if b should come before a, or 0 if both contours have the same lowest, leftmost point.
+//   - Returns -1 if a should come before b, 1 if b should come before "a", or 0 if both contours have the same lowest, leftmost point.
 //
 // This function is typically used for sorting contours in a consistent order.
 //

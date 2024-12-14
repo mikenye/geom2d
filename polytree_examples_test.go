@@ -49,35 +49,35 @@ func ExampleWithChildren() {
 	//   Contour Points: [(1, 1), (1, 3), (3, 3), (3, 1)]
 }
 
-func ExamplePolyTree_RelationshipToCircle() {
-	// Create a PolyTree with a solid polygon
-	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+func ExamplePolyTree_BoundingBox() {
+	// Create a PolyTree with a single polygon
+	polyTree, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
 		geom2d.NewPoint(0, 0),
-		geom2d.NewPoint(100, 0),
-		geom2d.NewPoint(100, 100),
-		geom2d.NewPoint(0, 100),
+		geom2d.NewPoint(0, 20),
+		geom2d.NewPoint(20, 20),
+		geom2d.NewPoint(20, 0),
 	}, geom2d.PTSolid)
 
-	// Create a circle that intersects the root polygon
-	circle := geom2d.NewCircle(geom2d.NewPoint[int](50, 50), 25)
+	// While errors are ignored in this example, please handle them appropriately in production code.
 
-	// Determine the relationship between the circle and the PolyTree
-	rels := root.RelationshipToCircle(circle, geom2d.WithEpsilon(1e-10))
+	// Calculate the bounding box of the PolyTree
+	boundingBox := polyTree.BoundingBox()
 
-	// Output the relationship
-	fmt.Println(rels[root])
+	// Output the bounding box
+	fmt.Println("Bounding box:", boundingBox)
 	// Output:
-	// RelationshipCirclePolyTreeContainedByPoly
+	// Bounding box: Rectangle[(0, 0), (20, 0), (20, 20), (0, 20)]
 }
 
-func ExamplePolyTree_RelationshipToPoint() {
-	// Create a PolyTree with nested polygons
+func ExamplePolyTree_RelationshipToCircle() {
+	// Create a PolyTree
 	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
 		geom2d.NewPoint(0, 0),
 		geom2d.NewPoint(0, 100),
 		geom2d.NewPoint(100, 100),
 		geom2d.NewPoint(100, 0),
 	}, geom2d.PTSolid)
+
 	hole, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
 		geom2d.NewPoint(20, 20),
 		geom2d.NewPoint(20, 80),
@@ -85,30 +85,164 @@ func ExamplePolyTree_RelationshipToPoint() {
 		geom2d.NewPoint(80, 20),
 	}, geom2d.PTHole)
 	_ = root.AddChild(hole)
-	island, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
-		geom2d.NewPoint(40, 40),
-		geom2d.NewPoint(40, 60),
-		geom2d.NewPoint(60, 60),
-		geom2d.NewPoint(60, 40),
-	}, geom2d.PTSolid)
-	_ = hole.AddChild(island)
 
-	// todo: reminder about handling errors
+	// Note: While errors are ignored in this example for simplicity, it is important to handle errors properly in
+	// production code to ensure robustness and reliability.
 
-	// Define test point
-	pointOnHoleVertex := geom2d.NewPoint[int](20, 20)
+	// Define a Circle
+	circle := geom2d.NewCircle(geom2d.NewPoint(50, 50), 10)
 
-	// Evaluate relationships
-	relationships := root.RelationshipToPoint(pointOnHoleVertex)
+	// Determine relationships
+	relationships := root.RelationshipToCircle(circle, geom2d.WithEpsilon(1e-10))
 
-	// Print relationships
-	fmt.Printf("Root relationship: %s\n", relationships[root].String())
-	fmt.Printf("Hole relationship: %s\n", relationships[hole].String())
-	fmt.Printf("Island relationship: %s\n", relationships[island].String())
+	// Output the relationships
+	fmt.Printf("Root polygon relationship: %v\n", relationships[root])
+	fmt.Printf("Hole polygon relationship: %v\n", relationships[hole])
 	// Output:
-	// Root relationship: RelationshipPointPolygonPointInsidePolygon
-	// Hole relationship: RelationshipPointPolygonPointOnVertex
-	// Island relationship: RelationshipPointPolygonMiss
+	// Root polygon relationship: RelationshipContains
+	// Hole polygon relationship: RelationshipContains
+}
+
+func ExamplePolyTree_RelationshipToLineSegment() {
+	// Create a PolyTree
+	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(0, 100),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(100, 0),
+	}, geom2d.PTSolid)
+
+	hole, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(20, 20),
+		geom2d.NewPoint(20, 80),
+		geom2d.NewPoint(80, 80),
+		geom2d.NewPoint(80, 20),
+	}, geom2d.PTHole)
+	_ = root.AddChild(hole)
+
+	// Note: While errors are ignored in this example for simplicity, it is important to handle errors properly in
+	// production code to ensure robustness and reliability.
+
+	// Define a LineSegment
+	lineSegment := geom2d.NewLineSegment(geom2d.NewPoint(10, 10), geom2d.NewPoint(90, 90))
+
+	// Determine relationships
+	relationships := root.RelationshipToLineSegment(lineSegment, geom2d.WithEpsilon(1e-10))
+
+	// Output the relationships
+	fmt.Printf("Root polygon relationship: %v\n", relationships[root])
+	fmt.Printf("Hole polygon relationship: %v\n", relationships[hole])
+	// Output:
+	// Root polygon relationship: RelationshipContains
+	// Hole polygon relationship: RelationshipIntersection
+}
+
+func ExamplePolyTree_RelationshipToPoint() {
+	// Create a PolyTree
+	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(0, 100),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(100, 0),
+	}, geom2d.PTSolid)
+
+	hole, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(20, 20),
+		geom2d.NewPoint(20, 80),
+		geom2d.NewPoint(80, 80),
+		geom2d.NewPoint(80, 20),
+	}, geom2d.PTHole)
+	_ = root.AddChild(hole)
+
+	// Note: While errors are ignored in this example for simplicity, it is important to handle errors properly in
+	// production code to ensure robustness and reliability.
+
+	// Define a point
+	point := geom2d.NewPoint(50, 50)
+
+	// Determine relationships
+	relationships := root.RelationshipToPoint(point, geom2d.WithEpsilon(1e-10))
+
+	// Output the relationships
+	fmt.Printf("Root polygon relationship: %v\n", relationships[root])
+	fmt.Printf("Hole polygon relationship: %v\n", relationships[hole])
+	// Output:
+	// Root polygon relationship: RelationshipContains
+	// Hole polygon relationship: RelationshipContains
+}
+
+func ExamplePolyTree_RelationshipToPolyTree() {
+	// Create the first PolyTree
+	pt1, err := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(0, 10),
+		geom2d.NewPoint(10, 10),
+		geom2d.NewPoint(10, 0),
+	}, geom2d.PTSolid)
+	if err != nil {
+		fmt.Println("Error creating PolyTree 1:", err)
+		return
+	}
+
+	// Create the second PolyTree
+	pt2, err := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(5, 5),
+		geom2d.NewPoint(5, 15),
+		geom2d.NewPoint(15, 15),
+		geom2d.NewPoint(15, 5),
+	}, geom2d.PTSolid)
+	if err != nil {
+		fmt.Println("Error creating PolyTree 2:", err)
+		return
+	}
+
+	// Calculate the relationships
+	relationships := pt1.RelationshipToPolyTree(pt2)
+
+	fmt.Printf("pt1's relationship to pt2: %v\n", relationships[pt1][pt2])
+	// Output:
+	// pt1's relationship to pt2: RelationshipIntersection
+}
+
+func ExamplePolyTree_RelationshipToRectangle() {
+	// Create a PolyTree with a root polygon and a hole
+	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(0, 100),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(100, 0),
+	}, geom2d.PTSolid)
+
+	hole, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(20, 20),
+		geom2d.NewPoint(20, 80),
+		geom2d.NewPoint(80, 80),
+		geom2d.NewPoint(80, 20),
+	}, geom2d.PTHole)
+	_ = root.AddChild(hole)
+
+	// Note: While errors are ignored in this example for simplicity, it is important to handle errors properly in
+	// production code to ensure robustness and reliability.
+
+	// Define a rectangle
+	rect := geom2d.NewRectangle(
+		[]geom2d.Point[int]{
+			geom2d.NewPoint(10, 10),
+			geom2d.NewPoint(90, 10),
+			geom2d.NewPoint(90, 90),
+			geom2d.NewPoint(10, 90),
+		},
+	)
+
+	// Calculate relationships
+	relationships := root.RelationshipToRectangle(rect)
+
+	// Output the relationships
+	fmt.Printf("Root polygon relationship: %v\n", relationships[root])
+	fmt.Printf("Hole polygon relationship: %v\n", relationships[hole])
+	// Output:
+	// Root polygon relationship: RelationshipContains
+	// Hole polygon relationship: RelationshipContainedBy
 }
 
 func ExamplePolygonType_String() {

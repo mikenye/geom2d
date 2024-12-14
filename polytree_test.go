@@ -713,6 +713,48 @@ func TestPolyTree_booleanOperationTraversal_Union(t *testing.T) {
 	assert.Equal(t, expectedPointsUnion, resultingPointsUnion, "unexpected output of booleanOperationTraversal for union")
 }
 
+func TestPolyTree_BoundingBox(t *testing.T) {
+	tests := map[string]struct {
+		polyTree *PolyTree[int]
+		expected Rectangle[int]
+	}{
+		"polygon with hole": {
+			polyTree: func() *PolyTree[int] {
+				root, err := NewPolyTree([]Point[int]{
+					NewPoint(-20, -20),
+					NewPoint(-20, 40),
+					NewPoint(40, 40),
+					NewPoint(40, -20),
+				}, PTSolid)
+				require.NoError(t, err, "error creating root poly")
+				hole, err := NewPolyTree([]Point[int]{
+					NewPoint(10, 10),
+					NewPoint(10, 30),
+					NewPoint(30, 30),
+					NewPoint(30, 10),
+				}, PTHole)
+				require.NoError(t, err, "error creating hole poly")
+				err = root.AddChild(hole)
+				require.NoError(t, err, "error adding hole as child of root")
+				return root
+			}(),
+			expected: NewRectangle([]Point[int]{
+				NewPoint(-20, -20),
+				NewPoint(-20, 40),
+				NewPoint(40, 40),
+				NewPoint(40, -20),
+			}),
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			actual := tt.polyTree.BoundingBox()
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
 func TestPolyTree_Eq_NilHandling(t *testing.T) {
 	var poly1, poly2 *PolyTree[int]
 
@@ -829,139 +871,7 @@ func TestPolyTree_OrderConsistency(t *testing.T) {
 }
 
 func TestPolyTree_RelationshipToCircle(t *testing.T) {
-	// create polytree
-	root, err := NewPolyTree([]Point[int]{
-		NewPoint(0, 0),
-		NewPoint(0, 100),
-		NewPoint(100, 100),
-		NewPoint(100, 0),
-	}, PTSolid)
-	require.NoError(t, err, "error creating root poly")
-	hole, err := NewPolyTree([]Point[int]{
-		NewPoint(20, 20),
-		NewPoint(20, 80),
-		NewPoint(80, 80),
-		NewPoint(80, 20),
-	}, PTHole)
-	require.NoError(t, err, "error creating hole poly")
-	err = root.AddChild(hole)
-	require.NoError(t, err, "error adding hole as child to root")
-	island, err := NewPolyTree([]Point[int]{
-		NewPoint(40, 40),
-		NewPoint(40, 60),
-		NewPoint(60, 60),
-		NewPoint(60, 40),
-	}, PTSolid)
-	require.NoError(t, err, "error creating island poly")
-	err = hole.AddChild(island)
-	require.NoError(t, err, "error adding island as child to hole")
-
-	t.Run("Circle completely outside all polygons", func(t *testing.T) {
-		circle := NewCircle(NewPoint[int](-20, -20), 10)
-		rels := root.RelationshipToCircle(circle)
-		for _, rel := range rels {
-			assert.Equal(t, RelationshipCirclePolyTreeMiss, rel, "expected RelationshipCirclePolyTreeMiss")
-		}
-	})
-
-	t.Run("Circle externally tangent to root polygon", func(t *testing.T) {
-		circle := NewCircle(NewPoint[int](-10, 50), 10)
-		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
-		assert.Equal(t, RelationshipCirclePolyTreeExternallyTangent, rels[root], "expected different root relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[hole], "expected different hole relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
-	})
-
-	t.Run("Circle externally touching root polygon", func(t *testing.T) {
-		circle := NewCircle(NewPoint[int](0, 110), 10)
-		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
-		assert.Equal(t, RelationshipCirclePolyTreeExternallyTouching, rels[root], "expected different root relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[hole], "expected different hole relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
-	})
-
-	t.Run("Circle intersecting root polygon", func(t *testing.T) {
-		circle := NewCircle(NewPoint[int](-5, 50), 10)
-		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
-		assert.Equal(t, RelationshipCirclePolyTreeIntersection, rels[root], "expected different root relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[hole], "expected different hole relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
-	})
-
-	t.Run("Circle internally and externally tangent to root and hole polygons", func(t *testing.T) {
-		circle := NewCircle(NewPoint[int](10, 50), 10)
-		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
-		assert.Equal(t, RelationshipCirclePolyTreeInternallyTangent, rels[root], "expected different root relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeExternallyTangent, rels[hole], "expected different hole relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
-	})
-
-	t.Run("Circle fully containing all polygons", func(t *testing.T) {
-		circle := NewCircle(NewPoint[int](0, 0), 10000)
-		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
-		assert.Equal(t, RelationshipCirclePolyTreeContainedByCircle, rels[root], "expected different root relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeContainedByCircle, rels[hole], "expected different hole relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeContainedByCircle, rels[island], "expected different island relationship")
-	})
-
-	t.Run("Circle contained by root polygon", func(t *testing.T) {
-		circle := NewCircle(NewPoint[int](11, 11), 10)
-		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
-		assert.Equal(t, RelationshipCirclePolyTreeContainedByPoly, rels[root], "expected different root relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[hole], "expected different hole relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
-	})
-
-	t.Run("Degenerate circle contained by root polygon", func(t *testing.T) {
-		circle := NewCircle(NewPoint[int](10, 10), 0)
-		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
-		assert.Equal(t, RelationshipCirclePolyTreeContainedByPoly, rels[root], "expected different root relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[hole], "expected different hole relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
-	})
-
-	t.Run("Circle intersecting hole polygon", func(t *testing.T) {
-		circle := NewCircle(NewPoint[int](15, 15), 10)
-		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
-		assert.Equal(t, RelationshipCirclePolyTreeContainedByPoly, rels[root], "expected different root relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeIntersection, rels[hole], "expected different hole relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
-	})
-
-	t.Run("Circle center on vertex of root polygon", func(t *testing.T) {
-		circle := NewCircle(NewPoint[int](0, 0), 10)
-		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
-		assert.Equal(t, RelationshipCirclePolyTreeIntersection, rels[root], "expected different root relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[hole], "expected different hole relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
-	})
-
-	t.Run("Circle intersecting root and hole polygons", func(t *testing.T) {
-		circle := NewCircle(NewPoint[int](10, 50), 12)
-		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
-		assert.Equal(t, RelationshipCirclePolyTreeIntersection, rels[root], "expected different root relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeIntersection, rels[hole], "expected different hole relationship")
-		assert.Equal(t, RelationshipCirclePolyTreeMiss, rels[island], "expected different island relationship")
-	})
-
-	t.Run("Circle touching internally", func(t *testing.T) {
-		root, err := NewPolyTree([]Point[int]{
-			NewPoint(0, 0),
-			NewPoint(10, 0),
-			NewPoint(10, 10),
-			NewPoint(5, 7),
-			NewPoint(0, 10),
-			NewPoint(0, 0),
-		}, PTSolid)
-		require.NoError(t, err, "error creating root PolyTree")
-		circle := NewCircle(NewPoint(5, 4), 3)
-		rels := root.RelationshipToCircle(circle, WithEpsilon(1e-10))
-		assert.Equal(t, RelationshipCirclePolyTreeInternallyTouching, rels[root], "expected different root relationship")
-	})
-}
-
-func TestPolyTree_RelationshipToLineSegment(t *testing.T) {
-	// Create a PolyTree with a solid root and a hole
+	// Create a PolyTree
 	root, err := NewPolyTree([]Point[int]{
 		NewPoint(0, 0),
 		NewPoint(0, 100),
@@ -977,163 +887,122 @@ func TestPolyTree_RelationshipToLineSegment(t *testing.T) {
 		NewPoint(80, 20),
 	}, PTHole)
 	require.NoError(t, err, "error creating hole polygon")
+	require.NoError(t, root.AddChild(hole), "error adding hole to root polygon")
 
-	err = root.AddChild(hole)
-	require.NoError(t, err, "error adding hole as child to root")
-
-	// Test cases
 	tests := []struct {
-		name     string
-		segment  LineSegment[int]
-		expected map[*PolyTree[int]]RelationshipLineSegmentPolygon
+		name                     string
+		circle                   Circle[int]
+		pt                       *PolyTree[int]
+		expectedRootRelationship Relationship
+		expectedHoleRelationship Relationship
 	}{
 		{
-			name: "Miss",
-			segment: NewLineSegment(
-				NewPoint(110, 110),
-				NewPoint(120, 120),
-			),
-			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
-				root: RelationshipLineSegmentPolygonMiss,
-				hole: RelationshipLineSegmentPolygonMiss,
-			},
+			name:                     "Circle disjoint from PolyTree",
+			circle:                   NewCircle(NewPoint(150, 150), 10),
+			pt:                       root,
+			expectedRootRelationship: RelationshipDisjoint,
+			expectedHoleRelationship: RelationshipDisjoint,
 		},
 		{
-			name: "Enters and exits all polygons",
-			segment: NewLineSegment(
-				NewPoint(-10, 50),
-				NewPoint(110, 50),
-			),
-			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
-				root: RelationshipLineSegmentPolygonEntersAndExits,
-				hole: RelationshipLineSegmentPolygonEntersAndExits,
-			},
+			name:                     "Circle intersects root polygon",
+			circle:                   NewCircle(NewPoint(50, 0), 5),
+			pt:                       root,
+			expectedRootRelationship: RelationshipIntersection,
+			expectedHoleRelationship: RelationshipDisjoint,
 		},
 		{
-			name: "Intersection",
-			segment: NewLineSegment(
-				NewPoint(-10, 50),
-				NewPoint(50, 50),
-			),
-			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
-				root: RelationshipLineSegmentPolygonIntersects,
-				hole: RelationshipLineSegmentPolygonIntersects,
-			},
+			name:                     "Circle contained within root polygon",
+			circle:                   NewCircle(NewPoint(10, 10), 5),
+			pt:                       root,
+			expectedRootRelationship: RelationshipContains,
+			expectedHoleRelationship: RelationshipDisjoint,
 		},
 		{
-			name: "Contained by root polygon",
-			segment: NewLineSegment(
-				NewPoint(10, 10),
-				NewPoint(10, 90),
-			),
-			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
-				root: RelationshipLineSegmentPolygonContainedByPoly,
-				hole: RelationshipLineSegmentPolygonMiss,
-			},
-		},
-		{
-			name: "Touches vertex externally",
-			segment: NewLineSegment(
-				NewPoint(-10, -10),
-				NewPoint(0, 0),
-			),
-			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
-				root: RelationshipLineSegmentPolygonEndTouchesVertexExternally,
-				hole: RelationshipLineSegmentPolygonMiss,
-			},
-		},
-		{
-			name: "Touches vertex internally",
-			segment: NewLineSegment(
-				NewPoint(10, 10),
-				NewPoint(0, 0),
-			),
-			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
-				root: RelationshipLineSegmentPolygonEndTouchesVertexInternally,
-				hole: RelationshipLineSegmentPolygonMiss,
-			},
-		},
-		{
-			name: "Touches edge externally",
-			segment: NewLineSegment(
-				NewPoint(-10, 50),
-				NewPoint(0, 50),
-			),
-			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
-				root: RelationshipLineSegmentPolygonEndTouchesEdgeExternally,
-				hole: RelationshipLineSegmentPolygonMiss,
-			},
-		},
-		{
-			name: "Touches edge internally",
-			segment: NewLineSegment(
-				NewPoint(10, 10),
-				NewPoint(0, 50),
-			),
-			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
-				root: RelationshipLineSegmentPolygonEndTouchesEdgeInternally,
-				hole: RelationshipLineSegmentPolygonMiss,
-			},
-		},
-		{
-			name: "Intersecting hole polygon",
-			segment: NewLineSegment(
-				NewPoint(30, 30),
-				NewPoint(70, 70),
-			),
-			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
-				root: RelationshipLineSegmentPolygonContainedByPoly,
-				hole: RelationshipLineSegmentPolygonContainedByPoly,
-			},
-		},
-		{
-			name: "Collinear with edge, equal to edge",
-			segment: NewLineSegment(
-				NewPoint(0, 0),
-				NewPoint(100, 0),
-			),
-			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
-				root: RelationshipLineSegmentPolygonEdgeCollinearTouchingVertex,
-				hole: RelationshipLineSegmentPolygonMiss,
-			},
-		},
-		{
-			name: "Collinear with edge",
-			segment: NewLineSegment(
-				NewPoint(0, 10),
-				NewPoint(0, 90),
-			),
-			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
-				root: RelationshipLineSegmentPolygonEdgeCollinear,
-				hole: RelationshipLineSegmentPolygonMiss,
-			},
-		},
-		{
-			name: "Vertex on line segment",
-			segment: NewLineSegment(
-				NewPoint(-10, 10),
-				NewPoint(10, -10),
-			),
-			expected: map[*PolyTree[int]]RelationshipLineSegmentPolygon{
-				root: RelationshipLineSegmentPolygonIntersects,
-				hole: RelationshipLineSegmentPolygonMiss,
-			},
+			name:                     "Circle contains root polygon",
+			circle:                   NewCircle(NewPoint(50, 50), 100),
+			pt:                       root,
+			expectedRootRelationship: RelationshipContainedBy,
+			expectedHoleRelationship: RelationshipContainedBy,
 		},
 	}
 
-	// Run tests
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rels := root.RelationshipToLineSegment(tt.segment)
-			for poly, expectedRel := range tt.expected {
-				assert.Equal(t, expectedRel, rels[poly], "unexpected relationship for poly")
-			}
+			rels := tt.pt.RelationshipToCircle(tt.circle, WithEpsilon(1e-10))
+			assert.Equal(t, tt.expectedRootRelationship, rels[root], "unexpected root relationship")
+			assert.Equal(t, tt.expectedHoleRelationship, rels[hole], "unexpected hole relationship")
+
+		})
+	}
+}
+
+func TestPolyTree_RelationshipToLineSegment(t *testing.T) {
+	// Create a PolyTree
+	root, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(0, 100),
+		NewPoint(100, 100),
+		NewPoint(100, 0),
+	}, PTSolid)
+	require.NoError(t, err, "error creating root polygon")
+
+	hole, err := NewPolyTree([]Point[int]{
+		NewPoint(20, 20),
+		NewPoint(20, 80),
+		NewPoint(80, 80),
+		NewPoint(80, 20),
+	}, PTHole)
+	require.NoError(t, err, "error creating hole polygon")
+	require.NoError(t, root.AddChild(hole), "error adding hole to root polygon")
+
+	tests := []struct {
+		name                     string
+		lineSegment              LineSegment[int]
+		pt                       *PolyTree[int]
+		expectedRootRelationship Relationship
+		expectedHoleRelationship Relationship
+	}{
+		{
+			name:                     "LineSegment disjoint from PolyTree",
+			lineSegment:              NewLineSegment(NewPoint(150, 150), NewPoint(200, 200)),
+			pt:                       root,
+			expectedRootRelationship: RelationshipDisjoint,
+			expectedHoleRelationship: RelationshipDisjoint,
+		},
+		{
+			name:                     "LineSegment intersects root polygon",
+			lineSegment:              NewLineSegment(NewPoint(-10, 50), NewPoint(10, 50)),
+			pt:                       root,
+			expectedRootRelationship: RelationshipIntersection,
+			expectedHoleRelationship: RelationshipDisjoint,
+		},
+		{
+			name:                     "LineSegment contained within root polygon",
+			lineSegment:              NewLineSegment(NewPoint(10, 10), NewPoint(90, 90)),
+			pt:                       root,
+			expectedRootRelationship: RelationshipContains,
+			expectedHoleRelationship: RelationshipIntersection,
+		},
+		{
+			name:                     "LineSegment on edge of root polygon",
+			lineSegment:              NewLineSegment(NewPoint(10, 0), NewPoint(90, 0)),
+			pt:                       root,
+			expectedRootRelationship: RelationshipIntersection,
+			expectedHoleRelationship: RelationshipDisjoint,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rels := tt.pt.RelationshipToLineSegment(tt.lineSegment, WithEpsilon(1e-10))
+			assert.Equal(t, tt.expectedRootRelationship, rels[root], "unexpected root relationship")
+			assert.Equal(t, tt.expectedHoleRelationship, rels[hole], "unexpected hole relationship")
 		})
 	}
 }
 
 func TestPolyTree_RelationshipToPoint(t *testing.T) {
-	// Create a sample PolyTree with a root polygon, a hole, and an island
+	// Create a PolyTree
 	root, err := NewPolyTree([]Point[int]{
 		NewPoint(0, 0),
 		NewPoint(0, 100),
@@ -1149,81 +1018,210 @@ func TestPolyTree_RelationshipToPoint(t *testing.T) {
 		NewPoint(80, 20),
 	}, PTHole)
 	require.NoError(t, err, "error creating hole polygon")
-	err = root.AddChild(hole)
-	require.NoError(t, err, "error adding hole to root")
+	require.NoError(t, root.AddChild(hole), "error adding hole to root polygon")
 
-	island, err := NewPolyTree([]Point[int]{
-		NewPoint(40, 40),
-		NewPoint(40, 60),
-		NewPoint(60, 60),
-		NewPoint(60, 40),
+	tests := []struct {
+		name                     string
+		point                    Point[int]
+		pt                       *PolyTree[int]
+		expectedRootRelationship Relationship
+		expectedHoleRelationship Relationship
+	}{
+		{
+			name:                     "Point outside entire PolyTree",
+			point:                    NewPoint(150, 150),
+			pt:                       root,
+			expectedRootRelationship: RelationshipDisjoint,
+			expectedHoleRelationship: RelationshipDisjoint,
+		},
+		{
+			name:                     "Point inside root but outside hole",
+			point:                    NewPoint(10, 10),
+			pt:                       root,
+			expectedRootRelationship: RelationshipContains,
+			expectedHoleRelationship: RelationshipDisjoint,
+		},
+		{
+			name:                     "Point inside hole",
+			point:                    NewPoint(50, 50),
+			pt:                       root,
+			expectedRootRelationship: RelationshipContains,
+			expectedHoleRelationship: RelationshipContains,
+		},
+		{
+			name:                     "Point on edge of root",
+			point:                    NewPoint(0, 50),
+			pt:                       root,
+			expectedRootRelationship: RelationshipIntersection,
+			expectedHoleRelationship: RelationshipDisjoint,
+		},
+		{
+			name:                     "Point on vertex of hole",
+			point:                    NewPoint(20, 20),
+			pt:                       root,
+			expectedRootRelationship: RelationshipContains,
+			expectedHoleRelationship: RelationshipIntersection,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rels := tt.pt.RelationshipToPoint(tt.point, WithEpsilon(1e-10))
+			assert.Equal(t, tt.expectedRootRelationship, rels[root], "unexpected root relationship")
+			assert.Equal(t, tt.expectedHoleRelationship, rels[hole], "unexpected hole relationship")
+		})
+	}
+}
+
+func TestPolyTree_RelationshipToPolyTree(t *testing.T) {
+	// Create the first PolyTree
+	pt1, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(0, 10),
+		NewPoint(10, 10),
+		NewPoint(10, 0),
 	}, PTSolid)
-	require.NoError(t, err, "error creating island polygon")
-	err = hole.AddChild(island)
-	require.NoError(t, err, "error adding island to hole")
+	require.NoError(t, err, "error creating PolyTree 1")
 
-	t.Run("Point outside all polygons", func(t *testing.T) {
-		point := NewPoint(150, 150)
-		rels := root.RelationshipToPoint(point)
+	// Create the second PolyTree
+	pt2, err := NewPolyTree([]Point[int]{
+		NewPoint(15, 15),
+		NewPoint(15, 25),
+		NewPoint(25, 25),
+		NewPoint(25, 15),
+	}, PTSolid)
+	require.NoError(t, err, "error creating PolyTree 2")
 
-		assert.Equal(t, RelationshipPointPolygonMiss, rels[root], "expected point to be outside root polygon")
-		assert.Equal(t, RelationshipPointPolygonMiss, rels[hole], "expected point to be outside hole polygon")
-		assert.Equal(t, RelationshipPointPolygonMiss, rels[island], "expected point to be outside island polygon")
-	})
+	// Create a third PolyTree for testing equality
+	pt3, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(0, 10),
+		NewPoint(10, 10),
+		NewPoint(10, 0),
+	}, PTSolid)
+	require.NoError(t, err, "error creating PolyTree 3")
 
-	t.Run("Point inside root polygon but outside hole", func(t *testing.T) {
-		point := NewPoint(10, 10)
-		rels := root.RelationshipToPoint(point)
+	// Perform the relationship checks
+	relationships := pt1.RelationshipToPolyTree(pt2)
+	require.Len(t, relationships, pt1.Len(), "expected relationships for each polygon in PolyTree 1")
 
-		assert.Equal(t, RelationshipPointPolygonPointInsidePolygon, rels[root], "expected point to be inside root polygon")
-		assert.Equal(t, RelationshipPointPolygonMiss, rels[hole], "expected point to be outside hole polygon")
-		assert.Equal(t, RelationshipPointPolygonMiss, rels[island], "expected point to be outside island polygon")
-	})
+	// Test disjoint relationship
+	for _, rel := range relationships[pt1] {
+		assert.Equal(t, RelationshipDisjoint, rel, "expected disjoint relationship")
+	}
 
-	t.Run("Point on edge of root polygon", func(t *testing.T) {
-		point := NewPoint(0, 50)
-		rels := root.RelationshipToPoint(point)
+	// Test equality relationship
+	relationshipsEqual := pt1.RelationshipToPolyTree(pt3)
+	for _, rel := range relationshipsEqual[pt1] {
+		assert.Equal(t, RelationshipEqual, rel, "expected equal relationship")
+	}
 
-		assert.Equal(t, RelationshipPointPolygonPointOnEdge, rels[root], "expected point to be on edge of root polygon")
-		assert.Equal(t, RelationshipPointPolygonMiss, rels[hole], "expected point to be outside hole polygon")
-		assert.Equal(t, RelationshipPointPolygonMiss, rels[island], "expected point to be outside island polygon")
-	})
+	// Test intersection relationship
+	pt4, err := NewPolyTree([]Point[int]{
+		NewPoint(5, 0),
+		NewPoint(5, 10),
+		NewPoint(15, 10),
+		NewPoint(15, 0),
+	}, PTSolid)
+	require.NoError(t, err, "error creating PolyTree 4")
 
-	t.Run("Point on vertex of root polygon", func(t *testing.T) {
-		point := NewPoint(0, 0)
-		rels := root.RelationshipToPoint(point)
+	relationshipsIntersect := pt1.RelationshipToPolyTree(pt4)
+	for _, rel := range relationshipsIntersect[pt1] {
+		assert.Equal(t, RelationshipIntersection, rel, "expected intersection relationship")
+	}
 
-		assert.Equal(t, RelationshipPointPolygonPointOnVertex, rels[root], "expected point to be on vertex of root polygon")
-		assert.Equal(t, RelationshipPointPolygonMiss, rels[hole], "expected point to be outside hole polygon")
-		assert.Equal(t, RelationshipPointPolygonMiss, rels[island], "expected point to be outside island polygon")
-	})
+	// Test containment relationships
+	pt5, err := NewPolyTree([]Point[int]{
+		NewPoint(1, 1),
+		NewPoint(1, 9),
+		NewPoint(9, 9),
+		NewPoint(9, 1),
+	}, PTSolid)
+	require.NoError(t, err, "error creating PolyTree 5")
 
-	t.Run("Point inside island polygon", func(t *testing.T) {
-		point := NewPoint(50, 50)
-		rels := root.RelationshipToPoint(point)
+	relationshipsContain := pt1.RelationshipToPolyTree(pt5)
+	for _, rel := range relationshipsContain[pt1] {
+		assert.Equal(t, RelationshipContains, rel, "expected contains relationship")
+	}
 
-		assert.Equal(t, RelationshipPointPolygonPointInsidePolygon, rels[root], "expected point to be outside root polygon")
-		assert.Equal(t, RelationshipPointPolygonPointInsidePolygon, rels[hole], "expected point to be inside hole polygon")
-		assert.Equal(t, RelationshipPointPolygonPointInsidePolygon, rels[island], "expected point to be outside island polygon")
-	})
+	relationshipsContainedBy := pt5.RelationshipToPolyTree(pt1)
+	for _, rel := range relationshipsContainedBy[pt5] {
+		assert.Equal(t, RelationshipContainedBy, rel, "expected contained by relationship")
+	}
+}
 
-	t.Run("Point on edge of hole polygon", func(t *testing.T) {
-		point := NewPoint(20, 50)
-		rels := root.RelationshipToPoint(point)
+func TestPolyTree_RelationshipToRectangle(t *testing.T) {
+	// Create a PolyTree with a root polygon and a hole
+	root, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(0, 100),
+		NewPoint(100, 100),
+		NewPoint(100, 0),
+	}, PTSolid)
+	require.NoError(t, err, "could not create root polygon")
+	hole, err := NewPolyTree([]Point[int]{
+		NewPoint(20, 20),
+		NewPoint(20, 80),
+		NewPoint(80, 80),
+		NewPoint(80, 20),
+	}, PTHole)
+	require.NoError(t, err, "could not create hole polygon")
+	err = root.AddChild(hole)
+	require.NoError(t, err, "could not add hole as child to root polygon")
 
-		assert.Equal(t, RelationshipPointPolygonPointInsidePolygon, rels[root], "expected point to be outside root polygon")
-		assert.Equal(t, RelationshipPointPolygonPointOnEdge, rels[hole], "expected point to be on edge of hole polygon")
-		assert.Equal(t, RelationshipPointPolygonMiss, rels[island], "expected point to be outside island polygon")
-	})
+	// Test cases
+	tests := []struct {
+		name     string
+		rect     Rectangle[int]
+		expected map[*PolyTree[int]]Relationship
+	}{
+		{
+			name: "Rectangle fully contained within root polygon",
+			rect: NewRectangle([]Point[int]{
+				NewPoint(10, 10),
+				NewPoint(90, 10),
+				NewPoint(90, 90),
+				NewPoint(10, 90),
+			}),
+			expected: map[*PolyTree[int]]Relationship{
+				root: RelationshipContains,
+				hole: RelationshipContainedBy,
+			},
+		},
+		{
+			name: "Rectangle intersecting the root polygon",
+			rect: NewRectangle([]Point[int]{
+				NewPoint(-10, 10),
+				NewPoint(50, 10),
+				NewPoint(50, 50),
+				NewPoint(-10, 50),
+			}),
+			expected: map[*PolyTree[int]]Relationship{
+				root: RelationshipIntersection,
+				hole: RelationshipIntersection,
+			},
+		},
+		{
+			name: "Rectangle fully outside the PolyTree",
+			rect: NewRectangle([]Point[int]{
+				NewPoint(200, 200),
+				NewPoint(300, 200),
+				NewPoint(300, 300),
+				NewPoint(200, 300),
+			}),
+			expected: map[*PolyTree[int]]Relationship{
+				root: RelationshipDisjoint,
+				hole: RelationshipDisjoint,
+			},
+		},
+	}
 
-	t.Run("Point on vertex of hole polygon", func(t *testing.T) {
-		point := NewPoint(20, 20)
-		rels := root.RelationshipToPoint(point)
-
-		assert.Equal(t, RelationshipPointPolygonPointInsidePolygon, rels[root], "expected point to be outside root polygon")
-		assert.Equal(t, RelationshipPointPolygonPointOnVertex, rels[hole], "expected point to be on vertex of hole polygon")
-		assert.Equal(t, RelationshipPointPolygonMiss, rels[island], "expected point to be outside island polygon")
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := root.RelationshipToRectangle(tt.rect)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
 }
 
 func TestNestPointsToPolyTrees(t *testing.T) {

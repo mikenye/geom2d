@@ -113,12 +113,24 @@ func NewPointFromImagePoint(q image.Point) Point[int] {
 	}
 }
 
-// AsFloat converts the Point's x and y coordinates to the float64 type, returning a new Point[float64].
+// AsFloat32 converts the Point's x and y coordinates to the float32 type, returning a new Point[float32].
+// This method is useful when higher precision or floating-point arithmetic is needed on the coordinates.
+//
+// Returns:
+//   - Point[float32]: A new Point with x and y coordinates converted to float32.
+func (p Point[T]) AsFloat32() Point[float32] {
+	return Point[float32]{
+		x: float32(p.x),
+		y: float32(p.y),
+	}
+}
+
+// AsFloat64 converts the Point's x and y coordinates to the float64 type, returning a new Point[float64].
 // This method is useful when higher precision or floating-point arithmetic is needed on the coordinates.
 //
 // Returns:
 //   - Point[float64]: A new Point with x and y coordinates converted to float64.
-func (p Point[T]) AsFloat() Point[float64] {
+func (p Point[T]) AsFloat64() Point[float64] {
 	return Point[float64]{
 		x: float64(p.x),
 		y: float64(p.y),
@@ -205,7 +217,7 @@ func (p Point[T]) DistanceSquaredToPoint(q Point[T]) T {
 //   - This method ensures precision by converting points to float64 before performing calculations.
 func (p Point[T]) DistanceToLineSegment(l LineSegment[T], opts ...Option) float64 {
 	projectedPoint := p.ProjectOntoLineSegment(l)
-	pf := p.AsFloat()
+	pf := p.AsFloat64()
 	return pf.DistanceToPoint(projectedPoint, opts...)
 }
 
@@ -342,15 +354,15 @@ func (p Point[T]) ProjectOntoLineSegment(l LineSegment[T]) Point[float64] {
 
 	// Calculate the projection length as a fraction of the length of vecAB
 	if ABdotAB == 0 { // Avoid division by zero; A and End are the same point
-		return l.start.AsFloat()
+		return l.start.AsFloat64()
 	}
 	projLen := float64(APdotAB) / float64(ABdotAB)
 
 	// Clamp the projection length to the segment
 	if projLen < 0 {
-		return l.start.AsFloat() // Closest to line segment start
+		return l.start.AsFloat64() // Closest to line segment start
 	} else if projLen > 1 {
-		return l.end.AsFloat() // Closest to line segment end
+		return l.end.AsFloat64() // Closest to line segment end
 	}
 
 	// return the projection point
@@ -368,20 +380,20 @@ func (p Point[T]) ProjectOntoLineSegment(l LineSegment[T]) Point[float64] {
 //
 // Returns:
 //   - Point[float64] - A new point representing the reflection of the original point.
-func (p Point[float64]) Reflect(axis ReflectionAxis, line ...LineSegment[float64]) Point[float64] {
+func (p Point[T]) Reflect(axis ReflectionAxis, line ...LineSegment[float64]) Point[float64] {
 	switch axis {
 	case ReflectAcrossXAxis:
-		return NewPoint(p.x, -p.y)
+		return NewPoint(p.x, -p.y).AsFloat64()
 	case ReflectAcrossYAxis:
-		return NewPoint(-p.x, p.y)
+		return NewPoint(-p.x, p.y).AsFloat64()
 	case ReflectAcrossCustomLine:
 		if len(line) == 0 {
 			// If no line is provided, return the point unchanged or handle the error
-			return p
+			return p.AsFloat64()
 		}
 		return p.reflectAcrossLine(line[0])
 	default:
-		return p // Return unchanged if axis is invalid
+		return p.AsFloat64() // Return unchanged if axis is invalid
 	}
 }
 
@@ -392,7 +404,10 @@ func (p Point[float64]) Reflect(axis ReflectionAxis, line ...LineSegment[float64
 //
 // Returns:
 //   - Point[float64] - The reflected point.
-func (p Point[float64]) reflectAcrossLine(line LineSegment[float64]) Point[float64] {
+func (p Point[T]) reflectAcrossLine(line LineSegment[float64]) Point[float64] {
+
+	pFloat := p.AsFloat64()
+
 	// Extract points from the line segment
 	x1, y1 := line.start.x, line.start.y
 	x2, y2 := line.end.x, line.end.y
@@ -400,127 +415,207 @@ func (p Point[float64]) reflectAcrossLine(line LineSegment[float64]) Point[float
 	// Calculate the line's slope and intercept for projection
 	dx, dy := x2-x1, y2-y1
 	if dx == 0 && dy == 0 {
-		return p // Degenerate line segment; return point unchanged
+		return pFloat // Degenerate line segment; return point unchanged
 	}
 
 	// Calculate the reflection using vector projection
 	a := (dx*dx - dy*dy) / (dx*dx + dy*dy)
 	b := 2 * dx * dy / (dx*dx + dy*dy)
 
-	newX := a*(p.x-x1) + b*(p.y-y1) + x1
-	newY := b*(p.x-x1) - a*(p.y-y1) + y1
+	newX := a*(pFloat.x-x1) + b*(pFloat.y-y1) + x1
+	newY := b*(pFloat.x-x1) - a*(pFloat.y-y1) + y1
 
 	return NewPoint(newX, newY)
 }
 
-// RelationshipToCircle determines the spatial relationship of the Point p
-// to a given [Circle] c.
+// RelationshipToCircle determines the spatial relationship between the current Point and a given Circle.
 //
-// This method is a convenience wrapper around [Circle.RelationshipToPoint],
-// reversing the parameter order to provide a more intuitive calling syntax
-// from the perspective of the [Point].
-//
-// Parameters:
-//   - c ([Circle][T]): The circle to which the relationship is evaluated.
-//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing distances, improving robustness
-//     in floating-point calculations.
-//
-// Returns:
-//   - [RelationshipPointCircle]: The relationship of the point to the circle, as defined by the
-//     [RelationshipPointCircle] enum.
-//
-// Notes:
-//   - This method directly calls [Circle.RelationshipToPoint], and the result is identical to calling
-//     the circle's method with the point as the parameter.
-//
-// See [Circle.RelationshipToPoint] for examples and more information.
-func (p Point[T]) RelationshipToCircle(c Circle[T], opts ...Option) RelationshipPointCircle {
-	return c.RelationshipToPoint(p, opts...)
-}
-
-// RelationshipToLineSegment determines the spatial relationship of a [Point]
-// to a given [LineSegment].
-//
-// This method evaluates the position of the calling [Point] relative to the
-// specified [LineSegment]. The possible relationships are defined by the [RelationshipPointLineSegment].
+// This function evaluates whether the point lies outside, on the boundary of, or inside the given circle.
+// The possible relationships are:
+//   - [RelationshipDisjoint]: The point lies outside the circle.
+//   - [RelationshipIntersection]: The point lies exactly on the circle's boundary.
+//   - [RelationshipContainedBy]: The point is inside the circle.
 //
 // Parameters:
-//   - seg ([LineSegment][T]): The line segment to which the relationship is evaluated.
-//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for floating-point comparisons,
-//     improving robustness against precision errors.
+//   - c (Circle[T]): The circle to compare with the current point.
+//   - opts: A variadic slice of [Option] functions to customize the equality check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing distances to handle floating-point
+//     precision errors.
 //
 // Returns:
-//   - [RelationshipPointLineSegment]: The relationship of the point to the line segment, as defined by
-//     [RelationshipPointLineSegment].
+//   - [Relationship]: The relationship of the point to the circle, indicating whether the point is disjoint from,
+//     on the boundary of, or contained within the circle.
 //
 // Behavior:
-//   - The function first checks if the point coincides with the start or end of the line segment.
-//   - It then determines if the point lies on the infinite line defined by the segment using orientation tests.
-//   - If the point is collinear with the segment, it checks whether the point lies within the bounds of the segment
-//     (using the bounding box).
-//   - If the point lies on the infinite line but is outside the bounds of the segment, it is classified as
-//     [RelationshipPointLineSegmentCollinearDisjoint].
+//   - The function computes the Euclidean distance between the point and the circle's center.
+//   - It compares this distance to the circle's radius (converted to float64 for precision).
+//   - If the distance equals the radius, the relationship is [RelationshipIntersection].
+//   - If the distance is less than the radius, the relationship is [RelationshipContainedBy].
+//   - Otherwise, the relationship is [RelationshipDisjoint].
 //
 // Notes:
-//   - This method is useful for spatial queries where precise relationships between points and line segments are needed.
-//
-// See [RelationshipPointLineSegment] for possible return values.
-func (p Point[T]) RelationshipToLineSegment(seg LineSegment[T], opts ...Option) RelationshipPointLineSegment {
-	options := applyOptions(geomOptions{epsilon: 0}, opts...)
-
-	// Check if the point coincides with the segment's start or end
-	if p.Eq(seg.start, opts...) {
-		return RelationshipPointLineSegmentPointEqStart
+//   - Epsilon adjustments can be used to account for floating-point precision issues when comparing the distance
+//     to the circle's radius.
+func (p Point[T]) RelationshipToCircle(c Circle[T], opts ...Option) Relationship {
+	distancePointToCircleCenter := p.DistanceToPoint(c.center, opts...)
+	circleFloat := c.AsFloat64()
+	switch {
+	case distancePointToCircleCenter == circleFloat.radius:
+		return RelationshipIntersection
+	case distancePointToCircleCenter < circleFloat.radius:
+		return RelationshipContainedBy
+	default:
+		return RelationshipDisjoint
 	}
-	if p.Eq(seg.end, opts...) {
-		return RelationshipPointLineSegmentPointEqEnd
-	}
-
-	// Check if the point is collinear with the infinite line of the segment
-	orientation := Orientation(seg.start, seg.end, p)
-	if orientation != PointsCollinear {
-		return RelationshipPointLineSegmentMiss
-	}
-
-	// Check if the point lies within the bounding box of the segment
-	minX, maxX := min(seg.start.x, seg.end.x), max(seg.start.x, seg.end.x)
-	minY, maxY := min(seg.start.y, seg.end.y), max(seg.start.y, seg.end.y)
-
-	if float64(p.x) >= float64(minX)-options.epsilon && float64(p.x) <= float64(maxX)+options.epsilon &&
-		float64(p.y) >= float64(minY)-options.epsilon && float64(p.y) <= float64(maxY)+options.epsilon {
-		return RelationshipPointLineSegmentPointOnLineSegment
-	}
-
-	// If collinear but outside the segment's bounds
-	return RelationshipPointLineSegmentCollinearDisjoint
 }
 
-// RelationshipToRectangle determines the spatial relationship of the calling [Point] to a given [Rectangle].
+// RelationshipToLineSegment determines the spatial relationship of the current Point to a given [LineSegment].
 //
-// This method evaluates the position of the point relative to the specified rectangle and returns
-// a [RelationshipPointRectangle] value indicating whether the point is inside, outside, on an edge,
-// or on a vertex of the rectangle.
+// The function calculates the orthogonal (shortest) distance from the point to the line segment
+// and determines the relationship based on this distance.
+//
+// Relationships:
+//   - [RelationshipIntersection]: The point lies on the line segment.
+//   - [RelationshipDisjoint]: The point does not lie on the line segment.
 //
 // Parameters:
-//   - r ([Rectangle][T]): The rectangle to analyze.
+//   - l ([LineSegment][T]): The line segment to analyze the relationship with.
+//   - opts: A variadic slice of [Option] functions to customize the calculation.
+//     [WithEpsilon](epsilon float64): Adjusts the precision for distance comparisons, enabling robust handling of floating-point errors.
 //
 // Returns:
-//   - [RelationshipPointRectangle]: The relationship of the point to the rectangle, as defined by
-//     [RelationshipPointRectangle].
+//   - [Relationship]: The spatial relationship of the point to the line segment.
 //
 // Behavior:
-//   - This method delegates the relationship check to [Rectangle.RelationshipToPoint].
-//   - The evaluation considers the position of the point relative to the rectangle's edges and vertices.
+//   - If the shortest distance between the point and the line segment is zero (or within the epsilon threshold),
+//     the function returns [RelationshipIntersection].
+//   - Otherwise, it returns [RelationshipDisjoint].
 //
 // Notes:
-//   - For detailed behavior, examples, and further information, refer to the documentation for
-//     [Rectangle.RelationshipToPoint].
-//   - This method provides a convenient shorthand for evaluating the relationship between a point and a rectangle
-//     without needing to directly call [Rectangle.RelationshipToPoint].
-func (p Point[T]) RelationshipToRectangle(r Rectangle[T]) RelationshipPointRectangle {
-	return r.RelationshipToPoint(p)
+//   - This method is useful for determining if a point lies on a line segment, including endpoints and interior points.
+//   - Epsilon adjustment is particularly useful for floating-point coordinates to avoid precision errors.
+func (p Point[T]) RelationshipToLineSegment(l LineSegment[T], opts ...Option) Relationship {
+	distancePointToLineSegment := p.DistanceToLineSegment(l, opts...)
+	if distancePointToLineSegment == 0 {
+		return RelationshipIntersection
+	}
+	return RelationshipDisjoint
+}
+
+// RelationshipToPoint determines the spatial relationship between the current Point and another Point.
+//
+// Relationships:
+//   - [RelationshipEqual]: The two points are equal.
+//   - [RelationshipDisjoint]: The two points are not equal.
+//
+// Parameters:
+//   - other ([Point][T]): The other point to analyze the relationship with.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the comparison.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the coordinates of the two points,
+//     allowing for robust handling of floating-point precision errors.
+//
+// Returns:
+//   - [Relationship]: The spatial relationship between the two points.
+//
+// Behavior:
+//   - If the current point and the other point are equal (or approximately equal within the epsilon threshold),
+//     the function returns [RelationshipEqual].
+//   - Otherwise, it returns [RelationshipDisjoint].
+//
+// Notes:
+//   - Epsilon adjustment is particularly useful for floating-point coordinates to avoid precision errors
+//     when comparing points.
+func (p Point[T]) RelationshipToPoint(other Point[T], opts ...Option) Relationship {
+	if p.Eq(other, opts...) {
+		return RelationshipEqual
+	}
+	return RelationshipDisjoint
+}
+
+// RelationshipToPolyTree determines the spatial relationship between the current Point and each polygon in a [PolyTree].
+//
+// This method returns a map, where the keys are pointers to the polygons in the [PolyTree], and the values are
+// [Relationship] constants indicating the relationship of the point to each polygon.
+//
+// Relationships:
+//   - [RelationshipContainedBy]: The point is inside the polygon but not on its boundary.
+//   - [RelationshipIntersection]: The point lies on an edge or vertex of the polygon.
+//   - [RelationshipDisjoint]: The point lies entirely outside the polygon.
+//
+// Parameters:
+//   - pt (*[PolyTree][T]): The [PolyTree] to analyze.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the calculation.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the point's location relative
+//     to the polygons, improving robustness in floating-point calculations.
+//
+// Returns:
+//   - map[*[PolyTree][T]][Relationship]: A map where each polygon in the [PolyTree] is associated with its relationship to the point.
+//
+// Behavior:
+//
+// For each polygon in the [PolyTree], the function checks whether the point is:
+//
+//   - Contained within the polygon.
+//   - On an edge or vertex of the polygon.
+//   - Outside the polygon entirely.
+//
+// The relationship for each polygon is stored in the output map.
+func (p Point[T]) RelationshipToPolyTree(pt *PolyTree[T], opts ...Option) map[*PolyTree[T]]Relationship {
+	pDoubled := NewPoint[T](p.x*2, p.y*2)
+	output := make(map[*PolyTree[T]]Relationship, pt.Len())
+PointRelationshipToPolyTreeIterPolys:
+	for poly := range pt.iterPolys {
+
+		// check if point on edge/vertex
+		for edge := range poly.contour.iterEdges {
+			if pDoubled.RelationshipToLineSegment(edge, opts...) == RelationshipIntersection {
+				output[poly] = RelationshipIntersection
+				continue PointRelationshipToPolyTreeIterPolys
+			}
+		}
+
+		// check if point is contained in poly
+		if poly.contour.isPointInside(pDoubled) {
+			output[poly] = RelationshipContainedBy
+			continue PointRelationshipToPolyTreeIterPolys
+		}
+
+		// else, no relationship
+		output[poly] = RelationshipDisjoint
+	}
+	return output
+}
+
+// RelationshipToRectangle determines the spatial relationship between the current Point and a [Rectangle].
+//
+// Relationships:
+//   - [RelationshipIntersection]: The point lies on one of the rectangle's edges.
+//   - [RelationshipContainedBy]: The point is inside the rectangle but not on its boundary.
+//   - [RelationshipDisjoint]: The point lies entirely outside the rectangle.
+//
+// Parameters:
+//   - r ([Rectangle][T]): The rectangle to analyze the relationship with.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the calculation.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the point's location relative
+//     to the rectangle, improving robustness in floating-point calculations.
+//
+// Returns:
+//   - [Relationship]: The spatial relationship between the point and the rectangle.
+//
+// Behavior:
+//   - The function checks if the point lies on any of the rectangle's edges. If so, it returns [RelationshipIntersection].
+//   - If the point is not on an edge but is inside the rectangle, it returns [RelationshipContainedBy].
+//   - If the point is neither on an edge nor inside the rectangle, it returns [RelationshipDisjoint].
+func (p Point[T]) RelationshipToRectangle(r Rectangle[T], opts ...Option) Relationship {
+	for _, edge := range r.Edges() {
+		if p.RelationshipToLineSegment(edge, opts...) == RelationshipIntersection {
+			return RelationshipIntersection
+		}
+	}
+	if r.ContainsPoint(p) {
+		return RelationshipContainedBy
+	}
+	return RelationshipDisjoint
 }
 
 // Rotate rotates the point by a specified angle (in radians), counter-clockwise, around a given pivot point.
@@ -548,8 +643,8 @@ func (p Point[T]) Rotate(pivot Point[T], radians float64, opts ...Option) Point[
 	// Apply options with defaults
 	options := applyOptions(geomOptions{epsilon: 0}, opts...)
 
-	pf := p.AsFloat()
-	originf := pivot.AsFloat()
+	pf := p.AsFloat64()
+	originf := pivot.AsFloat64()
 
 	// Translate the point to the origin
 	translatedX := pf.x - originf.x

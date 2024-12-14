@@ -35,13 +35,10 @@
 // precision issues. This allows you to control the tolerance for comparisons, making the library robust
 // for real-world applications where precision errors can occur.
 //
-// # Relationships Between Types
+// # Relationships Between Geometric Types
 //
-// The library provides methods to compute relationships between geometric types, including:
-//
-//   - [Point]-to-Geometry Relationships: Determine whether a [Point] is inside, outside, or on the edge of a geometry.
-//   - [LineSegment]-to-Geometry Relationships: Check if a [LineSegment] intersects, touches, or is entirely inside or outside another geometry.
-//   - Geometry-to-Geometry Relationships: Explore relationships between shapes, such as overlap, containment, tangency, and intersection.
+// This library provides methods to compute relationships between geometric types using a standardized set of relationships:
+// [RelationshipDisjoint], [RelationshipIntersection], [RelationshipContainedBy], [RelationshipContains], and [RelationshipEqual].
 //
 // # Acknowledgments
 //
@@ -61,6 +58,7 @@
 package geom2d
 
 import (
+	"fmt"
 	"math"
 )
 
@@ -97,6 +95,112 @@ func WithEpsilon(epsilon float64) Option {
 	}
 }
 
+// Relationship defines the spatial or geometric relationship between two shapes or entities
+// in 2D space. This type is used across various functions to represent how one geometric
+// entity relates to another.
+//
+// The possible relationships include:
+//   - Disjoint: The entities do not intersect, overlap, or touch in any way.
+//   - Intersection: The entities share some boundary or overlap.
+//   - Contained: One entity is fully within the boundary of another.
+//   - ContainedBy: One entity is fully enclosed by another.
+//   - Equal: The entities are identical in shape, size, and position.
+//
+// Each relationship type is represented as a constant value of the Relationship type.
+// Functions that evaluate relationships between geometric entities typically return one
+// of these constants to describe the spatial relationship between them.
+//
+// See the individual constant definitions for more details.
+type Relationship uint8
+
+// Valid values for Relationship:
+const (
+	// RelationshipDisjoint indicates that the two entities are completely separate,
+	// with no overlap, touching, or intersection.
+	RelationshipDisjoint Relationship = iota
+
+	// RelationshipIntersection indicates that the two entities overlap or share
+	// a boundary. This includes cases where the entities partially intersect
+	// or where they touch at one or more points.
+	RelationshipIntersection
+
+	// RelationshipContainedBy indicates that the first entity is fully enclosed
+	// within the second entity. The boundary of the first entity does not extend
+	// outside the boundary of the second entity.
+	RelationshipContainedBy
+
+	// RelationshipContains indicates that the first entity fully encloses the
+	// second entity. The boundary of the second entity does not extend outside
+	// the boundary of the first entity.
+	RelationshipContains
+
+	// RelationshipEqual indicates that the two entities are identical in shape,
+	// size, and position. This includes cases where their boundaries coincide exactly.
+	RelationshipEqual
+)
+
+// flipContainment reverses containment relationships for a [Relationship].
+//
+// This method is used to swap the roles of containment when interpreting
+// relationships. Specifically:
+//   - If the [Relationship] is RelationshipContainedBy, it is flipped to RelationshipContains.
+//   - If the [Relationship] is RelationshipContains, it is flipped to RelationshipContainedBy.
+//   - All other [Relationship] values are returned unchanged.
+//
+// Returns:
+//   - [Relationship]: The flipped or unchanged [Relationship].
+//
+// Example:
+//
+//	rel := RelationshipContainedBy
+//	flipped := rel.flipContainment()
+//	fmt.Println(flipped) // Output: RelationshipContains
+func (r Relationship) flipContainment() Relationship {
+	switch r {
+	case RelationshipContainedBy:
+		return RelationshipContains
+	case RelationshipContains:
+		return RelationshipContainedBy
+	default:
+		return r
+	}
+}
+
+// String converts a [Relationship] value to its string representation.
+//
+// This method provides a human-readable string corresponding to the [Relationship]
+// constant, such as RelationshipDisjoint or RelationshipContainedBy. It is useful
+// for debugging and logging purposes.
+//
+// Supported [Relationship] values:
+//   - RelationshipDisjoint: The objects are disjoint and do not touch or intersect.
+//   - RelationshipIntersection: The objects intersect or overlap at some point.
+//   - RelationshipContainedBy: The object is fully contained within another object.
+//   - RelationshipContains: The object fully contains another object.
+//   - RelationshipEqual: The objects are identical in size, shape, and position.
+//
+// Returns:
+//   - string: The string representation of the [Relationship].
+//
+// Panics:
+//   - If the [Relationship] value is not supported, this method panics with an error message.
+func (r Relationship) String() string {
+	switch r {
+	case RelationshipDisjoint:
+		return "RelationshipDisjoint"
+	case RelationshipIntersection:
+		return "RelationshipIntersection"
+	case RelationshipContainedBy:
+		return "RelationshipContainedBy"
+	case RelationshipContains:
+		return "RelationshipContains"
+	case RelationshipEqual:
+		return "RelationshipEqual"
+	default:
+		panic(fmt.Errorf("unsupported Relationship: %d", r))
+	}
+}
+
 // SignedNumber is a generic interface representing signed numeric types supported by this package.
 // This interface allows functions and structs to operate generically on various numeric types,
 // including integer and floating-point types, while restricting to signed values only.
@@ -112,60 +216,6 @@ func WithEpsilon(epsilon float64) Option {
 // for each specific type, enabling flexible and type-safe operations across different numeric data.
 type SignedNumber interface {
 	int | int32 | int64 | float32 | float64
-}
-
-// GeometricType is a type constraint for generic programming, representing all geometric types
-// supported in this library. It allows functions and methods to operate on any of the included
-// geometric types in a type-safe manner.
-//
-// Supported Types:
-//   - [Point]: Represents a 2D point with x and y coordinates.
-//   - [LineSegment]: Represents a line segment defined by two endpoints.
-//   - [Rectangle]: Represents an axis-aligned rectangle defined by its corner points.
-//   - [Circle]: Represents a circle defined by its center point and radius.
-//   - [PolyTree]: Represents a hierarchical polygon structure, supporting holes and islands.
-//
-// Type Parameter:
-//   - T: A type that satisfies the [SignedNumber] constraint, representing the numeric type
-//     used for the coordinates and dimensions (e.g., int, float64).
-//
-// Notes:
-//   - This interface is used purely as a type constraint for generic functions and methods.
-//   - It does not define methods that the types must implement, but rather ensures that
-//     only valid geometric types are used.
-//
-// todo: consider making private & finish doco
-type GeometricType[T SignedNumber] interface {
-	Point[T] | LineSegment[T] | Rectangle[T] | Circle[T] | PolyTree[T]
-}
-
-// todo: consider making private & finish doco
-type Measurable[T SignedNumber] interface {
-	Area() float64
-	Center(opts ...Option) Point[T]
-	Perimeter(opts ...Option) float64
-}
-
-// todo: consider making private & finish doco
-type Spatial[T SignedNumber] interface {
-	BoundingBox() Rectangle[T]
-	ContainsPoint(p Point[T]) bool
-}
-
-// todo: consider making private & finish doco
-type Transformable[T SignedNumber, R GeometricType[T]] interface {
-	Rotate(pivot Point[T], radians float64, opts ...Option) R
-	Scale(ref Point[T], k T) R
-	Translate(delta Point[T]) R
-}
-
-// todo: consider making private & finish doco
-type Geometry[T SignedNumber, R GeometricType[T]] interface {
-	Measurable[T]
-	Spatial[T]
-	Transformable[T, R]
-	Eq(other R, opts ...Option) bool
-	Intersects(g R) bool
 }
 
 // ReflectionAxis specifies the axis or line across which a point or line segment should be reflected.

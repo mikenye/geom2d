@@ -109,7 +109,7 @@ func ExampleNewPointFromImagePoint() {
 
 func ExamplePoint_AsFloat() {
 	p := geom2d.NewPoint(3, 4)
-	floatPoint := p.AsFloat()
+	floatPoint := p.AsFloat64()
 	fmt.Printf("%s is type %T", floatPoint, floatPoint)
 	// Output:
 	// Point[(3, 4)] is type geom2d.Point[float64]
@@ -297,32 +297,133 @@ func ExamplePoint_Reflect() {
 	// Reflected across custom LineSegment[(0, 0) -> (10, 10)]: Point[(4, 3)]
 }
 
+func ExamplePoint_RelationshipToCircle() {
+	// Define a point
+	point := geom2d.NewPoint(1, 1)
+
+	// Define a circle with center (0, 0) and radius 5
+	circle := geom2d.NewCircle(geom2d.NewPoint(0, 0), 5)
+
+	// Calculate the relationship between the point and the circle
+	relationship := point.RelationshipToCircle(circle, geom2d.WithEpsilon(1e-10))
+
+	// Output the relationship
+	fmt.Println(relationship)
+	// Output:
+	// RelationshipContainedBy
+}
+
 func ExamplePoint_RelationshipToLineSegment() {
-	// Define a line segment
+	// Define a line segment from (0, 0) to (10, 0)
 	segment := geom2d.NewLineSegment(
-		geom2d.NewPoint[int](0, 0),
-		geom2d.NewPoint[int](10, 0),
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(10, 0),
 	)
 
-	// Define points to analyze
-	pointOnSegment := geom2d.NewPoint[int](5, 0)
-	pointOnLine := geom2d.NewPoint[int](15, 0)
-	pointAtStart := geom2d.NewPoint[int](0, 0)
-	pointAtEnd := geom2d.NewPoint[int](10, 0)
-	pointMiss := geom2d.NewPoint[int](5, 5)
+	// Define points to test
+	pointOnSegment := geom2d.NewPoint(5, 0) // Lies on the segment
+	pointAbove := geom2d.NewPoint(5, 2)     // Lies above the segment
 
 	// Analyze relationships
-	fmt.Println(pointOnSegment.RelationshipToLineSegment(segment))
-	fmt.Println(pointOnLine.RelationshipToLineSegment(segment))
-	fmt.Println(pointAtStart.RelationshipToLineSegment(segment))
-	fmt.Println(pointAtEnd.RelationshipToLineSegment(segment))
-	fmt.Println(pointMiss.RelationshipToLineSegment(segment))
+	fmt.Println(pointOnSegment.RelationshipToLineSegment(segment)) // Intersection
+	fmt.Println(pointAbove.RelationshipToLineSegment(segment))     // Disjoint
 	// Output:
-	// RelationshipPointLineSegmentPointOnLineSegment
-	// RelationshipPointLineSegmentCollinearDisjoint
-	// RelationshipPointLineSegmentPointEqStart
-	// RelationshipPointLineSegmentPointEqEnd
-	// RelationshipPointLineSegmentMiss
+	// RelationshipIntersection
+	// RelationshipDisjoint
+}
+
+func ExamplePoint_RelationshipToPoint() {
+	// Define two points
+	pointA := geom2d.NewPoint(5, 5)
+	pointB := geom2d.NewPoint(5, 5)
+	pointC := geom2d.NewPoint(10, 10)
+
+	// Analyze relationships
+	fmt.Println(pointA.RelationshipToPoint(pointB)) // Equal
+	fmt.Println(pointA.RelationshipToPoint(pointC)) // Disjoint
+	// Output:
+	// RelationshipEqual
+	// RelationshipDisjoint
+}
+
+func ExamplePoint_RelationshipToPolyTree() {
+	// Define a PolyTree with a root polygon and a hole
+	root, _ := geom2d.NewPolyTree(
+		[]geom2d.Point[int]{
+			geom2d.NewPoint(0, 0),
+			geom2d.NewPoint(0, 100),
+			geom2d.NewPoint(100, 100),
+			geom2d.NewPoint(100, 0),
+		},
+		geom2d.PTSolid,
+	)
+	hole, _ := geom2d.NewPolyTree(
+		[]geom2d.Point[int]{
+			geom2d.NewPoint(20, 20),
+			geom2d.NewPoint(20, 80),
+			geom2d.NewPoint(80, 80),
+			geom2d.NewPoint(80, 20),
+		},
+		geom2d.PTHole,
+	)
+	_ = root.AddChild(hole)
+
+	// Note: While errors are ignored in this example for simplicity, it is important to handle errors properly in
+	// production code to ensure robustness and reliability.
+
+	// Define points to test
+	pointA := geom2d.NewPoint(50, 50)   // Inside both the hole and the root poly
+	pointB := geom2d.NewPoint(5, 5)     // Inside the root polygon only
+	pointC := geom2d.NewPoint(0, 10)    // On the root polygon's edge
+	pointD := geom2d.NewPoint(-15, -15) // Outside the entire PolyTree
+
+	// Analyze relationships
+	relationships := pointA.RelationshipToPolyTree(root)
+	fmt.Println(relationships[root]) // RelationshipContainedBy
+	fmt.Println(relationships[hole]) // RelationshipContainedBy
+
+	relationships = pointB.RelationshipToPolyTree(root)
+	fmt.Println(relationships[root]) // RelationshipContainedBy
+	fmt.Println(relationships[hole]) // RelationshipDisjoint
+
+	relationships = pointC.RelationshipToPolyTree(root)
+	fmt.Println(relationships[root]) // RelationshipIntersection
+	fmt.Println(relationships[hole]) // RelationshipDisjoint
+
+	relationships = pointD.RelationshipToPolyTree(root)
+	fmt.Println(relationships[root]) // RelationshipDisjoint
+	fmt.Println(relationships[hole]) // RelationshipDisjoint
+	// Output:
+	// RelationshipContainedBy
+	// RelationshipContainedBy
+	// RelationshipContainedBy
+	// RelationshipDisjoint
+	// RelationshipIntersection
+	// RelationshipDisjoint
+	// RelationshipDisjoint
+	// RelationshipDisjoint
+}
+
+func ExamplePoint_RelationshipToRectangle() {
+	// Define a rectangle
+	rect := geom2d.NewRectangleByOppositeCorners(
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(10, 10),
+	)
+
+	// Define points
+	pointA := geom2d.NewPoint(5, 5)  // Inside
+	pointB := geom2d.NewPoint(10, 5) // On edge
+	pointC := geom2d.NewPoint(15, 5) // Outside
+
+	// Analyze relationships
+	fmt.Println(pointA.RelationshipToRectangle(rect)) // Contained
+	fmt.Println(pointB.RelationshipToRectangle(rect)) // Intersection
+	fmt.Println(pointC.RelationshipToRectangle(rect)) // Disjoint
+	// Output:
+	// RelationshipContainedBy
+	// RelationshipIntersection
+	// RelationshipDisjoint
 }
 
 func ExamplePoint_Rotate() {
