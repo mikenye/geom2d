@@ -3,6 +3,7 @@ package geom2d
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"math"
 	"testing"
 )
@@ -22,6 +23,114 @@ func BenchmarkLineSegment_ProjectOntoLineSegment(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		point.ProjectOntoLineSegment(segment)
+	}
+}
+
+func TestDetailedLineSegmentRelationship_String(t *testing.T) {
+	tests := map[string]struct {
+		input       detailedLineSegmentRelationship
+		expected    string
+		shouldPanic bool
+	}{
+		"lsrCollinearDisjoint": {
+			input:       lsrCollinearDisjoint,
+			expected:    "lsrCollinearDisjoint",
+			shouldPanic: false,
+		},
+		"lsrMiss": {
+			input:       lsrMiss,
+			expected:    "lsrMiss",
+			shouldPanic: false,
+		},
+		"lsrIntersects": {
+			input:       lsrIntersects,
+			expected:    "lsrIntersects",
+			shouldPanic: false,
+		},
+		"lsrAeqC": {
+			input:       lsrAeqC,
+			expected:    "lsrAeqC",
+			shouldPanic: false,
+		},
+		"lsrAeqD": {
+			input:       lsrAeqD,
+			expected:    "lsrAeqD",
+			shouldPanic: false,
+		},
+		"lsrBeqC": {
+			input:       lsrBeqC,
+			expected:    "lsrBeqC",
+			shouldPanic: false,
+		},
+		"lsrBeqD": {
+			input:       lsrBeqD,
+			expected:    "lsrBeqD",
+			shouldPanic: false,
+		},
+		"lsrAonCD": {
+			input:       lsrAonCD,
+			expected:    "lsrAonCD",
+			shouldPanic: false,
+		},
+		"lsrBonCD": {
+			input:       lsrBonCD,
+			expected:    "lsrBonCD",
+			shouldPanic: false,
+		},
+		"lsrConAB": {
+			input:       lsrConAB,
+			expected:    "lsrConAB",
+			shouldPanic: false,
+		},
+		"lsrDonAB": {
+			input:       lsrDonAB,
+			expected:    "lsrDonAB",
+			shouldPanic: false,
+		},
+		"lsrCollinearAonCD": {
+			input:       lsrCollinearAonCD,
+			expected:    "lsrCollinearAonCD",
+			shouldPanic: false,
+		},
+		"lsrCollinearBonCD": {
+			input:       lsrCollinearBonCD,
+			expected:    "lsrCollinearBonCD",
+			shouldPanic: false,
+		},
+		"lsrCollinearABinCD": {
+			input:       lsrCollinearABinCD,
+			expected:    "lsrCollinearABinCD",
+			shouldPanic: false,
+		},
+		"lsrCollinearCDinAB": {
+			input:       lsrCollinearCDinAB,
+			expected:    "lsrCollinearCDinAB",
+			shouldPanic: false,
+		},
+		"lsrCollinearEqual": {
+			input:       lsrCollinearEqual,
+			expected:    "lsrCollinearEqual",
+			shouldPanic: false,
+		},
+		"UnsupportedRelationship": {
+			input:       detailedLineSegmentRelationship(100), // An unsupported relationship
+			shouldPanic: true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			if tt.shouldPanic {
+				require.Panics(t, func() {
+					_ = tt.input.String()
+				}, "Expected panic for unsupported relationship")
+			} else {
+				require.NotPanics(t, func() {
+					output := tt.input.String()
+					assert.Equal(t, tt.expected, output, "Unexpected string for relationship")
+				}, "Did not expect panic for supported relationship")
+			}
+		})
 	}
 }
 
@@ -244,6 +353,128 @@ func TestLineSegment_AsIntRounded(t *testing.T) {
 				end := tt.end.(Point[float64])
 				ls := NewLineSegment(start, end)
 				assert.Equal(t, tt.expected, ls.AsIntRounded())
+			}
+		})
+	}
+}
+
+func TestLineSegment_Center(t *testing.T) {
+	tests := map[string]struct {
+		lineSegment LineSegment[int]
+		epsilon     float64
+		expected    Point[float64]
+	}{
+		"No epsilon, simple case": {
+			lineSegment: NewLineSegment(NewPoint(0, 0), NewPoint(4, 4)),
+			epsilon:     0,
+			expected:    NewPoint[float64](2, 2),
+		},
+		"No epsilon, negative coordinates": {
+			lineSegment: NewLineSegment(NewPoint(-4, -4), NewPoint(4, 4)),
+			epsilon:     0,
+			expected:    NewPoint[float64](0, 0),
+		},
+		"With epsilon, rounding applied": {
+			lineSegment: NewLineSegment(NewPoint(0, 0), NewPoint(3, 3)),
+			epsilon:     0.1,
+			expected:    NewPoint[float64](1.5, 1.5), // No rounding as it's precise
+		},
+		"With epsilon, midpoint near integer": {
+			lineSegment: NewLineSegment(NewPoint(0, 0), NewPoint(4, 5)),
+			epsilon:     0.5,
+			expected:    NewPoint[float64](2, 2.5), // Epsilon not applied due to midpoint already exact
+		},
+		"With epsilon, midpoint adjusted to integer": {
+			lineSegment: NewLineSegment(NewPoint(0, 0), NewPoint(5, 5)),
+			epsilon:     0.5,
+			expected:    NewPoint[float64](2.5, 2.5), // Exact match without adjustment
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Calculate center
+			center := tt.lineSegment.Center(WithEpsilon(tt.epsilon))
+
+			// Assert the result
+			assert.InDelta(t, tt.expected.x, center.x, 1e-9, "Unexpected x-coordinate for center")
+			assert.InDelta(t, tt.expected.y, center.y, 1e-9, "Unexpected y-coordinate for center")
+		})
+	}
+}
+
+// todo: move to linesegment_test.go
+func TestLineSegment_ContainsPoint(t *testing.T) {
+	tests := map[string]struct {
+		point    any
+		segment  any
+		expected bool
+	}{
+		"Point on line segment (float64)": {
+			point:    NewPoint[float64](1, 1),
+			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
+			expected: true,
+		},
+		"Point at endpoint A (float64)": {
+			point:    NewPoint[float64](0, 0),
+			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
+			expected: true,
+		},
+		"Point at endpoint End (float64)": {
+			point:    NewPoint[float64](2, 2),
+			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
+			expected: true,
+		},
+		"Point collinear but outside bounding box (float64)": {
+			point:    NewPoint[float64](3, 3),
+			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
+			expected: false,
+		},
+		"Point not collinear (float64)": {
+			point:    NewPoint[float64](1, 2),
+			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
+			expected: false,
+		},
+		"Point on line segment (int)": {
+			point:    NewPoint[int](1, 1),
+			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
+			expected: true,
+		},
+		"Point at endpoint A (int)": {
+			point:    NewPoint[int](0, 0),
+			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
+			expected: true,
+		},
+		"Point at endpoint End (int)": {
+			point:    NewPoint[int](2, 2),
+			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
+			expected: true,
+		},
+		"Point collinear but outside bounding box (int)": {
+			point:    NewPoint[int](3, 3),
+			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
+			expected: false,
+		},
+		"Point not collinear (int)": {
+			point:    NewPoint[int](1, 2),
+			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
+			expected: false,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			switch point := tt.point.(type) {
+			case Point[int]:
+				segment := tt.segment.(LineSegment[int])
+				result := segment.ContainsPoint(point)
+				assert.Equal(t, tt.expected, result, "Test %s failed", name)
+			case Point[float64]:
+				segment := tt.segment.(LineSegment[float64])
+				result := segment.ContainsPoint(point)
+				assert.Equal(t, tt.expected, result, "Test %s failed", name)
+			default:
+				t.Errorf("Unsupported point type in test %s", name)
 			}
 		})
 	}
@@ -734,11 +965,11 @@ func TestLineSegment_Length(t *testing.T) {
 			case Point[int]:
 				end := tt.end.(Point[int])
 				ls := NewLineSegment(start, end)
-				assert.Equal(t, tt.expectedLength, ls.Perimeter())
+				assert.Equal(t, tt.expectedLength, ls.Length())
 			case Point[float64]:
 				end := tt.end.(Point[float64])
 				ls := NewLineSegment(start, end)
-				assert.Equal(t, tt.expectedLength, ls.Perimeter())
+				assert.Equal(t, tt.expectedLength, ls.Length())
 			}
 		})
 	}

@@ -22,13 +22,6 @@ func ExampleLineSegment_AddLineSegment() {
 	// LineSegment[(3, 4) -> (5, 7)]
 }
 
-func ExampleLineSegment_Area() {
-	segment := geom2d.NewLineSegment(geom2d.NewPoint(1, 2), geom2d.NewPoint(3, 4))
-	fmt.Println(segment.Area())
-	// Output:
-	// 0
-}
-
 func ExampleLineSegment_AsFloat64() {
 	// Create a LineSegment with integer coordinates
 	intSegment := geom2d.NewLineSegment(
@@ -163,6 +156,31 @@ func ExampleLineSegment_Eq_epsilon() {
 	// true
 }
 
+func ExampleLineSegment_IntersectsLineSegment() {
+	// Define two line segments
+	line1 := geom2d.NewLineSegment(geom2d.NewPoint(0, 0), geom2d.NewPoint(10, 10))   // Line segment from (0, 0) to (10, 10)
+	line2 := geom2d.NewLineSegment(geom2d.NewPoint(5, 5), geom2d.NewPoint(15, 15))   // Line segment from (5, 5) to (15, 15)
+	line3 := geom2d.NewLineSegment(geom2d.NewPoint(20, 20), geom2d.NewPoint(30, 30)) // Line segment far from line1 and line2
+
+	// Check for intersection
+	fmt.Printf("Line1 intersects Line2: %v\n", line1.IntersectsLineSegment(line2)) // Expected: true
+	fmt.Printf("Line1 intersects Line3: %v\n", line1.IntersectsLineSegment(line3)) // Expected: false
+
+	// Overlapping case
+	line4 := geom2d.NewLineSegment(geom2d.NewPoint(0, 0), geom2d.NewPoint(5, 5))   // Line segment overlaps partially with Line1
+	fmt.Printf("Line1 intersects Line4: %v\n", line1.IntersectsLineSegment(line4)) // Expected: true
+
+	// Endpoint touching case
+	line5 := geom2d.NewLineSegment(geom2d.NewPoint(10, 10), geom2d.NewPoint(20, 20)) // Shares an endpoint with Line1
+	fmt.Printf("Line1 intersects Line5: %v\n", line1.IntersectsLineSegment(line5))   // Expected: true
+
+	// Output:
+	// Line1 intersects Line2: true
+	// Line1 intersects Line3: false
+	// Line1 intersects Line4: true
+	// Line1 intersects Line5: true
+}
+
 func ExampleLineSegment_IntersectionPoint() {
 	// Define two line segments
 	AB := geom2d.NewLineSegment(geom2d.NewPoint[float64](0, 0), geom2d.NewPoint[float64](4, 4))
@@ -182,9 +200,9 @@ func ExampleLineSegment_IntersectionPoint() {
 	// Intersection point: (2.00, 2.00)
 }
 
-func ExampleLineSegment_Perimeter() {
+func ExampleLineSegment_Length() {
 	segment := geom2d.NewLineSegment(geom2d.NewPoint(0, 0), geom2d.NewPoint(3, 4))
-	fmt.Println(segment.Perimeter())
+	fmt.Println(segment.Length())
 	// Output:
 	// 5
 }

@@ -126,8 +126,8 @@ type LineSegment[T SignedNumber] struct {
 // NewLineSegment creates a new line segment from two endpoints, a start [Point] and end [Point].
 //
 // This constructor function initializes a LineSegment with the specified starting and ending points.
-// The generic type parameter `T` must satisfy the [SignedNumber] constraint, allowing various numeric types
-// (such as `int` or `float64`) to be used for the segment’s coordinates.
+// The generic type parameter "T" must satisfy the [SignedNumber] constraint, allowing various numeric types
+// (such as int or float64) to be used for the segment’s coordinates.
 //
 // Parameters:
 //   - start ([Point][T]): The starting [Point] of the LineSegment.
@@ -158,22 +158,6 @@ func (l LineSegment[T]) AddLineSegment(other LineSegment[T]) LineSegment[T] {
 		l.start.Translate(other.start),
 		l.end.Translate(other.end),
 	)
-}
-
-// Area returns the area of the line segment, which is always 0.
-//
-// This is because a line segment is a one-dimensional geometric entity
-// and does not enclose any space in two dimensions.
-//
-// Note:
-//   - This method exists to satisfy the [Measurable] interface. It is not here
-//     to insult your intelligence. Rest assured, we know you understand that
-//     line segments don't have area. 😊
-//
-// Returns:
-//   - float64: The area of the line segment, which is 0.
-func (l LineSegment[T]) Area() float64 {
-	return 0
 }
 
 // AsFloat32 converts the line segment to a LineSegment[float32] type.
@@ -225,16 +209,10 @@ func (l LineSegment[T]) AsIntRounded() LineSegment[int] {
 	return NewLineSegment(l.start.AsIntRounded(), l.end.AsIntRounded())
 }
 
-// BoundingBox computes the smallest axis-aligned rectangle that fully contains the LineSegment.
+// BoundingBox computes the smallest axis-aligned [Rectangle] that fully contains the LineSegment.
 //
 // Returns:
-//   - [Rectangle][T]: A rectangle defined by the opposite corners of the LineSegment.
-//
-// Behavior:
-//   - The rectangle's top-left corner corresponds to the minimum x and y coordinates
-//     of the LineSegment's start and end points.
-//   - The rectangle's bottom-right corner corresponds to the maximum x and y coordinates
-//     of the LineSegment's start and end points.
+//   - [Rectangle][T]: A [Rectangle] defined by the opposite corners of the LineSegment.
 //
 // Notes:
 //   - This method is useful for spatial queries, collision detection, or visual rendering.
@@ -615,24 +593,13 @@ func (l LineSegment[T]) IntersectionPoint(other LineSegment[T]) (Point[float64],
 // IntersectsLineSegment checks whether there is any intersection or overlap between LineSegment l and LineSegment other.
 //
 // This function returns true if segments l and other have an intersecting spatial relationship, such as intersection,
-// overlap, containment, or endpoint coincidence. It leverages the [LineSegment.detailedRelationshipToLineSegment] function to
-// determine if the relationship value is greater than [lsrMiss], indicating that the segments are not fully
-// disjoint.
+// overlap, containment, or endpoint coincidence.
 //
 // Parameters:
-//   - other (LineSegment[T]): The line segment to compare with AB.
+//   - other (LineSegment[T]): The line segment to compare with l.
 //
 // Returns:
 //   - bool: Returns true if l and other intersect, overlap, or share any form of intersecting relationship, and false if they are completely disjoint.
-//
-// Example usage:
-//
-//	segmentAB := NewLineSegment(NewPoint(0, 0), NewPoint(2, 2))
-//	segmentCD := NewLineSegment(NewPoint(1, 1), NewPoint(3, 3))
-//	intersects := segmentAB.IntersectsLineSegment(segmentCD)
-//
-// `intersects` will be `true` as there is an intersecting relationship between `AB` and `CD`.
-// todo: may not be needed: RelationshipTo* methods can make IntersectsLineSegment and ContainsPoint redundant
 func (l LineSegment[T]) IntersectsLineSegment(other LineSegment[T]) bool {
 	if l.detailedRelationshipToLineSegment(other) > lsrMiss {
 		return true
@@ -640,7 +607,7 @@ func (l LineSegment[T]) IntersectsLineSegment(other LineSegment[T]) bool {
 	return false
 }
 
-// Perimeter calculates the length of the line segment, optionally using an epsilon threshold
+// Length calculates the length of the line segment, optionally using an epsilon threshold
 // to adjust the precision of the calculation.
 //
 // Parameters:
@@ -661,10 +628,7 @@ func (l LineSegment[T]) IntersectsLineSegment(other LineSegment[T]) bool {
 //   - This function relies on [LineSegment.DistanceToPoint], which supports epsilon adjustments for distance
 //     calculations. Epsilon is particularly useful for floating-point coordinates where minor
 //     imprecision might affect the result.
-//   - Yes, we know "Perimeter" is an odd choice of name for a line segment (ideally it would be "Length").
-//     Rest assured, this was done to meet the [Measurable] interface requirements and to standardize functions
-//     across all geometric types.
-func (l LineSegment[T]) Perimeter(opts ...Option) float64 {
+func (l LineSegment[T]) Length(opts ...Option) float64 {
 	return l.start.DistanceToPoint(l.end, opts...)
 }
 
@@ -739,9 +703,9 @@ func (l LineSegment[T]) Reflect(axis ReflectionAxis, line ...LineSegment[float64
 // Returns:
 //
 // [Relationship]: A constant indicating the relationship of the line segment to the circle. Possible values are:
-//   - RelationshipDisjoint: The line segment lies entirely outside the circle.
-//   - RelationshipIntersection: The line segment intersects the circle at one or more points.
-//   - RelationshipContainedBy: The line segment lies entirely within the circle.
+//   - [RelationshipDisjoint]: The line segment lies entirely outside the circle.
+//   - [RelationshipIntersection]: The line segment intersects the circle at one or more points.
+//   - [RelationshipContainedBy]: The line segment lies entirely within the circle.
 //
 // Notes:
 //   - Epsilon adjustment is particularly useful when working with floating-point coordinates,
@@ -789,9 +753,9 @@ func (l LineSegment[T]) RelationshipToCircle(c Circle[T], opts ...Option) Relati
 // Behavior:
 //
 // The detailed relationship mapped to a [Relationship] constant:
-//   - RelationshipDisjoint: If the segments are collinear but disjoint, or if they miss entirely.
-//   - RelationshipIntersection: The segments intersect at one or more points.
-//   - RelationshipEqual: If the segments are collinear and exactly equal (share the same endpoints).
+//   - [RelationshipDisjoint]: If the segments are collinear but disjoint, or if they miss entirely.
+//   - [RelationshipIntersection]: The segments intersect at one or more points.
+//   - [RelationshipEqual]: If the segments are collinear and exactly equal (share the same endpoints).
 //
 // Returns:
 //   - [Relationship]: A constant describing the high-level relationship between the two line segments.
@@ -867,7 +831,7 @@ func (l LineSegment[T]) RelationshipToPolyTree(pt *PolyTree[T], opts ...Option) 
 	lDoubled := NewLineSegment[T](NewPoint[T](l.start.x*2, l.start.y*2), NewPoint[T](l.end.x*2, l.end.y*2))
 	output := make(map[*PolyTree[T]]Relationship, pt.Len())
 RelationshipToPolyTreeIterPolys:
-	for poly := range pt.iterPolys {
+	for poly := range pt.Nodes {
 
 		// check for intersection
 		for edge := range poly.contour.iterEdges {
@@ -930,7 +894,7 @@ func (l LineSegment[T]) RelationshipToRectangle(r Rectangle[T], opts ...Option) 
 	return RelationshipDisjoint
 }
 
-// Rotate rotates the LineSegment around a given pivot [Point] by a specified angle in radians.
+// Rotate rotates the LineSegment around a given pivot [Point] by a specified angle in radians counterclockwise.
 // Optionally, an epsilon threshold can be applied to adjust the precision of the resulting coordinates.
 //
 // Parameters:

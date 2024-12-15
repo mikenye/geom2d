@@ -242,7 +242,7 @@ func (r Rectangle[T]) RelationshipToPolyTree(pt *PolyTree[T], opts ...Option) ma
 	output := make(map[*PolyTree[T]]Relationship, pt.Len())
 
 RelationshipToPolyTreeIterPolys:
-	for poly := range pt.iterPolys {
+	for poly := range pt.Nodes {
 		rectangleContainsPoly := true
 		polyContainsRectangle := true
 

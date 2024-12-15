@@ -467,79 +467,28 @@ func TestPoint_Eq(t *testing.T) {
 	}
 }
 
-// todo: move to linesegment_test.go
-func TestLineSegment_ContainsPoint(t *testing.T) {
+func TestPointOrientation_String(t *testing.T) {
 	tests := map[string]struct {
-		point    any
-		segment  any
-		expected bool
+		input          PointOrientation
+		expectedOutput string
 	}{
-		"Point on line segment (float64)": {
-			point:    NewPoint[float64](1, 1),
-			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
-			expected: true,
+		"PointsCollinear": {
+			input:          PointsCollinear,
+			expectedOutput: "PointsCollinear",
 		},
-		"Point at endpoint A (float64)": {
-			point:    NewPoint[float64](0, 0),
-			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
-			expected: true,
+		"PointsClockwise": {
+			input:          PointsClockwise,
+			expectedOutput: "PointsClockwise",
 		},
-		"Point at endpoint End (float64)": {
-			point:    NewPoint[float64](2, 2),
-			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
-			expected: true,
-		},
-		"Point collinear but outside bounding box (float64)": {
-			point:    NewPoint[float64](3, 3),
-			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
-			expected: false,
-		},
-		"Point not collinear (float64)": {
-			point:    NewPoint[float64](1, 2),
-			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
-			expected: false,
-		},
-		"Point on line segment (int)": {
-			point:    NewPoint[int](1, 1),
-			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
-			expected: true,
-		},
-		"Point at endpoint A (int)": {
-			point:    NewPoint[int](0, 0),
-			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
-			expected: true,
-		},
-		"Point at endpoint End (int)": {
-			point:    NewPoint[int](2, 2),
-			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
-			expected: true,
-		},
-		"Point collinear but outside bounding box (int)": {
-			point:    NewPoint[int](3, 3),
-			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
-			expected: false,
-		},
-		"Point not collinear (int)": {
-			point:    NewPoint[int](1, 2),
-			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
-			expected: false,
+		"PointsCounterClockwise": {
+			input:          PointsCounterClockwise,
+			expectedOutput: "PointsCounterClockwise",
 		},
 	}
 
-	for name, tt := range tests {
+	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			switch point := tt.point.(type) {
-			case Point[int]:
-				segment := tt.segment.(LineSegment[int])
-				result := segment.ContainsPoint(point)
-				assert.Equal(t, tt.expected, result, "Test %s failed", name)
-			case Point[float64]:
-				segment := tt.segment.(LineSegment[float64])
-				result := segment.ContainsPoint(point)
-				assert.Equal(t, tt.expected, result, "Test %s failed", name)
-			default:
-				t.Errorf("Unsupported point type in test %s", name)
-			}
+			assert.Equal(t, tc.expectedOutput, tc.input.String())
 		})
 	}
 }

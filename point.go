@@ -564,7 +564,7 @@ func (p Point[T]) RelationshipToPolyTree(pt *PolyTree[T], opts ...Option) map[*P
 	pDoubled := NewPoint[T](p.x*2, p.y*2)
 	output := make(map[*PolyTree[T]]Relationship, pt.Len())
 PointRelationshipToPolyTreeIterPolys:
-	for poly := range pt.iterPolys {
+	for poly := range pt.Nodes {
 
 		// check if point on edge/vertex
 		for edge := range poly.contour.iterEdges {
@@ -739,6 +739,36 @@ const (
 	PointsCounterClockwise
 )
 
+// String converts a [PointOrientation] constant into its string representation.
+//
+// This method is used to provide a human-readable description of the [PointOrientation] value.
+// It is particularly useful for debugging and logging, as it outputs the specific orientation
+// type (e.g., [PointsCollinear], [PointsClockwise], or [PointsCounterClockwise]).
+//
+// Behavior:
+//   - If the value corresponds to a defined [PointOrientation] constant, the method returns its name.
+//   - If the value is unsupported or invalid, the method panics with an error.
+//
+// Returns:
+//   - string: The string representation of the [PointOrientation] value.
+//
+// Panics:
+//   - If the [PointOrientation] value is invalid or not one of the defined constants
+//     ([PointsCollinear], [PointsClockwise], [PointsCounterClockwise]), the function panics
+//     with a descriptive error message.
+func (o PointOrientation) String() string {
+	switch o {
+	case PointsCollinear:
+		return "PointsCollinear"
+	case PointsClockwise:
+		return "PointsClockwise"
+	case PointsCounterClockwise:
+		return "PointsCounterClockwise"
+	default:
+		panic(fmt.Errorf("unsupported PointOrientation: %d", o))
+	}
+}
+
 // findLowestLeftestPoint identifies the point with the lowest y-coordinate from a given set of points.
 // If multiple points share the lowest y-coordinate, it selects the point with the lowest x-coordinate among them.
 //
@@ -910,17 +940,10 @@ func EnsureCounterClockwise[T SignedNumber](points []Point[T]) {
 //
 // Returns:
 //
-// PointOrientation: A constant indicating the relative orientation of the points:
-//   - PointsCounterClockwise if the points form a counterclockwise turn,
-//   - PointsClockwise if the points form a clockwise turn,
-//   - PointsCollinear if the points are collinear (lie on a single line).
-//
-// Example Usage:
-//
-//	p0 := NewPoint(0, 0)
-//	p1 := NewPoint(1, 1)
-//	p2 := NewPoint(2, 0)
-//	orientation := Orientation(p0, p1, p2) // orientation will be PointsClockwise in this case
+// [PointOrientation]: A constant indicating the relative orientation of the points:
+//   - [PointsCounterClockwise] if the points form a counterclockwise turn,
+//   - [PointsClockwise] if the points form a clockwise turn,
+//   - [PointsCollinear] if the points are collinear (lie on a single line).
 func Orientation[T SignedNumber](p0, p1, p2 Point[T]) PointOrientation {
 	area2x := triangleAreaX2Signed(p0, p1, p2)
 	switch {

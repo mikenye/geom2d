@@ -122,13 +122,13 @@ func (c Circle[T]) Circumference() float64 {
 	return 2 * math.Pi * float64(c.radius)
 }
 
-// Eq determines whether the calling Circle is equal to another Circle, either exactly (default)
+// Eq determines whether the calling Circle (c) is equal to another Circle (other), either exactly (default)
 // or approximately using an epsilon threshold.
 //
 // Parameters
-//   - c2: The Circle to compare with the calling Circle.
-//   - opts: A variadic slice of Option functions to customize the equality check.
-//   - WithEpsilon(epsilon float64): Specifies a tolerance for comparing the center coordinates
+//   - other: The Circle to compare with the calling Circle.
+//   - opts: A variadic slice of [Option] functions to customize the equality check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the center coordinates
 //     and radii of the circles, allowing for robust handling of floating-point precision errors.
 //
 // Behavior
@@ -144,17 +144,17 @@ func (c Circle[T]) Circumference() float64 {
 // Notes:
 //   - Approximate equality is particularly useful when comparing circles with floating-point
 //     coordinates or radii, where small precision errors might otherwise cause inequality.
-func (c Circle[T]) Eq(c2 Circle[T], opts ...Option) bool {
+func (c Circle[T]) Eq(other Circle[T], opts ...Option) bool {
 	// Apply options with defaults
 	options := applyOptions(geomOptions{epsilon: 0}, opts...)
 
 	// Check equality for the center points
-	centersEqual := c.center.Eq(c2.center, opts...)
+	centersEqual := c.center.Eq(other.center, opts...)
 
 	// Check equality for the radii with epsilon adjustment
-	radiiEqual := c.radius == c2.radius
+	radiiEqual := c.radius == other.radius
 	if options.epsilon > 0 {
-		radiiEqual = math.Abs(float64(c.radius)-float64(c2.radius)) < options.epsilon
+		radiiEqual = math.Abs(float64(c.radius)-float64(other.radius)) < options.epsilon
 	}
 
 	return centersEqual && radiiEqual
@@ -172,20 +172,20 @@ func (c Circle[T]) Radius() T {
 //
 // This function evaluates the relationship between the current circle and another
 // circle by comparing their center points and radii. The possible relationships include:
-//   - RelationshipEqual: The circles are identical.
-//   - RelationshipContainedBy: The current circle is completely contained within the other circle.
-//   - RelationshipContains: The current circle completely contains the other circle.
-//   - RelationshipIntersection: The circles overlap, including tangency.
-//   - RelationshipDisjoint: The circles do not overlap.
+//   - [RelationshipEqual]: The circles are identical.
+//   - [RelationshipContainedBy]: The current circle is completely contained within the other circle.
+//   - [RelationshipContains]: The current circle completely contains the other circle.
+//   - [RelationshipIntersection]: The circles overlap, including tangency.
+//   - [RelationshipDisjoint]: The circles do not overlap.
 //
 // Parameters:
 //   - other (Circle[T]): The circle to compare against the current circle.
-//   - opts: A variadic slice of Option functions to customize the equality check.
-//     WithEpsilon(epsilon float64): Specifies a tolerance for comparing the center coordinates
+//   - opts: A variadic slice of [Option] functions to customize the equality check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the center coordinates
 //     and radii of the circles, allowing for robust handling of floating-point precision errors.
 //
 // Returns:
-//   - Relationship: A constant representing the relationship between the circles.
+//   - [Relationship]: A constant representing the relationship between the circles.
 //
 // Behavior:
 //   - The function first checks for equality by comparing center points and radii.
@@ -221,59 +221,80 @@ func (c Circle[T]) RelationshipToCircle(other Circle[T], opts ...Option) Relatio
 
 }
 
-// RelationshipToLineSegment determines the spatial relationship between the current circle and a given line segment.
+// RelationshipToLineSegment determines the spatial relationship between the current Circle and a
+// given [LineSegment].
 //
 // This function evaluates the relationship between the circle and the line segment,
 // which can be one of the following:
-//   - RelationshipDisjoint: The line segment lies entirely outside the circle.
-//   - RelationshipIntersection: The line segment intersects the circle's boundary.
-//   - RelationshipContains: The line segment is fully contained within the circle.
+//   - [RelationshipDisjoint]: The line segment lies entirely outside the circle.
+//   - [RelationshipIntersection]: The line segment intersects the circle's boundary.
+//   - [RelationshipContains]: The line segment is fully contained within the circle.
 //
 // This method internally calls [LineSegment.RelationshipToCircle], flipping the containment
 // direction to align with the perspective of the circle.
 //
 // Parameters:
-//   - l (LineSegment[T]): The line segment to compare against the circle.
-//   - opts: A variadic slice of Option functions to customize the equality check.
-//     WithEpsilon(epsilon float64): Specifies a tolerance for comparing the center coordinates
+//   - l ([LineSegment][T]): The line segment to compare against the circle.
+//   - opts: A variadic slice of [Option] functions to customize the equality check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the center coordinates
 //     and radii of the circles, allowing for robust handling of floating-point precision errors.
 //
 // Returns:
-//   - Relationship: A constant representing the relationship between the circle and the line segment.
+//   - [Relationship]: A constant representing the relationship between the circle and the line segment.
 func (c Circle[T]) RelationshipToLineSegment(l LineSegment[T], opts ...Option) Relationship {
 	return l.RelationshipToCircle(c, opts...).flipContainment()
 }
 
-// RelationshipToPoint determines the spatial relationship between the current circle and a given point.
+// RelationshipToPoint determines the spatial relationship between the current Circle and a given [Point].
 //
 // This function evaluates the relationship between the circle and the point,
 // which can be one of the following:
-//   - RelationshipDisjoint: The point lies outside the circle.
-//   - RelationshipIntersection: The point lies exactly on the circle's boundary.
-//   - RelationshipContains: The point lies inside the circle.
+//   - [RelationshipDisjoint]: The point lies outside the circle.
+//   - [RelationshipIntersection]: The point lies exactly on the circle's boundary.
+//   - [RelationshipContains]: The point lies inside the circle.
 //
 // This method internally calls [Point.RelationshipToCircle], flipping the containment
 // direction to align with the perspective of the circle.
 //
 // Parameters:
-//   - p (Point[T]): The point to compare against the circle.
-//   - opts: A variadic slice of Option functions to customize the equality check.
-//     WithEpsilon(epsilon float64): Specifies a tolerance for comparing the center coordinates
+//   - p ([Point][T]): The point to compare against the circle.
+//   - opts: A variadic slice of [Option] functions to customize the equality check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the center coordinates
 //     and radii of the circles, allowing for robust handling of floating-point precision errors.
 //
 // Returns:
-//   - Relationship: A constant representing the relationship between the circle and the point.
+//   - [Relationship]: A constant representing the relationship between the circle and the point.
 func (c Circle[T]) RelationshipToPoint(p Point[T], opts ...Option) Relationship {
 	return p.RelationshipToCircle(c, opts...).flipContainment()
 }
 
+// RelationshipToPolyTree determines the spatial relationships between the Circle and the polygons in the given [PolyTree].
+//
+// This method evaluates whether the circle intersects, contains, or is contained by each polygon in the [PolyTree].
+// It uses a doubled representation of the Circle to align with the doubled points in the [PolyTree] for robust computations.
+//
+// Parameters:
+//   - pt (*[PolyTree][T]): The [PolyTree] whose polygons will be compared to the Circle.
+//   - opts: A variadic slice of [Option] functions to customize the equality check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the center coordinates
+//     and radii of the circles, allowing for robust handling of floating-point precision errors.
+//
+// Behavior:
+//   - For each polygon in the [PolyTree], the function iterates through its edges and checks the relationship to the Circle.
+//   - Intersection is checked first; if any edge of the polygon intersects the circle, the relationship is marked as [RelationshipIntersection].
+//   - If all edges of the polygon lie within the circle's radius, the relationship is marked as [RelationshipContains].
+//   - If the circle's center lies within the polygon and its minimum distance to any edge is greater than its radius, the relationship is marked as [RelationshipContainedBy].
+//   - If none of the above conditions are satisfied, the relationship is marked as [RelationshipDisjoint].
+//
+// Returns:
+//   - map[*[PolyTree][T]][Relationship]: A map where each key is a pointer to a polygon in the [PolyTree], and the value is the relationship between the Circle and that polygon.
 func (c Circle[T]) RelationshipToPolyTree(pt *PolyTree[T], opts ...Option) map[*PolyTree[T]]Relationship {
 	output := make(map[*PolyTree[T]]Relationship, pt.Len())
 	cDoubled := NewCircle(NewPoint(c.center.x*2, c.center.y*2), c.radius*2)
 	cFloatDoubled := cDoubled.AsFloat64()
 
 RelationshipToPolyTreeIterPolys:
-	for poly := range pt.iterPolys {
+	for poly := range pt.Nodes {
 		minDistCircleCenterToEdge := math.MaxFloat64
 		allEdgesWithinCircle := true
 
@@ -328,17 +349,18 @@ RelationshipToPolyTreeIterPolys:
 //
 // Behavior:
 //   - The function checks each edge of the rectangle for potential intersections with the circle.
-//   - If all edges of the rectangle are fully contained within the circle, it returns `RelationshipContains`.
+//   - If all edges of the rectangle are fully contained within the circle, it returns [RelationshipContains].
 //   - If the rectangle fully contains the circle (the circle’s center is inside the rectangle, and the circle
-//     does not extend beyond any edge), it returns `RelationshipContainedBy`.
+//     does not extend beyond any edge), it returns [RelationshipContainedBy].
 //   - If none of these conditions are met, it determines whether the circle and rectangle are disjoint.
 //
 // Returns:
-//   - [Relationship]: One of the following constants:
-//   - RelationshipDisjoint: The circle and rectangle are entirely separate.
-//   - RelationshipIntersection: The circle intersects with one or more edges of the rectangle.
-//   - RelationshipContains: The circle completely encloses the rectangle.
-//   - RelationshipContainedBy: The circle is fully contained within the rectangle.
+//
+// [Relationship]: One of the following constants:
+//   - [RelationshipDisjoint]: The circle and rectangle are entirely separate.
+//   - [RelationshipIntersection]: The circle intersects with one or more edges of the rectangle.
+//   - [RelationshipContains]: The circle completely encloses the rectangle.
+//   - [RelationshipContainedBy]: The circle is fully contained within the rectangle.
 func (c Circle[T]) RelationshipToRectangle(r Rectangle[T], opts ...Option) Relationship {
 	cContainsR := true
 	cFloat := c.AsFloat64()
@@ -401,8 +423,6 @@ func (c Circle[T]) RelationshipToRectangle(r Rectangle[T], opts ...Option) Relat
 //     that could result in minor inaccuracies.
 //   - The returned [Circle] always has a center with float64 coordinates, ensuring precision regardless
 //     of the coordinate type of the original [Circle].
-//
-// todo: ensure other Rotate functions specify directionality.
 func (c Circle[T]) Rotate(pivot Point[T], radians float64, opts ...Option) Circle[float64] {
 	return NewCircle[float64](
 		c.center.Rotate(pivot, radians, opts...),

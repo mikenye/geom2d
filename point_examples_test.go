@@ -107,6 +107,35 @@ func ExampleNewPointFromImagePoint() {
 	// Geometry Point: Point[(10, 20)]
 }
 
+func ExampleOrientation() {
+	// Define three sets of points to test different orientations
+
+	// Counterclockwise orientation
+	p0 := geom2d.NewPoint(0, 0)
+	p1 := geom2d.NewPoint(1, 1)
+	p2 := geom2d.NewPoint(2, 0)
+	orientation1 := geom2d.Orientation(p0, p1, p2)
+	fmt.Printf("Orientation of p0: %v, p1: %v, p2: %v: %v\n", p0, p1, p2, orientation1)
+
+	// Clockwise orientation
+	p3 := geom2d.NewPoint(0, 0)
+	p4 := geom2d.NewPoint(2, 0)
+	p5 := geom2d.NewPoint(1, 1)
+	orientation2 := geom2d.Orientation(p3, p4, p5)
+	fmt.Printf("Orientation of p3: %v, p4: %v, p5: %v: %v\n", p3, p4, p5, orientation2)
+
+	// Collinear orientation
+	p6 := geom2d.NewPoint(0, 0)
+	p7 := geom2d.NewPoint(1, 1)
+	p8 := geom2d.NewPoint(2, 2)
+	orientation3 := geom2d.Orientation(p6, p7, p8)
+	fmt.Printf("Orientation of points p6%v, p7%v, p8%v: %v\n", p6, p7, p8, orientation3)
+	// Output:
+	// Orientation of p0: Point[(0, 0)], p1: Point[(1, 1)], p2: Point[(2, 0)]: PointsClockwise
+	// Orientation of p3: Point[(0, 0)], p4: Point[(2, 0)], p5: Point[(1, 1)]: PointsCounterClockwise
+	// Orientation of points p6Point[(0, 0)], p7Point[(1, 1)], p8Point[(2, 2)]: PointsCollinear
+}
+
 func ExamplePoint_AsFloat64() {
 	p := geom2d.NewPoint(3, 4)
 	floatPoint := p.AsFloat64()
