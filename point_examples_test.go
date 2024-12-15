@@ -107,7 +107,7 @@ func ExampleNewPointFromImagePoint() {
 	// Geometry Point: Point[(10, 20)]
 }
 
-func ExamplePoint_AsFloat() {
+func ExamplePoint_AsFloat64() {
 	p := geom2d.NewPoint(3, 4)
 	floatPoint := p.AsFloat64()
 	fmt.Printf("%s is type %T", floatPoint, floatPoint)

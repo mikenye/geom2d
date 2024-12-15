@@ -29,7 +29,7 @@ func ExampleLineSegment_Area() {
 	// 0
 }
 
-func ExampleLineSegment_AsFloat() {
+func ExampleLineSegment_AsFloat64() {
 	// Create a LineSegment with integer coordinates
 	intSegment := geom2d.NewLineSegment(
 		geom2d.NewPoint(1, 2), // Start point
@@ -37,7 +37,7 @@ func ExampleLineSegment_AsFloat() {
 	)
 
 	// Convert the LineSegment to float64
-	floatSegment := intSegment.AsFloat()
+	floatSegment := intSegment.AsFloat64()
 
 	// Print the converted LineSegment
 	fmt.Println("Integer LineSegment:", intSegment)
@@ -403,7 +403,7 @@ func ExampleLineSegment_Scale() {
 	fmt.Printf("Scaled Line End: %v\n", scaledLine.Points()[1])
 
 	// Scale the line segment by a shrinking factor of 0.5, converting to floating-point type
-	lineFloat := line.AsFloat()
+	lineFloat := line.AsFloat64()
 	shrunkLine := lineFloat.Scale(ref.AsFloat64(), 0.5)
 
 	// Print the shrunk line segment's start and end points

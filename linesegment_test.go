@@ -113,7 +113,45 @@ func TestLineSegment_Translate(t *testing.T) {
 	}
 }
 
-func TestLineSegment_AsFloat(t *testing.T) {
+func TestLineSegment_AsFloat32(t *testing.T) {
+	tests := map[string]struct {
+		start, end any
+		expected   LineSegment[float32]
+	}{
+		"int: start: (1,2), end: (3,4)": {
+			start: NewPoint[int](1, 2),
+			end:   NewPoint[int](3, 4),
+			expected: NewLineSegment[float32](
+				NewPoint[float32](1, 2),
+				NewPoint[float32](3, 4),
+			),
+		},
+		"float64: start: (1,2), end: (3,4)": {
+			start: NewPoint[float64](1, 2),
+			end:   NewPoint[float64](3, 4),
+			expected: NewLineSegment[float32](
+				NewPoint[float32](1, 2),
+				NewPoint[float32](3, 4),
+			),
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			switch start := tt.start.(type) {
+			case Point[int]:
+				end := tt.end.(Point[int])
+				ls := NewLineSegment(start, end)
+				assert.Equal(t, tt.expected, ls.AsFloat32())
+			case Point[float64]:
+				end := tt.end.(Point[float64])
+				ls := NewLineSegment(start, end)
+				assert.Equal(t, tt.expected, ls.AsFloat32())
+			}
+		})
+	}
+}
+
+func TestLineSegment_AsFloat64(t *testing.T) {
 	tests := map[string]struct {
 		start, end any
 		expected   LineSegment[float64]
@@ -141,11 +179,11 @@ func TestLineSegment_AsFloat(t *testing.T) {
 			case Point[int]:
 				end := tt.end.(Point[int])
 				ls := NewLineSegment(start, end)
-				assert.Equal(t, tt.expected, ls.AsFloat())
+				assert.Equal(t, tt.expected, ls.AsFloat64())
 			case Point[float64]:
 				end := tt.end.(Point[float64])
 				ls := NewLineSegment(start, end)
-				assert.Equal(t, tt.expected, ls.AsFloat())
+				assert.Equal(t, tt.expected, ls.AsFloat64())
 			}
 		})
 	}

@@ -1161,6 +1161,78 @@ func (pt *PolyTree[T]) AddSibling(sibling *PolyTree[T]) error {
 	return nil
 }
 
+func (pt *PolyTree[T]) AsInt() *PolyTree[int] {
+	contours := make([][]Point[int], pt.Len())
+	i := 0
+	for poly := range pt.iterPolys {
+		polyContour := make([]Point[int], len(poly.contour))
+		for j, point := range poly.contour.toPoints() {
+			polyContour[j] = point.AsInt()
+		}
+		contours[i] = polyContour
+		i++
+	}
+	ptInt, err := nestPointsToPolyTrees[int](contours)
+	if err != nil {
+		panic(err)
+	}
+	return ptInt
+}
+
+func (pt *PolyTree[T]) AsIntRounded() *PolyTree[int] {
+	contours := make([][]Point[int], pt.Len())
+	i := 0
+	for poly := range pt.iterPolys {
+		polyContour := make([]Point[int], len(poly.contour))
+		for j, point := range poly.contour.toPoints() {
+			polyContour[j] = point.AsIntRounded()
+		}
+		contours[i] = polyContour
+		i++
+	}
+	ptInt, err := nestPointsToPolyTrees[int](contours)
+	if err != nil {
+		panic(err)
+	}
+	return ptInt
+}
+
+func (pt *PolyTree[T]) AsFloat32() *PolyTree[float32] {
+	contours := make([][]Point[float32], pt.Len())
+	i := 0
+	for poly := range pt.iterPolys {
+		polyContour := make([]Point[float32], len(poly.contour))
+		for j, point := range poly.contour.toPoints() {
+			polyContour[j] = point.AsFloat32()
+		}
+		contours[i] = polyContour
+		i++
+	}
+	ptFloat, err := nestPointsToPolyTrees[float32](contours)
+	if err != nil {
+		panic(err)
+	}
+	return ptFloat
+}
+
+func (pt *PolyTree[T]) AsFloat64() *PolyTree[float64] {
+	contours := make([][]Point[float64], pt.Len())
+	i := 0
+	for poly := range pt.iterPolys {
+		polyContour := make([]Point[float64], len(poly.contour))
+		for j, point := range poly.contour.toPoints() {
+			polyContour[j] = point.AsFloat64()
+		}
+		contours[i] = polyContour
+		i++
+	}
+	ptFloat, err := nestPointsToPolyTrees[float64](contours)
+	if err != nil {
+		panic(err)
+	}
+	return ptFloat
+}
+
 // BooleanOperation performs a Boolean operation (union, intersection, or subtraction)
 // between the current polygon (p) and another polygon (other). The result is
 // returned as a new PolyTree, or an error is returned if the operation fails.
@@ -2219,19 +2291,32 @@ func compareLowestLeftmost[T SignedNumber](a, b contour[T]) int {
 //	    log.Fatalf("Error: %v", err)
 //	}
 func nestPointsToPolyTrees[T SignedNumber](contours [][]Point[T]) (*PolyTree[T], error) {
+
 	// Sanity check: ensure contours exist
 	if len(contours) == 0 {
 		return nil, fmt.Errorf("no contours provided")
 	}
 
-	// Step 1: Sort polygons by area (ascending order, largest last)
+	// Step 1: Sort polygons by area
 	slices.SortFunc(contours, func(a, b []Point[T]) int {
+
+		// get signed areas
 		areaA := SignedArea2X(a)
 		areaB := SignedArea2X(b)
+
+		// get absolute values
+		if areaA < 0 {
+			areaA *= -1
+		}
+		if areaB < 0 {
+			areaB *= -1
+		}
+
+		// return expected values to sort by area, descending
 		switch {
-		case areaA < areaB:
-			return -1
 		case areaA > areaB:
+			return -1
+		case areaA < areaB:
 			return 1
 		default:
 			return 0
@@ -2239,41 +2324,57 @@ func nestPointsToPolyTrees[T SignedNumber](contours [][]Point[T]) (*PolyTree[T],
 	})
 
 	// Step 2: Create the root PolyTree from the largest polygon
-	rootTree, err := NewPolyTree(contours[len(contours)-1], PTSolid)
+	rootTree, err := NewPolyTree(contours[0], PTSolid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create root PolyTree: %w", err)
 	}
 
-	// Step 3: Process the remaining polygons in reverse order (smallest first)
-	for i := len(contours) - 2; i >= 0; i-- {
-		// Create a PolyTree for the current contour
-		polyToNest, err := NewPolyTree(contours[i], PTSolid)
+	// Step 3: Process the remaining polygons
+	for i := 1; i < len(contours); i++ {
+
+		// create new poly
+		newPoly, err := NewPolyTree(contours[i], PTSolid)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create PolyTree for contour %d: %w", i, err)
+			return nil, fmt.Errorf("failed to create PolyTree: %w", err)
 		}
 
-		// Step 4: Find the correct parent polygon
-		parent := rootTree.findParentPolygon(polyToNest)
-		if parent == nil {
-			// No parent found: Add as a sibling to the root
-			if err := rootTree.AddSibling(polyToNest); err != nil {
-				return nil, fmt.Errorf("failed to add sibling: %w", err)
+		// find where new poly fits
+		var childToPoly *PolyTree[T]
+		for existingPoly := range rootTree.iterPolys {
+
+			// if poly fits inside, then set child
+			if existingPoly.contour.isContourInside(newPoly.contour) {
+				childToPoly = existingPoly
 			}
+		}
+
+		// place poly as child
+		if childToPoly != nil {
+			// set newPoly's polygonType
+			switch childToPoly.polygonType {
+			case PTSolid:
+				newPoly.polygonType = PTHole
+			case PTHole:
+				newPoly.polygonType = PTSolid
+			}
+
+			// add as sibling to root
+			err := childToPoly.AddChild(newPoly)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create PolyTree relationship: %w", err)
+			}
+
 		} else {
-			// Parent found: Add as a child of the parent
-			// Adjust polygon type based on the parent's type
-			if parent.polygonType == PTSolid {
-				polyToNest.polygonType = PTHole
-			} else {
-				polyToNest.polygonType = PTSolid
-			}
-			if err := parent.AddChild(polyToNest); err != nil {
-				return nil, fmt.Errorf("failed to add child to parent polygon: %w", err)
+			// add poly as root sibling
+			newPoly.polygonType = rootTree.polygonType
+			err := rootTree.AddSibling(newPoly)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create PolyTree relationship: %w", err)
 			}
 		}
 	}
 
-	// Step 5: Return the root PolyTree
+	// Step 4: Return the root PolyTree
 	return rootTree, nil
 }
 

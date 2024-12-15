@@ -21,11 +21,22 @@ func (r Rectangle[T]) Area() T {
 	return r.Width() * r.Height()
 }
 
-// AsFloat converts the Rectangle's corner points to the float64 type, useful for higher-precision operations.
+// AsFloat32 converts the Rectangle's corner points to the float32 type, useful for higher-precision operations.
+//
+// Returns:
+//   - Rectangle[float32]: A new Rectangle with float32 coordinates.
+func (r Rectangle[T]) AsFloat32() Rectangle[float32] {
+	return NewRectangleByOppositeCorners(
+		r.topLeft.AsFloat32(),
+		r.bottomRight.AsFloat32(),
+	)
+}
+
+// AsFloat64 converts the Rectangle's corner points to the float64 type, useful for higher-precision operations.
 //
 // Returns:
 //   - Rectangle[float64]: A new Rectangle with float64 coordinates.
-func (r Rectangle[T]) AsFloat() Rectangle[float64] {
+func (r Rectangle[T]) AsFloat64() Rectangle[float64] {
 	return NewRectangleByOppositeCorners(
 		r.topLeft.AsFloat64(),
 		r.bottomRight.AsFloat64(),

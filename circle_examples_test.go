@@ -24,7 +24,7 @@ func ExampleCircle_Area() {
 	// 78.54
 }
 
-func ExampleCircle_AsFloat() {
+func ExampleCircle_AsFloat64() {
 	intCircle := geom2d.NewCircle(geom2d.NewPoint(3, 4), 5)
 	fltCircle := intCircle.AsFloat64()
 	fmt.Printf("intCircle is %v of type: %T\n", intCircle, intCircle)

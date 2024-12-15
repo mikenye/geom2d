@@ -407,6 +407,286 @@ func TestPolyTree_AddSibling(t *testing.T) {
 	})
 }
 
+func TestPolyTree_AsInt(t *testing.T) {
+	root, err := NewPolyTree([]Point[float64]{
+		NewPoint(0.1, 0.9),
+		NewPoint(100.8, 0.8),
+		NewPoint(100.7, 100.1),
+		NewPoint(0.2, 100.2),
+	}, PTSolid)
+	require.NoError(t, err, "error defining root poly")
+
+	hole, err := NewPolyTree([]Point[float64]{
+		NewPoint(20.1, 20.8),
+		NewPoint(80.2, 20.1),
+		NewPoint(80.7, 80.6),
+		NewPoint(20.7, 80.7),
+	}, PTHole)
+	require.NoError(t, err, "error defining hole poly")
+
+	island, err := NewPolyTree([]Point[float64]{
+		NewPoint(40.1, 40.8),
+		NewPoint(60.2, 40.1),
+		NewPoint(60.7, 60.6),
+		NewPoint(40.7, 60.7),
+	}, PTSolid)
+	require.NoError(t, err, "error defining island poly")
+
+	err = root.AddChild(hole)
+	require.NoError(t, err, "error adding hole as child of root")
+
+	err = hole.AddChild(island)
+	require.NoError(t, err, "error adding island as child of hole")
+
+	expectedRoot, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(100, 0),
+		NewPoint(100, 100),
+		NewPoint(0, 100),
+	}, PTSolid)
+	require.NoError(t, err, "error defining expectedRoot poly")
+
+	expectedHole, err := NewPolyTree([]Point[int]{
+		NewPoint(20, 20),
+		NewPoint(80, 20),
+		NewPoint(80, 80),
+		NewPoint(20, 80),
+	}, PTHole)
+	require.NoError(t, err, "error defining expectedHole poly")
+
+	expectedIsland, err := NewPolyTree([]Point[int]{
+		NewPoint(40, 40),
+		NewPoint(60, 40),
+		NewPoint(60, 60),
+		NewPoint(40, 60),
+	}, PTSolid)
+	require.NoError(t, err, "error defining expectedIsland poly")
+
+	err = expectedRoot.AddChild(expectedHole)
+	require.NoError(t, err, "error adding expectedHole as child of expectedRoot")
+
+	err = expectedHole.AddChild(expectedIsland)
+	require.NoError(t, err, "error adding expectedIsland as child of expectedHole")
+
+	// Convert to int (truncated)
+	rootInt := root.AsInt()
+
+	assert.True(t, rootInt.contour.eq(expectedRoot.contour), "root contour does not match")
+	assert.True(t, rootInt.children[0].contour.eq(expectedRoot.children[0].contour), "hole contour does not match")
+	assert.True(t, rootInt.children[0].children[0].contour.eq(expectedRoot.children[0].children[0].contour), "hole contour does not match")
+
+}
+
+func TestPolyTree_AsIntRounded(t *testing.T) {
+	root, err := NewPolyTree([]Point[float64]{
+		NewPoint(0.1, 0.9),
+		NewPoint(100.8, 0.8),
+		NewPoint(100.7, 100.1),
+		NewPoint(0.2, 100.2),
+	}, PTSolid)
+	require.NoError(t, err, "error defining root poly")
+
+	hole, err := NewPolyTree([]Point[float64]{
+		NewPoint(20.1, 20.8),
+		NewPoint(80.2, 20.1),
+		NewPoint(80.7, 80.6),
+		NewPoint(20.7, 80.7),
+	}, PTHole)
+	require.NoError(t, err, "error defining hole poly")
+
+	island, err := NewPolyTree([]Point[float64]{
+		NewPoint(40.1, 40.8),
+		NewPoint(60.2, 40.1),
+		NewPoint(60.7, 60.6),
+		NewPoint(40.7, 60.7),
+	}, PTSolid)
+	require.NoError(t, err, "error defining island poly")
+
+	err = root.AddChild(hole)
+	require.NoError(t, err, "error adding hole as child of root")
+
+	err = hole.AddChild(island)
+	require.NoError(t, err, "error adding island as child of hole")
+
+	expectedRoot, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 1),
+		NewPoint(101, 1),
+		NewPoint(101, 100),
+		NewPoint(0, 100),
+	}, PTSolid)
+	require.NoError(t, err, "error defining expectedRoot poly")
+
+	expectedHole, err := NewPolyTree([]Point[int]{
+		NewPoint(20, 21),
+		NewPoint(80, 20),
+		NewPoint(81, 81),
+		NewPoint(21, 81),
+	}, PTHole)
+	require.NoError(t, err, "error defining expectedHole poly")
+
+	expectedIsland, err := NewPolyTree([]Point[int]{
+		NewPoint(40, 41),
+		NewPoint(60, 40),
+		NewPoint(61, 61),
+		NewPoint(41, 61),
+	}, PTSolid)
+	require.NoError(t, err, "error defining expectedIsland poly")
+
+	err = expectedRoot.AddChild(expectedHole)
+	require.NoError(t, err, "error adding expectedHole as child of expectedRoot")
+
+	err = expectedHole.AddChild(expectedIsland)
+	require.NoError(t, err, "error adding expectedIsland as child of expectedHole")
+
+	// Convert to int (truncated)
+	rootIntRounded := root.AsIntRounded()
+
+	assert.True(t, rootIntRounded.contour.eq(expectedRoot.contour), "root contour does not match")
+	assert.True(t, rootIntRounded.children[0].contour.eq(expectedRoot.children[0].contour), "hole contour does not match")
+	assert.True(t, rootIntRounded.children[0].children[0].contour.eq(expectedRoot.children[0].children[0].contour), "hole contour does not match")
+
+}
+
+func TestPolyTree_AsFloat32(t *testing.T) {
+	root, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(100, 0),
+		NewPoint(100, 100),
+		NewPoint(0, 100),
+	}, PTSolid)
+	require.NoError(t, err, "error defining root poly")
+
+	hole, err := NewPolyTree([]Point[int]{
+		NewPoint(20, 20),
+		NewPoint(80, 20),
+		NewPoint(80, 80),
+		NewPoint(20, 80),
+	}, PTHole)
+	require.NoError(t, err, "error defining hole poly")
+
+	island, err := NewPolyTree([]Point[int]{
+		NewPoint(40, 40),
+		NewPoint(60, 40),
+		NewPoint(60, 60),
+		NewPoint(40, 60),
+	}, PTSolid)
+	require.NoError(t, err, "error defining island poly")
+
+	err = root.AddChild(hole)
+	require.NoError(t, err, "error adding hole as child of root")
+
+	err = hole.AddChild(island)
+	require.NoError(t, err, "error adding island as child of hole")
+
+	expectedRoot, err := NewPolyTree([]Point[float32]{
+		NewPoint[float32](0, 0),
+		NewPoint[float32](100, 0),
+		NewPoint[float32](100, 100),
+		NewPoint[float32](0, 100),
+	}, PTSolid)
+	require.NoError(t, err, "error defining expectedRoot poly")
+
+	expectedHole, err := NewPolyTree([]Point[float32]{
+		NewPoint[float32](20, 20),
+		NewPoint[float32](80, 20),
+		NewPoint[float32](80, 80),
+		NewPoint[float32](20, 80),
+	}, PTHole)
+	require.NoError(t, err, "error defining expectedHole poly")
+
+	expectedIsland, err := NewPolyTree([]Point[float32]{
+		NewPoint[float32](40, 40),
+		NewPoint[float32](60, 40),
+		NewPoint[float32](60, 60),
+		NewPoint[float32](40, 60),
+	}, PTSolid)
+	require.NoError(t, err, "error defining expectedIsland poly")
+
+	err = expectedRoot.AddChild(expectedHole)
+	require.NoError(t, err, "error adding expectedHole as child of expectedRoot")
+
+	err = expectedHole.AddChild(expectedIsland)
+	require.NoError(t, err, "error adding expectedIsland as child of expectedHole")
+
+	// Convert to int (truncated)
+	rootIntRounded := root.AsFloat32()
+
+	assert.True(t, rootIntRounded.contour.eq(expectedRoot.contour), "root contour does not match")
+	assert.True(t, rootIntRounded.children[0].contour.eq(expectedRoot.children[0].contour), "hole contour does not match")
+	assert.True(t, rootIntRounded.children[0].children[0].contour.eq(expectedRoot.children[0].children[0].contour), "hole contour does not match")
+
+}
+
+func TestPolyTree_AsFloat64(t *testing.T) {
+	root, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(100, 0),
+		NewPoint(100, 100),
+		NewPoint(0, 100),
+	}, PTSolid)
+	require.NoError(t, err, "error defining root poly")
+
+	hole, err := NewPolyTree([]Point[int]{
+		NewPoint(20, 20),
+		NewPoint(80, 20),
+		NewPoint(80, 80),
+		NewPoint(20, 80),
+	}, PTHole)
+	require.NoError(t, err, "error defining hole poly")
+
+	island, err := NewPolyTree([]Point[int]{
+		NewPoint(40, 40),
+		NewPoint(60, 40),
+		NewPoint(60, 60),
+		NewPoint(40, 60),
+	}, PTSolid)
+	require.NoError(t, err, "error defining island poly")
+
+	err = root.AddChild(hole)
+	require.NoError(t, err, "error adding hole as child of root")
+
+	err = hole.AddChild(island)
+	require.NoError(t, err, "error adding island as child of hole")
+
+	expectedRoot, err := NewPolyTree([]Point[float64]{
+		NewPoint[float64](0, 0),
+		NewPoint[float64](100, 0),
+		NewPoint[float64](100, 100),
+		NewPoint[float64](0, 100),
+	}, PTSolid)
+	require.NoError(t, err, "error defining expectedRoot poly")
+
+	expectedHole, err := NewPolyTree([]Point[float64]{
+		NewPoint[float64](20, 20),
+		NewPoint[float64](80, 20),
+		NewPoint[float64](80, 80),
+		NewPoint[float64](20, 80),
+	}, PTHole)
+	require.NoError(t, err, "error defining expectedHole poly")
+
+	expectedIsland, err := NewPolyTree([]Point[float64]{
+		NewPoint[float64](40, 40),
+		NewPoint[float64](60, 40),
+		NewPoint[float64](60, 60),
+		NewPoint[float64](40, 60),
+	}, PTSolid)
+	require.NoError(t, err, "error defining expectedIsland poly")
+
+	err = expectedRoot.AddChild(expectedHole)
+	require.NoError(t, err, "error adding expectedHole as child of expectedRoot")
+
+	err = expectedHole.AddChild(expectedIsland)
+	require.NoError(t, err, "error adding expectedIsland as child of expectedHole")
+
+	// Convert to int (truncated)
+	rootIntRounded := root.AsFloat64()
+
+	assert.True(t, rootIntRounded.contour.eq(expectedRoot.contour), "root contour does not match")
+	assert.True(t, rootIntRounded.children[0].contour.eq(expectedRoot.children[0].contour), "hole contour does not match")
+	assert.True(t, rootIntRounded.children[0].children[0].contour.eq(expectedRoot.children[0].children[0].contour), "hole contour does not match")
+
+}
+
 func TestPolyTree_BooleanOperation(t *testing.T) {
 	tests := map[string]struct {
 		poly1     [][]Point[int]

@@ -24,7 +24,35 @@ func TestCircle_Area(t *testing.T) {
 	}
 }
 
-func TestCircle_AsFloat(t *testing.T) {
+func TestCircle_AsFloat32(t *testing.T) {
+	tests := map[string]struct {
+		circle   Circle[int]
+		expected Circle[float32]
+	}{
+		"integer center and radius": {
+			circle:   Circle[int]{center: NewPoint(3, 4), radius: 5},
+			expected: Circle[float32]{center: NewPoint[float32](3.0, 4.0), radius: 5.0},
+		},
+		"zero center and radius": {
+			circle:   Circle[int]{center: NewPoint(0, 0), radius: 0},
+			expected: Circle[float32]{center: NewPoint[float32](0.0, 0.0), radius: 0.0},
+		},
+		"negative center and radius": {
+			circle:   Circle[int]{center: NewPoint(-3, -4), radius: 5},
+			expected: Circle[float32]{center: NewPoint[float32](-3.0, -4.0), radius: 5.0},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := tt.circle.AsFloat32()
+			assert.Equal(t, tt.expected.center, result.center)
+			assert.Equal(t, tt.expected.radius, result.radius)
+		})
+	}
+}
+
+func TestCircle_AsFloat64(t *testing.T) {
 	tests := map[string]struct {
 		circle   Circle[int]
 		expected Circle[float64]

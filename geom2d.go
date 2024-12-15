@@ -236,29 +236,6 @@ const (
 	ReflectAcrossCustomLine
 )
 
-// adjacentInSlice checks if two values are adjacent in the slice.
-func adjacentInSlice[T comparable](s []T, a, b T) bool {
-	var i, i2 int
-	for i = 0; i < len(s); i++ {
-		i2 = i + 1 // todo: (i+1)%len(s) and remove all the %len(s) below?
-		if s[i%len(s)] == a && s[i2%len(s)] == b || s[i%len(s)] == b && s[i2%len(s)] == a {
-			return true
-		}
-	}
-	return false
-}
-
-// countOccurrencesInSlice returns the number of occurrences of an element in a slice.
-func countOccurrencesInSlice[T comparable](s []T, element T) int {
-	count := 0
-	for _, v := range s {
-		if v == element {
-			count++
-		}
-	}
-	return count
-}
-
 // inOrder returns true if b lies between a and c
 func inOrder[T SignedNumber](a, b, c T) bool {
 	return (a-b)*(b-c) > 0

@@ -38,10 +38,16 @@ func TestRectangle_Area(t *testing.T) {
 	}
 }
 
-func TestRectangle_AsFloat(t *testing.T) {
+func TestRectangle_AsFloat32(t *testing.T) {
+	rect := NewRectangleByOppositeCorners(NewPoint[int](1, 2), NewPoint[int](10, 20))
+	expected := NewRectangleByOppositeCorners(NewPoint[float32](1.0, 2.0), NewPoint[float32](10.0, 20.0))
+	assert.Equal(t, expected, rect.AsFloat32())
+}
+
+func TestRectangle_AsFloat64(t *testing.T) {
 	rect := NewRectangleByOppositeCorners(NewPoint[int](1, 2), NewPoint[int](10, 20))
 	expected := NewRectangleByOppositeCorners(NewPoint[float64](1.0, 2.0), NewPoint[float64](10.0, 20.0))
-	assert.Equal(t, expected, rect.AsFloat())
+	assert.Equal(t, expected, rect.AsFloat64())
 }
 
 func TestRectangle_AsInt(t *testing.T) {

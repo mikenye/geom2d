@@ -356,7 +356,7 @@ func (c Circle[T]) RelationshipToRectangle(r Rectangle[T], opts ...Option) Relat
 			cContainsR = false
 		}
 
-		edgeFloat := edge.AsFloat()
+		edgeFloat := edge.AsFloat64()
 		minDistCircleCenterToEdge = min(minDistCircleCenterToEdge, cFloat.center.DistanceToLineSegment(edgeFloat, opts...))
 	}
 

@@ -25,7 +25,40 @@ func BenchmarkConvexHull(b *testing.B) {
 	}
 }
 
-func TestPoint_AsFloat(t *testing.T) {
+func TestPoint_AsFloat32(t *testing.T) {
+	// Define test cases with various point types
+	tests := []struct {
+		name     string
+		point    Point[int]     // The point to convert
+		expected Point[float32] // The expected result after conversion
+	}{
+		{
+			name:     "Integer point conversion",
+			point:    NewPoint(3, 4),
+			expected: Point[float32]{3.0, 4.0},
+		},
+		{
+			name:     "Negative integer point conversion",
+			point:    NewPoint(-7, -5),
+			expected: Point[float32]{-7.0, -5.0},
+		},
+		{
+			name:     "Zero point conversion",
+			point:    NewPoint(0, 0),
+			expected: Point[float32]{0.0, 0.0},
+		},
+	}
+
+	// Run test cases
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.point.AsFloat32()
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestPoint_AsFloat64(t *testing.T) {
 	// Define test cases with various point types
 	tests := []struct {
 		name     string

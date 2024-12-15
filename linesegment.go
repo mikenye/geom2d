@@ -176,7 +176,19 @@ func (l LineSegment[T]) Area() float64 {
 	return 0
 }
 
-// AsFloat converts the line segment to a LineSegment[float64] type.
+// AsFloat32 converts the line segment to a LineSegment[float32] type.
+//
+// This function converts both endpoints of the LineSegment l to [Point][float32]
+// values, creating a new line segment with floating-point coordinates.
+// It is useful for precise calculations where floating-point accuracy is needed.
+//
+// Returns:
+//   - LineSegment[float32] - The line segment with both endpoints converted to float32.
+func (l LineSegment[T]) AsFloat32() LineSegment[float32] {
+	return NewLineSegment(l.start.AsFloat32(), l.end.AsFloat32())
+}
+
+// AsFloat64 converts the line segment to a LineSegment[float64] type.
 //
 // This function converts both endpoints of the LineSegment l to [Point][float64]
 // values, creating a new line segment with floating-point coordinates.
@@ -184,7 +196,7 @@ func (l LineSegment[T]) Area() float64 {
 //
 // Returns:
 //   - LineSegment[float64] - The line segment with both endpoints converted to float64.
-func (l LineSegment[T]) AsFloat() LineSegment[float64] {
+func (l LineSegment[T]) AsFloat64() LineSegment[float64] {
 	return NewLineSegment(l.start.AsFloat64(), l.end.AsFloat64())
 }
 
@@ -452,7 +464,7 @@ func (l LineSegment[T]) DistanceToLineSegment(other LineSegment[T], opts ...Opti
 	}
 
 	// Convert segments to float for precise calculations.
-	ABf, CDf := l.AsFloat(), other.AsFloat()
+	ABf, CDf := l.AsFloat64(), other.AsFloat64()
 
 	// Track the minimum distance.
 	minDist := math.MaxFloat64
@@ -691,11 +703,11 @@ func (l LineSegment[T]) Reflect(axis ReflectionAxis, line ...LineSegment[float64
 			endReflected = l.end.Reflect(ReflectAcrossCustomLine, line[0])
 		} else {
 			// No custom line provided; return the original line segment unchanged
-			return l.AsFloat()
+			return l.AsFloat64()
 		}
 	default:
 		// Invalid axis, return the line segment unchanged
-		return l.AsFloat()
+		return l.AsFloat64()
 	}
 
 	// Return a new line segment with reflected points
@@ -970,7 +982,7 @@ func (l LineSegment[T]) Rotate(pivot Point[T], radians float64, opts ...Option) 
 //   - Negative scaling factors will mirror the segment across the reference point
 //     and scale its length accordingly.
 //   - If the user wishes to shrink the segment (factor < 1), we recommend ensuring
-//     the line segment's type is floating-point to avoid precision loss. Use the [LineSegment.AsFloat] method
+//     the line segment's type is floating-point to avoid precision loss. Use the [LineSegment.AsFloat64] method
 //     to safely convert the segment to floating-point type before scaling.
 func (l LineSegment[T]) Scale(ref Point[T], factor T) LineSegment[T] {
 	return NewLineSegment(
