@@ -403,7 +403,6 @@ func TestLineSegment_Center(t *testing.T) {
 	}
 }
 
-// todo: move to linesegment_test.go
 func TestLineSegment_ContainsPoint(t *testing.T) {
 	tests := map[string]struct {
 		point    any
