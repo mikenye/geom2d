@@ -3,6 +3,7 @@ package geom2d_test
 import (
 	"fmt"
 	"geom2d"
+	"log"
 	"math"
 )
 
@@ -213,43 +214,54 @@ func ExamplePolyTree_AsIntRounded() {
 	// Contour Points: [(0, 0), (11, 0), (11, 11), (0, 11)]
 }
 
-// todo: finish this example
-//func ExamplePolyTree_BooleanOperation() {
-//	rootContour := []geom2d.Point[int]{
-//		geom2d.NewPoint(0, 0),
-//		geom2d.NewPoint(20, 0),
-//		geom2d.NewPoint(20, 20),
-//		geom2d.NewPoint(0, 20),
-//	}
-//
-//	holeContour := []geom2d.Point[int]{
-//		geom2d.NewPoint(5, 5),
-//		geom2d.NewPoint(15, 5),
-//		geom2d.NewPoint(15, 15),
-//		geom2d.NewPoint(5, 15),
-//	}
-//
-//	pt1Hole, err := geom2d.NewPolyTree(holeContour, geom2d.PTHole)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	pt1, err := geom2d.NewPolyTree(rootContour, geom2d.PTSolid, geom2d.WithChildren(pt1Hole))
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	pt2Hole, err := geom2d.NewPolyTree(holeContour, geom2d.PTHole)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	pt2, err := geom2d.NewPolyTree(rootContour, geom2d.PTSolid, geom2d.WithChildren(pt2Hole))
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//}
+func ExamplePolyTree_BooleanOperation_intersection() {
+
+	// define root contour
+	rootContour := []geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(20, 0),
+		geom2d.NewPoint(20, 20),
+		geom2d.NewPoint(0, 20),
+	}
+
+	// define hole contour
+	holeContour := []geom2d.Point[int]{
+		geom2d.NewPoint(5, 5),
+		geom2d.NewPoint(15, 5),
+		geom2d.NewPoint(15, 15),
+		geom2d.NewPoint(5, 15),
+	}
+
+	// create hole polytree
+	pt1Hole, err := geom2d.NewPolyTree(holeContour, geom2d.PTHole)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// create root polytree with hole as child
+	pt1, err := geom2d.NewPolyTree(rootContour, geom2d.PTSolid, geom2d.WithChildren(pt1Hole))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// create a new polytree from pt1, translated by (7, 7)
+	pt2 := pt1.Translate(geom2d.NewPoint(7, 7))
+
+	// perform Union operation
+	pt3, err := pt1.BooleanOperation(pt2, geom2d.BooleanIntersection)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// print pt3
+	fmt.Println(pt3)
+
+	// Output:
+	// PolyTree: PTSolid
+	// Contour Points: [(15, 7), (20, 7), (20, 12), (15, 12)]
+	// PolyTree: PTSolid
+	// Contour Points: [(7, 15), (12, 15), (12, 20), (7, 20)]
+}
 
 func ExamplePolyTree_BoundingBox() {
 	// Create a PolyTree with a single polygon
@@ -791,7 +803,7 @@ func ExamplePolyTree_Scale() {
 	// PolyTree: PTSolid
 	// Contour Points: [(0, 0), (200, 0), (200, 200), (0, 200)]
 	//   PolyTree: PTHole
-	//   Contour Points: [(40, 40), (160, 40), (160, 160), (40, 160)]
+	//   Contour Points: [(40, 160), (160, 160), (160, 40), (40, 40)]
 	//     PolyTree: PTSolid
 	//     Contour Points: [(80, 80), (120, 80), (120, 120), (80, 120)]
 }
@@ -877,7 +889,7 @@ func ExamplePolyTree_Translate() {
 	// PolyTree: PTSolid
 	// Contour Points: [(10, 10), (110, 10), (110, 110), (10, 110)]
 	//   PolyTree: PTHole
-	//   Contour Points: [(30, 30), (90, 30), (90, 90), (30, 90)]
+	//   Contour Points: [(30, 90), (90, 90), (90, 30), (30, 30)]
 }
 
 func ExamplePolygonType_String() {

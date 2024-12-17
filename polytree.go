@@ -36,7 +36,7 @@ const (
 //
 // This pattern makes it easy to add optional properties to a PolyTree without requiring an extensive list
 // of parameters in the NewPolyTree function.
-type NewPolyTreeOption[T SignedNumber] func(*PolyTree[T])
+type NewPolyTreeOption[T SignedNumber] func(*PolyTree[T]) error
 
 // WithChildren is an option for the [NewPolyTree] function that assigns child polygons to the created [PolyTree].
 // It also sets up parent-child relationships and orders the children for consistency.
@@ -51,18 +51,14 @@ type NewPolyTreeOption[T SignedNumber] func(*PolyTree[T])
 // Returns:
 //   - A [NewPolyTreeOption] that can be passed to the [NewPolyTree] function.
 func WithChildren[T SignedNumber](children ...*PolyTree[T]) NewPolyTreeOption[T] {
-	return func(p *PolyTree[T]) {
-
-		// Assign the provided children to the parent polygon.
-		p.children = children
-
-		// Order the children for consistency in traversal and comparison.
-		p.orderSiblingsAndChildren()
-
-		// Set the parent field of each child to the current polygon.
-		for i := range p.children {
-			p.children[i].parent = p
+	return func(p *PolyTree[T]) error {
+		for _, child := range children {
+			err := p.AddChild(child)
+			if err != nil {
+				return err
+			}
 		}
+		return nil
 	}
 }
 
@@ -585,7 +581,10 @@ func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPo
 
 	// Apply optional configurations.
 	for _, opt := range opts {
-		opt(p)
+		err := opt(p)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Sanity check: Ensure all children have the opposite PolygonType.
@@ -721,6 +720,48 @@ func (c *contour[T]) eq(other contour[T]) bool {
 
 	// No rotation of the second contour resulted in a match, so the contours are not equivalent.
 	return false
+}
+
+// ensureClockwise ensures that the contour points are ordered in a clockwise direction.
+//
+// This function calculates the signed area of the contour. If the area is positive, it indicates
+// that the points are in a counterclockwise order. In such cases, the function reverses the order
+// of the points to make the contour clockwise. If the area is already negative (indicating clockwise
+// order), no action is taken.
+//
+// This is particularly useful for consistency when dealing with hole polygons or when ensuring
+// correct orientation for geometric operations like Boolean polygon operations.
+//
+// Notes:
+//   - A positive signed area indicates counterclockwise orientation.
+//   - A negative signed area indicates clockwise orientation.
+func (c *contour[T]) ensureClockwise() {
+	area := SignedArea2X(c.toPoints())
+	if area < 0 {
+		return // Already clockwise
+	}
+	slices.Reverse(*c)
+}
+
+// ensureCounterClockwise ensures that the contour points are ordered in a counterclockwise direction.
+//
+// This function calculates the signed area of the contour. If the area is negative, it indicates
+// that the points are in a clockwise order. In such cases, the function reverses the order of
+// the points to make the contour counterclockwise. If the area is already positive (indicating
+// counterclockwise order), no action is taken.
+//
+// This is particularly useful for consistency when dealing with solid polygons or for geometric
+// operations that require specific point orientations.
+//
+// Notes:
+//   - A positive signed area indicates counterclockwise orientation.
+//   - A negative signed area indicates clockwise orientation.
+func (c *contour[T]) ensureCounterClockwise() {
+	area := SignedArea2X(c.toPoints())
+	if area > 0 {
+		return // Already counterclockwise
+	}
+	slices.Reverse(*c)
 }
 
 // findLowestLeftmost identifies the lowest, leftmost point in a given contour.
@@ -1106,6 +1147,14 @@ func (pt *PolyTree[T]) AddChild(child *PolyTree[T]) error {
 		}
 	}
 
+	// Set point directionality
+	switch child.polygonType {
+	case PTSolid:
+		child.contour.ensureCounterClockwise()
+	case PTHole:
+		child.contour.ensureClockwise()
+	}
+
 	// Set the parent of the child
 	child.parent = pt
 
@@ -1340,7 +1389,9 @@ func (pt *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOpe
 	pt.markEntryExitPoints(other, operation)
 
 	// Step 3: Perform traversal to construct the result of the Boolean operation
-	return nestPointsToPolyTrees(pt.booleanOperationTraversal(other, operation))
+	contours := pt.booleanOperationTraversal(other, operation)
+
+	return nestPointsToPolyTrees(contours)
 }
 
 // BoundingBox calculates the axis-aligned bounding box (AABB) of the PolyTree.
@@ -1437,7 +1488,14 @@ func (pt *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation B
 				currentPointIndex = (currentPointIndex - 1 + len(currentPoly.contour)) % len(currentPoly.contour)
 			}
 
-			// Handle polygon switching at entry/exit points and adjust traversal direction if needed
+			// Handle polygon switching at entry/exit points and adjust traversal direction if needed.
+			// The if condition is true when:
+			//   1. The current point is an exit point (intersectionTypeExit),
+			//	  OR
+			//   2. The operation is BooleanSubtraction AND:
+			//        - The polygon is a hole and the current point is an entry point,
+			//	       OR
+			//        - The polygon is solid, the current point is an entry point, and the traversal direction is reverse.
 			if currentPoly.contour[currentPointIndex].entryExit == intersectionTypeExit ||
 				(operation == BooleanSubtraction &&
 					((currentPoly.polygonType == PTHole && currentPoly.contour[currentPointIndex].entryExit == intersectionTypeEntry) ||
@@ -1932,25 +1990,37 @@ func (pt *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation Boolean
 //	    fmt.Printf("Polygon ID: %v, Type: %v\n", poly.ID, poly.polygonType)
 //	}
 func (pt *PolyTree[T]) Nodes(yield func(*PolyTree[T]) bool) {
-	// Yield the current polygon (pt)
-	if !yield(pt) {
-		return // Stop if yield returns false
-	}
+	var currentPt *PolyTree[T]
 
-	// Yield all siblings and their nested polygons
-	for _, sibling := range pt.siblings {
-		for s := range sibling.Nodes {
-			if !yield(s) {
-				return // Stop if yield returns false
+	toYield := make([]*PolyTree[T], 0, 16)
+	yielded := make([]*PolyTree[T], 0, 16)
+
+	// add pt to toYield
+	toYield = append(toYield, pt)
+
+	// for loop: while toYield has values
+	for len(toYield) > 0 {
+
+		// pop poly from toYield
+		currentPt, toYield = toYield[0], toYield[1:]
+
+		// yield poly, return if needed
+		if !yield(currentPt) {
+			return
+		}
+
+		// add poly to yielded
+		yielded = append(yielded, currentPt)
+
+		// add all siblings and children of poly to toYield if not already added, and if not already yielded
+		for _, sibling := range currentPt.siblings {
+			if !slices.Contains(yielded, sibling) && !slices.Contains(toYield, sibling) {
+				toYield = append(toYield, sibling)
 			}
 		}
-	}
-
-	// Yield all children and their nested polygons
-	for _, child := range pt.children {
-		for c := range child.Nodes {
-			if !yield(c) {
-				return // Stop if yield returns false
+		for _, child := range currentPt.children {
+			if !slices.Contains(yielded, child) && !slices.Contains(toYield, child) {
+				toYield = append(toYield, child)
 			}
 		}
 	}

@@ -93,6 +93,88 @@ func TestContour_contains(t *testing.T) {
 	}
 }
 
+func TestContour_EnsureClockwise(t *testing.T) {
+	tests := map[string]struct {
+		contour        contour[int]
+		expectedPoints []Point[int]
+	}{
+		"Clockwise": {
+			contour: contour[int]{
+				{point: NewPoint(0, 0)},
+				{point: NewPoint(0, 10)},
+				{point: NewPoint(10, 0)},
+			},
+			expectedPoints: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(0, 10),
+				NewPoint(10, 0),
+			},
+		},
+		"CounterClockwise": {
+			contour: contour[int]{
+				{point: NewPoint(0, 0)},
+				{point: NewPoint(10, 0)},
+				{point: NewPoint(0, 10)},
+			},
+			expectedPoints: []Point[int]{
+				NewPoint(0, 10),
+				NewPoint(10, 0),
+				NewPoint(0, 0),
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			tc.contour.ensureClockwise()
+			for i, p := range tc.contour {
+				assert.Equal(t, tc.expectedPoints[i], p.point, "contour points mismatch")
+			}
+		})
+	}
+}
+
+func TestContour_EnsureCounterClockwise(t *testing.T) {
+	tests := map[string]struct {
+		contour        contour[int]
+		expectedPoints []Point[int]
+	}{
+		"Clockwise": {
+			contour: contour[int]{
+				{point: NewPoint(0, 0)},
+				{point: NewPoint(0, 10)},
+				{point: NewPoint(10, 0)},
+			},
+			expectedPoints: []Point[int]{
+				NewPoint(10, 0),
+				NewPoint(0, 10),
+				NewPoint(0, 0),
+			},
+		},
+		"CounterClockwise": {
+			contour: contour[int]{
+				{point: NewPoint(0, 0)},
+				{point: NewPoint(10, 0)},
+				{point: NewPoint(0, 10)},
+			},
+			expectedPoints: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(10, 0),
+				NewPoint(0, 10),
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			tc.contour.ensureCounterClockwise()
+			for i, p := range tc.contour {
+				assert.Equal(t, tc.expectedPoints[i], p.point, "contour points mismatch")
+			}
+		})
+	}
+}
+
 func TestContour_Eq(t *testing.T) {
 	tests := map[string]struct {
 		contour1 contour[int]
@@ -2092,10 +2174,10 @@ func TestPolyTree_Scale(t *testing.T) {
 
 	// Check hole contour
 	expectedHole := []Point[int]{
-		NewPoint(40, 40),
-		NewPoint(160, 40),
-		NewPoint(160, 160),
 		NewPoint(40, 160),
+		NewPoint(160, 160),
+		NewPoint(160, 40),
+		NewPoint(40, 40),
 	}
 	assert.Equal(t, expectedHole, scaled.Children()[0].Points(), "Hole contour should be scaled correctly")
 
@@ -2188,10 +2270,10 @@ func TestPolyTree_Translate(t *testing.T) {
 
 	// Check hole contour
 	expectedHole := []Point[int]{
-		NewPoint(30, 30),
-		NewPoint(90, 30),
-		NewPoint(90, 90),
 		NewPoint(30, 90),
+		NewPoint(90, 90),
+		NewPoint(90, 30),
+		NewPoint(30, 30),
 	}
 	assert.Equal(t, expectedHole, translated.Children()[0].Points(), "Hole contour should be translated correctly")
 }
@@ -2523,7 +2605,7 @@ func TestNewPolyTree_Errors(t *testing.T) {
 					WithChildren(hole),
 				)
 			},
-			expectedErrMsg: "expected all children to have PolygonType PTHole",
+			expectedErrMsg: "cannot add child: mismatched polygon types (parent: PTSolid, child: PTSolid)",
 		},
 		"Invalid child polygon type for island": {
 			NewPolyFunc: func() (*PolyTree[int], error) {
@@ -2548,7 +2630,7 @@ func TestNewPolyTree_Errors(t *testing.T) {
 					WithChildren(island),
 				)
 			},
-			expectedErrMsg: "expected all children to have PolygonType PTSolid",
+			expectedErrMsg: "cannot add child: mismatched polygon types (parent: PTHole, child: PTHole)",
 		},
 	}
 
