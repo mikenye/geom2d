@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"math"
 	"testing"
 )
 
@@ -2013,6 +2014,101 @@ func TestPolyTree_Root(t *testing.T) {
 	assert.Equal(t, root, grandchild.Root(), "Root of the grandchild polygon should be the root polygon")
 }
 
+func TestPolyTree_Rotate(t *testing.T) {
+	// Create root/parent polygon - large square
+	root, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(100, 0),
+		NewPoint(100, 100),
+		NewPoint(0, 100),
+	}, PTSolid)
+	require.NoError(t, err)
+
+	// Define pivot point and angle (90° = Pi/2 radians)
+	pivot := NewPoint(0, 0)
+	angle := math.Pi / 2
+
+	// Perform rotation
+	rotated := root.Rotate(pivot, angle)
+
+	// Expected rotated contour (coordinates after 90° rotation around (50, 50))
+	expectedContour := []Point[float64]{
+		NewPoint[float64](0, 0),
+		NewPoint[float64](0, 100),
+		NewPoint[float64](-100, 100),
+		NewPoint[float64](-100, 0),
+	}
+
+	// Verify rotation result
+	for i, point := range rotated.Points() {
+		assert.InDelta(t, expectedContour[i].X(), point.X(), 1e-10, "Contour should be rotated correctly")
+		assert.InDelta(t, expectedContour[i].Y(), point.Y(), 1e-10, "Contour should be rotated correctly")
+	}
+}
+
+func TestPolyTree_Scale(t *testing.T) {
+	// Create root/parent polygon - large square
+	root, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(100, 0),
+		NewPoint(100, 100),
+		NewPoint(0, 100),
+	}, PTSolid)
+	require.NoError(t, err)
+
+	// Create hole polygon - slightly smaller square
+	hole, err := NewPolyTree([]Point[int]{
+		NewPoint(20, 20),
+		NewPoint(80, 20),
+		NewPoint(80, 80),
+		NewPoint(20, 80),
+	}, PTHole)
+	require.NoError(t, err)
+
+	// Create island polygon - even smaller square
+	island, err := NewPolyTree([]Point[int]{
+		NewPoint(40, 40),
+		NewPoint(60, 40),
+		NewPoint(60, 60),
+		NewPoint(40, 60),
+	}, PTSolid)
+	require.NoError(t, err)
+
+	// Set up relationships
+	require.NoError(t, hole.AddChild(island))
+	require.NoError(t, root.AddChild(hole))
+
+	// Scale the PolyTree
+	scaled := root.Scale(NewPoint(0, 0), 2)
+
+	// Check root contour
+	expectedRoot := []Point[int]{
+		NewPoint(0, 0),
+		NewPoint(200, 0),
+		NewPoint(200, 200),
+		NewPoint(0, 200),
+	}
+	assert.Equal(t, expectedRoot, scaled.Points(), "Root contour should be scaled correctly")
+
+	// Check hole contour
+	expectedHole := []Point[int]{
+		NewPoint(40, 40),
+		NewPoint(160, 40),
+		NewPoint(160, 160),
+		NewPoint(40, 160),
+	}
+	assert.Equal(t, expectedHole, scaled.Children()[0].Points(), "Hole contour should be scaled correctly")
+
+	// Check island contour
+	expectedIsland := []Point[int]{
+		NewPoint(80, 80),
+		NewPoint(120, 80),
+		NewPoint(120, 120),
+		NewPoint(80, 120),
+	}
+	assert.Equal(t, expectedIsland, scaled.Children()[0].Children()[0].Points(), "Island contour should be scaled correctly")
+}
+
 func TestPolyTree_Siblings(t *testing.T) {
 	// Create a root polygon
 	root, err := NewPolyTree([]Point[int]{
@@ -2053,6 +2149,51 @@ func TestPolyTree_Siblings(t *testing.T) {
 
 	siblingsOfSibling2 := sibling2.Siblings()
 	assert.ElementsMatch(t, siblingsOfSibling2, []*PolyTree[int]{root, sibling1}, "sibling2's siblings do not match expected values")
+}
+
+func TestPolyTree_Translate(t *testing.T) {
+	// Create root/parent polygon - large square
+	root, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(100, 0),
+		NewPoint(100, 100),
+		NewPoint(0, 100),
+	}, PTSolid)
+	require.NoError(t, err)
+
+	// Create hole polygon - smaller square
+	hole, err := NewPolyTree([]Point[int]{
+		NewPoint(20, 20),
+		NewPoint(80, 20),
+		NewPoint(80, 80),
+		NewPoint(20, 80),
+	}, PTHole)
+	require.NoError(t, err)
+
+	// Add hole to root
+	require.NoError(t, root.AddChild(hole))
+
+	// Translate the PolyTree
+	delta := NewPoint(10, 10)
+	translated := root.Translate(delta)
+
+	// Check root contour
+	expectedRoot := []Point[int]{
+		NewPoint(10, 10),
+		NewPoint(110, 10),
+		NewPoint(110, 110),
+		NewPoint(10, 110),
+	}
+	assert.Equal(t, expectedRoot, translated.Points(), "Root contour should be translated correctly")
+
+	// Check hole contour
+	expectedHole := []Point[int]{
+		NewPoint(30, 30),
+		NewPoint(90, 30),
+		NewPoint(90, 90),
+		NewPoint(30, 90),
+	}
+	assert.Equal(t, expectedHole, translated.Children()[0].Points(), "Hole contour should be translated correctly")
 }
 
 func TestNestPointsToPolyTrees(t *testing.T) {

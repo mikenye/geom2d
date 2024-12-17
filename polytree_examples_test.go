@@ -3,6 +3,7 @@ package geom2d_test
 import (
 	"fmt"
 	"geom2d"
+	"math"
 )
 
 func ExampleNewPolyTree() {
@@ -39,11 +40,11 @@ func ExampleNewPolyTree() {
 
 	// Output:
 	// PolyTree: PTSolid
-	// Contour Points: [(0, 0), (50, 0), (50, 50), (0, 50)]
+	// Contour Points: [(0, 0), (100, 0), (100, 100), (0, 100)]
 	//   PolyTree: PTHole
-	//   Contour Points: [(10, 10), (10, 40), (40, 40), (40, 10)]
+	//   Contour Points: [(20, 20), (20, 80), (80, 80), (80, 20)]
 	//     PolyTree: PTSolid
-	//     Contour Points: [(20, 20), (30, 20), (30, 30), (20, 30)]
+	//     Contour Points: [(40, 40), (60, 40), (60, 60), (40, 60)]
 }
 
 func ExampleNewPolyTreeOption() {
@@ -61,11 +62,12 @@ func ExampleNewPolyTreeOption() {
 		geom2d.NewPoint(0, 10),
 	}, geom2d.PTSolid, geom2d.WithChildren(child))
 	fmt.Println(parent.String())
+
 	// Output:
 	// PolyTree: PTSolid
-	// Contour Points: [(0, 0), (5, 0), (5, 5), (0, 5)]
+	// Contour Points: [(0, 0), (10, 0), (10, 10), (0, 10)]
 	//   PolyTree: PTHole
-	//   Contour Points: [(1, 1), (1, 3), (3, 3), (3, 1)]
+	//   Contour Points: [(3, 3), (3, 7), (7, 7), (7, 3)]
 }
 
 func ExampleWithChildren() {
@@ -85,9 +87,9 @@ func ExampleWithChildren() {
 	fmt.Println(parent.String())
 	// Output:
 	// PolyTree: PTSolid
-	// Contour Points: [(0, 0), (5, 0), (5, 5), (0, 5)]
+	// Contour Points: [(0, 0), (10, 0), (10, 10), (0, 10)]
 	//   PolyTree: PTHole
-	//   Contour Points: [(1, 1), (1, 3), (3, 3), (3, 1)]
+	//   Contour Points: [(3, 3), (3, 7), (7, 7), (7, 3)]
 }
 
 func ExamplePolyTree_Area() {
@@ -706,6 +708,94 @@ func ExamplePolyTree_RelationshipToRectangle() {
 	// Hole polygon relationship: RelationshipContainedBy
 }
 
+func ExamplePolyTree_Rotate() {
+	// Create root/parent polygon - large square
+	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(100, 0),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(0, 100),
+	}, geom2d.PTSolid)
+
+	// Define pivot point (0, 0) and rotation angle (90° counterclockwise)
+	pivot := geom2d.NewPoint(0, 0)
+	angle := math.Pi / 2
+
+	// Perform rotation
+	rotated := root.Rotate(pivot, angle)
+
+	// Print before and after rotation
+	fmt.Println("Before rotation:")
+	fmt.Println(root)
+	fmt.Println("After 90° counterclockwise rotation:")
+	fmt.Println(rotated.AsIntRounded())
+
+	// Output:
+	// Before rotation:
+	// PolyTree: PTSolid
+	// Contour Points: [(0, 0), (100, 0), (100, 100), (0, 100)]
+	//
+	// After 90° counterclockwise rotation:
+	// PolyTree: PTSolid
+	// Contour Points: [(-100, 0), (0, 0), (0, 100), (-100, 100)]
+}
+
+func ExamplePolyTree_Scale() {
+	// Create root/parent polygon - large square
+	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(100, 0),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(0, 100),
+	}, geom2d.PTSolid)
+
+	// Create hole polygon - slightly smaller square
+	hole, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(20, 20),
+		geom2d.NewPoint(80, 20),
+		geom2d.NewPoint(80, 80),
+		geom2d.NewPoint(20, 80),
+	}, geom2d.PTHole)
+
+	// Create island polygon - even slightly smaller square
+	island, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(40, 40),
+		geom2d.NewPoint(60, 40),
+		geom2d.NewPoint(60, 60),
+		geom2d.NewPoint(40, 60),
+	}, geom2d.PTSolid)
+
+	// Set up polygon relationships
+	_ = hole.AddChild(island)
+	_ = root.AddChild(hole)
+
+	// Scale by a factor of 2 with origin 0,0
+	scaled := root.Scale(geom2d.NewPoint(0, 0), 2)
+
+	// Print output
+	fmt.Println("Before scaling:")
+	fmt.Println(root)
+	fmt.Println("After scaling:")
+	fmt.Println(scaled)
+
+	// Output:
+	// Before scaling:
+	// PolyTree: PTSolid
+	// Contour Points: [(0, 0), (100, 0), (100, 100), (0, 100)]
+	//   PolyTree: PTHole
+	//   Contour Points: [(20, 20), (20, 80), (80, 80), (80, 20)]
+	//     PolyTree: PTSolid
+	//     Contour Points: [(40, 40), (60, 40), (60, 60), (40, 60)]
+	//
+	// After scaling:
+	// PolyTree: PTSolid
+	// Contour Points: [(0, 0), (200, 0), (200, 200), (0, 200)]
+	//   PolyTree: PTHole
+	//   Contour Points: [(40, 40), (160, 40), (160, 160), (40, 160)]
+	//     PolyTree: PTSolid
+	//     Contour Points: [(80, 80), (120, 80), (120, 120), (80, 120)]
+}
+
 func ExamplePolyTree_Siblings() {
 	// Create a root polygon
 	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
@@ -734,7 +824,8 @@ func ExamplePolyTree_Siblings() {
 	_ = root.AddSibling(sibling1)
 	_ = root.AddSibling(sibling2)
 
-	// todo: note about not ignoring errors
+	// Note: While errors are ignored in this example for simplicity, it is important to handle errors properly in
+	// production code to ensure robustness and reliability.
 
 	// Get siblings of root
 	siblings := root.Siblings()
@@ -744,6 +835,49 @@ func ExamplePolyTree_Siblings() {
 	// Output:
 	// [Point[(150, 150)] Point[(250, 150)] Point[(250, 250)] Point[(150, 250)]]
 	// [Point[(300, 300)] Point[(400, 300)] Point[(400, 400)] Point[(300, 400)]]
+}
+
+func ExamplePolyTree_Translate() {
+	// Create root/parent polygon - large square
+	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(100, 0),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(0, 100),
+	}, geom2d.PTSolid)
+
+	// Create hole polygon - smaller square
+	hole, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(20, 20),
+		geom2d.NewPoint(80, 20),
+		geom2d.NewPoint(80, 80),
+		geom2d.NewPoint(20, 80),
+	}, geom2d.PTHole)
+
+	// Add hole to root
+	_ = root.AddChild(hole)
+
+	// Translate the entire PolyTree by (10, 10)
+	translated := root.Translate(geom2d.NewPoint(10, 10))
+
+	// Print before and after translation
+	fmt.Println("Before translation:")
+	fmt.Println(root)
+	fmt.Println("After translation:")
+	fmt.Println(translated)
+
+	// Output:
+	// Before translation:
+	// PolyTree: PTSolid
+	// Contour Points: [(0, 0), (100, 0), (100, 100), (0, 100)]
+	//   PolyTree: PTHole
+	//   Contour Points: [(20, 20), (20, 80), (80, 80), (80, 20)]
+	//
+	// After translation:
+	// PolyTree: PTSolid
+	// Contour Points: [(10, 10), (110, 10), (110, 110), (10, 110)]
+	//   PolyTree: PTHole
+	//   Contour Points: [(30, 30), (90, 30), (90, 90), (30, 90)]
 }
 
 func ExamplePolygonType_String() {
@@ -797,9 +931,9 @@ func ExamplePolyTree_String() {
 	fmt.Println(root.String())
 	// Output:
 	// PolyTree: PTSolid
-	// Contour Points: [(0, 0), (5, 0), (5, 5), (0, 5)]
+	// Contour Points: [(0, 0), (10, 0), (10, 10), (0, 10)]
 	//   PolyTree: PTHole
-	//   Contour Points: [(1, 1), (1, 3), (3, 3), (3, 1)]
+	//   Contour Points: [(3, 3), (3, 7), (7, 7), (7, 3)]
 	//     PolyTree: PTSolid
-	//     Contour Points: [(2, 2), (3, 2), (3, 3), (2, 3)]
+	//     Contour Points: [(4, 4), (6, 4), (6, 6), (4, 6)]
 }

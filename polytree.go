@@ -1207,21 +1207,15 @@ func (pt *PolyTree[T]) Area() float64 {
 // Panics:
 //   - If an error occurs during the nesting of contours into the new [PolyTree], the function panics.
 func (pt *PolyTree[T]) AsFloat32() *PolyTree[float32] {
-	contours := make([][]Point[float32], pt.Len())
-	i := 0
-	for poly := range pt.Nodes {
-		polyContour := make([]Point[float32], len(poly.contour))
-		for j, point := range poly.contour.toPoints() {
-			polyContour[j] = point.AsFloat32()
-		}
-		contours[i] = polyContour
-		i++
-	}
-	ptFloat, err := nestPointsToPolyTrees[float32](contours)
+	output, err := ApplyPointTransform[T](pt, func(p Point[T]) (Point[float32], error) {
+		return p.AsFloat32(), nil
+	})
+
 	if err != nil {
 		panic(err)
 	}
-	return ptFloat
+
+	return output
 }
 
 // AsFloat64 converts a [PolyTree] with generic numeric type T to a new [PolyTree] with points of type float64.
@@ -1235,21 +1229,15 @@ func (pt *PolyTree[T]) AsFloat32() *PolyTree[float32] {
 // Panics:
 //   - If an error occurs during the nesting of contours into the new [PolyTree], the function panics.
 func (pt *PolyTree[T]) AsFloat64() *PolyTree[float64] {
-	contours := make([][]Point[float64], pt.Len())
-	i := 0
-	for poly := range pt.Nodes {
-		polyContour := make([]Point[float64], len(poly.contour))
-		for j, point := range poly.contour.toPoints() {
-			polyContour[j] = point.AsFloat64()
-		}
-		contours[i] = polyContour
-		i++
-	}
-	ptFloat, err := nestPointsToPolyTrees[float64](contours)
+	output, err := ApplyPointTransform[T](pt, func(p Point[T]) (Point[float64], error) {
+		return p.AsFloat64(), nil
+	})
+
 	if err != nil {
 		panic(err)
 	}
-	return ptFloat
+
+	return output
 }
 
 // AsInt converts a [PolyTree] with generic numeric type T to a new [PolyTree] with points of type int.
@@ -1263,21 +1251,16 @@ func (pt *PolyTree[T]) AsFloat64() *PolyTree[float64] {
 // Panics:
 //   - If an error occurs during the nesting of contours into the new [PolyTree], the function panics.
 func (pt *PolyTree[T]) AsInt() *PolyTree[int] {
-	contours := make([][]Point[int], pt.Len())
-	i := 0
-	for poly := range pt.Nodes {
-		polyContour := make([]Point[int], len(poly.contour))
-		for j, point := range poly.contour.toPoints() {
-			polyContour[j] = point.AsInt()
-		}
-		contours[i] = polyContour
-		i++
-	}
-	ptInt, err := nestPointsToPolyTrees[int](contours)
+
+	output, err := ApplyPointTransform[T](pt, func(p Point[T]) (Point[int], error) {
+		return p.AsInt(), nil
+	})
+
 	if err != nil {
 		panic(err)
 	}
-	return ptInt
+
+	return output
 }
 
 // AsIntRounded converts a [PolyTree] with generic numeric type T to a new [PolyTree] with points of type int,
@@ -1292,21 +1275,15 @@ func (pt *PolyTree[T]) AsInt() *PolyTree[int] {
 // Panics:
 //   - If an error occurs during the nesting of contours into the new [PolyTree], the function panics.
 func (pt *PolyTree[T]) AsIntRounded() *PolyTree[int] {
-	contours := make([][]Point[int], pt.Len())
-	i := 0
-	for poly := range pt.Nodes {
-		polyContour := make([]Point[int], len(poly.contour))
-		for j, point := range poly.contour.toPoints() {
-			polyContour[j] = point.AsIntRounded()
-		}
-		contours[i] = polyContour
-		i++
-	}
-	ptInt, err := nestPointsToPolyTrees[int](contours)
+	output, err := ApplyPointTransform[T](pt, func(p Point[T]) (Point[int], error) {
+		return p.AsIntRounded(), nil
+	})
+
 	if err != nil {
 		panic(err)
 	}
-	return ptInt
+
+	return output
 }
 
 // BooleanOperation performs a Boolean operation (union, intersection, or subtraction)
@@ -2352,6 +2329,61 @@ func (pt *PolyTree[T]) Root() *PolyTree[T] {
 	return currentPoly
 }
 
+// Rotate rotates all points in the [PolyTree] around a specified pivot [Point] by a given angle in radians,
+// in counter-clockwise direction.
+//
+// This method applies a rotation transformation to all points in the [PolyTree], including its contours and
+// nested child polygons. The rotation is performed relative to the specified pivot point and is expressed
+// in radians.
+//
+// Parameters:
+//   - pivot ([Point][T]): The [Point] around which all points in the [PolyTree] are rotated.
+//   - radians (float64): The angle of rotation in radians. Positive values indicate counter-clockwise rotation.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for geometric calculations, improving robustness
+//     against floating-point imprecision.
+//
+// Returns:
+//   - *[PolyTree][float64]: A new [PolyTree] with points rotated as float64.
+//
+// Panics:
+//   - This function panics if the internal point transformation logic fails.
+func (pt *PolyTree[T]) Rotate(pivot Point[T], radians float64, opts ...Option) *PolyTree[float64] {
+	out, err := ApplyPointTransform(pt, func(p Point[T]) (Point[float64], error) {
+		return p.Rotate(pivot, radians, opts...), nil
+	})
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
+// Scale scales all points in the PolyTree relative to a reference point by a given scaling factor.
+//
+// This method scales all the points of the PolyTree's contours and its children relative to the reference [Point] ref
+// by the scaling factor k. It maintains the relationships between parent and child polygons and adjusts their points
+// proportionally.
+//
+// Parameters:
+//   - ref ([Point][T]): The reference point used as the centre of scaling.
+//   - k (T): The scaling factor. A value greater than 1 enlarges the [PolyTree], a value between 0 and 1 shrinks it,
+//     and a negative value mirrors it.
+//
+// Returns:
+//   - *[PolyTree][T]: A new [PolyTree] where all the points have been scaled relative to ref.
+//
+// Panics:
+//   - This function panics if the internal point transformation logic fails.
+func (pt *PolyTree[T]) Scale(ref Point[T], k T) *PolyTree[T] {
+	out, err := ApplyPointTransform(pt, func(p Point[T]) (Point[T], error) {
+		return p.Scale(ref, k), nil
+	})
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
 // Siblings returns a slice of sibling polygons of the current PolyTree.
 //
 // This function provides access to polygons at the same hierarchical level as the current PolyTree.
@@ -2404,9 +2436,27 @@ func (pt *PolyTree[T]) String() string {
 	return builder.String()
 }
 
-// unlike the other functions, translates in place
-func (pt *PolyTree[T]) Translate(delta Point[T]) {
-
+// Translate moves all points in the [PolyTree] by a specified displacement vector (given as a [Point]).
+//
+// This method applies the given delta vector to all points in the [PolyTree], including its contours
+// and any nested child polygons. The displacement vector is added to each point's coordinates.
+//
+// Parameters:
+//   - delta ([Point][T]): The displacement vector to apply to all points.
+//
+// Returns:
+//   - *[PolyTree][T]: A new [PolyTree] where all the points have been translated.
+//
+// Panics:
+//   - This function panics if the internal point transformation logic fails.
+func (pt *PolyTree[T]) Translate(delta Point[T]) *PolyTree[T] {
+	out, err := ApplyPointTransform(pt, func(p Point[T]) (Point[T], error) {
+		return p.Translate(delta), nil
+	})
+	if err != nil {
+		panic(err)
+	}
+	return out
 }
 
 // ContainsPoint determines whether a given point lies inside the convex polygon.
@@ -2455,6 +2505,61 @@ func (scp *simpleConvexPolygon[T]) ContainsPoint(point Point[T]) bool {
 		}
 	}
 	return true // Point is inside
+}
+
+// ApplyPointTransform applies a transformation function to each point in a [PolyTree] and produces a new [PolyTree]
+// with points of a different type. It supports transformation between numeric types in the [SignedNumber] constraint.
+//
+// This function allows users to convert the points in a PolyTree using a custom transformation function, for example,
+// rounding float64 coordinates to int or scaling coordinates to another type.
+//
+// Parameters:
+//   - pt (*[PolyTree][T]): The input [PolyTree] with points of type T.
+//   - transformFunc (func([Point][T]) ([Point][N], error)): A user-defined function that transforms a [Point][T] to a [Point][N].
+//     It can return an error if the transformation fails.
+//
+// Returns:
+//   - *[PolyTree][N]: A new [PolyTree] where all points have been transformed to type N.
+//   - error: Returns an error if any point transformation fails or if the new [PolyTree] cannot be created.
+func ApplyPointTransform[T, N SignedNumber](pt *PolyTree[T], transformFunc func(p Point[T]) (Point[N], error)) (*PolyTree[N], error) {
+	var (
+		err   error        // Stores any errors encountered during transformation.
+		ptOut *PolyTree[N] // The resulting PolyTree after transformation.
+	)
+
+	// Prepare a slice of transformed contours (polygons), where each point will be converted.
+	contours := make([][]Point[N], pt.Len())
+
+	// Iterate over each polygon (node) in the PolyTree.
+	i := 0
+	for poly := range pt.Nodes {
+
+		// Prepare a slice for the transformed points of the current contour.
+		polyContour := make([]Point[N], len(poly.contour))
+
+		// Transform each point in the contour using the provided transformation function.
+		for j, point := range poly.contour.toPoints() {
+			polyContour[j], err = transformFunc(point)
+			if err != nil {
+				// Return a descriptive error if the transformation fails for any point.
+				return nil, fmt.Errorf("failed to transform point at poly %d, index %d: %w", i, j, err)
+			}
+		}
+
+		// Store the transformed contour into the output contours slice.
+		contours[i] = polyContour
+		i++
+	}
+
+	// Reconstruct the PolyTree from the transformed contours.
+	ptOut, err = nestPointsToPolyTrees[N](contours)
+	if err != nil {
+		// Return an error if the new PolyTree cannot be created.
+		return nil, fmt.Errorf("failed to nest points into PolyTree: %w", err)
+	}
+
+	// Return the transformed PolyTree.
+	return ptOut, nil
 }
 
 // compareLowestLeftmost compares two contours and determines their relative order
