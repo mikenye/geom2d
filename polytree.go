@@ -914,7 +914,7 @@ func (c *contour[T]) isPointInside(point Point[T]) bool {
 			crosses++
 
 		case lsrCollinearCDinAB: // Ray is collinear with the edge and overlaps it.
-			crosses += 2
+			crosses += 1
 
 		case lsrConAB: // Ray starts on the edge.
 			crosses++
@@ -2738,8 +2738,10 @@ func nestPointsToPolyTrees[T SignedNumber](contours [][]Point[T]) (*PolyTree[T],
 			switch childToPoly.polygonType {
 			case PTSolid:
 				newPoly.polygonType = PTHole
+				newPoly.contour.ensureClockwise()
 			case PTHole:
 				newPoly.polygonType = PTSolid
+				newPoly.contour.ensureCounterClockwise()
 			}
 
 			// add as sibling to root

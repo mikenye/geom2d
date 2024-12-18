@@ -439,15 +439,97 @@ func TestContour_insertIntersectionPoint(t *testing.T) {
 	}
 }
 
+func TestContour_isPointInside(t *testing.T) {
+	tests := map[string]struct {
+		c        contour[int]
+		p        Point[int]
+		expected bool
+	}{
+		"point inside box": {
+			c: contour[int]{
+				{point: Point[int]{0, 0}},
+				{point: Point[int]{10, 0}},
+				{point: Point[int]{10, 10}},
+				{point: Point[int]{0, 10}},
+			},
+			p:        NewPoint(5, 5),
+			expected: true,
+		},
+		"point outside box": {
+			c: contour[int]{
+				{point: Point[int]{0, 0}},
+				{point: Point[int]{10, 0}},
+				{point: Point[int]{10, 10}},
+				{point: Point[int]{0, 10}},
+			},
+			p:        NewPoint(-5, 5),
+			expected: false,
+		},
+		"point inside, collinear with contour edge facing right": {
+			c: contour[int]{
+				{point: Point[int]{0, 0}},
+				{point: Point[int]{40, 0}},
+				{point: Point[int]{40, 14}},
+				{point: Point[int]{54, 14}},
+				{point: Point[int]{54, 54}},
+				{point: Point[int]{0, 54}},
+			},
+			p:        NewPoint(30, 14),
+			expected: true,
+		},
+		"point inside, collinear with contour edge facing left": {
+			c: contour[int]{
+				{point: Point[int]{0, 0}},
+				{point: Point[int]{54, 0}},
+				{point: Point[int]{54, 14}},
+				{point: Point[int]{40, 14}},
+				{point: Point[int]{40, 54}},
+				{point: Point[int]{0, 54}},
+			},
+			p:        NewPoint(30, 14),
+			expected: true,
+		},
+		"point outside, collinear with contour edge facing right": {
+			c: contour[int]{
+				{point: Point[int]{0, 0}},
+				{point: Point[int]{40, 0}},
+				{point: Point[int]{40, 14}},
+				{point: Point[int]{54, 14}},
+				{point: Point[int]{54, 54}},
+				{point: Point[int]{0, 54}},
+			},
+			p:        NewPoint(-30, 14),
+			expected: false,
+		},
+		"point outside, collinear with contour edge facing left": {
+			c: contour[int]{
+				{point: Point[int]{0, 0}},
+				{point: Point[int]{54, 0}},
+				{point: Point[int]{54, 14}},
+				{point: Point[int]{40, 14}},
+				{point: Point[int]{40, 54}},
+				{point: Point[int]{0, 54}},
+			},
+			p:        NewPoint(-30, 14),
+			expected: false,
+		},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, tc.c.isPointInside(tc.p))
+		})
+	}
+}
+
 func TestContour_iterEdges_EarlyExit(t *testing.T) {
-	contour := contour[int]{
+	c := contour[int]{
 		{point: Point[int]{0, 0}},
 		{point: Point[int]{10, 0}},
 		{point: Point[int]{10, 10}},
 		{point: Point[int]{0, 10}},
 	}
 	count := 0
-	contour.iterEdges(func(edge LineSegment[int]) bool {
+	c.iterEdges(func(edge LineSegment[int]) bool {
 		count++
 		return count < 2 // Exit after two edges
 	})
@@ -455,28 +537,28 @@ func TestContour_iterEdges_EarlyExit(t *testing.T) {
 }
 
 func TestContour_iterEdges_Empty(t *testing.T) {
-	contour := contour[int]{}
+	c := contour[int]{}
 	count := 0
-	contour.iterEdges(func(edge LineSegment[int]) bool {
+	c.iterEdges(func(edge LineSegment[int]) bool {
 		count++
 		return true
 	})
-	require.Equal(t, 0, count, "iterEdges should not yield edges for an empty contour")
+	require.Equal(t, 0, count, "iterEdges should not yield edges for an empty c")
 }
 
 func TestContour_iterEdges_FullPolygon(t *testing.T) {
-	contour := contour[int]{
+	c := contour[int]{
 		{point: Point[int]{0, 0}},
 		{point: Point[int]{10, 0}},
 		{point: Point[int]{10, 10}},
 		{point: Point[int]{0, 10}},
 	}
 	var edges []LineSegment[int]
-	contour.iterEdges(func(edge LineSegment[int]) bool {
+	c.iterEdges(func(edge LineSegment[int]) bool {
 		edges = append(edges, edge)
 		return true
 	})
-	require.Equal(t, 4, len(edges), "iterEdges should yield one edge per contour segment")
+	require.Equal(t, 4, len(edges), "iterEdges should yield one edge per c segment")
 	require.Equal(t, NewLineSegment(Point[int]{0, 0}, Point[int]{10, 0}), edges[0])
 	require.Equal(t, NewLineSegment(Point[int]{10, 0}, Point[int]{10, 10}), edges[1])
 	require.Equal(t, NewLineSegment(Point[int]{10, 10}, Point[int]{0, 10}), edges[2])
@@ -484,12 +566,12 @@ func TestContour_iterEdges_FullPolygon(t *testing.T) {
 }
 
 func TestContour_iterEdges_TwoPoints(t *testing.T) {
-	contour := contour[int]{
+	c := contour[int]{
 		{point: Point[int]{0, 0}},
 		{point: Point[int]{10, 0}},
 	}
 	var edges []LineSegment[int]
-	contour.iterEdges(func(edge LineSegment[int]) bool {
+	c.iterEdges(func(edge LineSegment[int]) bool {
 		edges = append(edges, edge)
 		return true
 	})
@@ -499,13 +581,13 @@ func TestContour_iterEdges_TwoPoints(t *testing.T) {
 }
 
 func TestContour_iterEdges_Triangle(t *testing.T) {
-	contour := contour[int]{
+	c := contour[int]{
 		{point: Point[int]{0, 0}},
 		{point: Point[int]{10, 0}},
 		{point: Point[int]{5, 10}},
 	}
 	var edges []LineSegment[int]
-	contour.iterEdges(func(edge LineSegment[int]) bool {
+	c.iterEdges(func(edge LineSegment[int]) bool {
 		edges = append(edges, edge)
 		return true
 	})
