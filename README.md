@@ -6,19 +6,51 @@ Geom2D is a computational geometry library for Go, designed for 2D polygon opera
 
 Geom2D aims to provide a robust, flexible, and efficient implementation of 2D geometric operations, featuring:
 
-- **Boolean Operations**: Union, intersection, subtraction, and more for polygons.
-- **Point-in-Polygon Testing**: Fast and reliable algorithms for determining point relationships to polygons.
 - **Geometry Types**:
-    - **Point**: Basic 2D point representation.
-    - **LineSegment**: Represents a line segment and supports operations such as intersection and reflection.
-    - **Circle**: Support for operations like circumference, area, and intersection checks.
-    - **Rectangle**: Axis-aligned bounding box with methods for containment, intersection, and transformation.
-    - **Polygon**: Supports polygons with holes and nested structures, with methods for orientation, correction, and Boolean operations.
+  - **Point**: Basic 2D point representation.
+  - **LineSegment**: Represents a line segment and supports operations such as intersection and reflection.
+  - **Circle**: Support for operations like circumference, area, and intersection checks.
+  - **Rectangle**: Axis-aligned bounding box with methods for containment, intersection, and transformation.
+  - **Polygon (PolyTree)**: Supports polygons with holes and nested structures, with methods for orientation, correction, and Boolean operations.
+- **Polygon Boolean Operations**: Union, intersection and subtraction.
+- **Geometry to Geometry Relationships**: Fast and reliable algorithms for determining geometric relationships.
 - **Generics**: The library leverages Go's generics to allow users to work with both integers (`int`) and floating-point (`float64`) types, offering precision and flexibility depending on the application's requirements.
 
 ## Getting Started
 
-Detailed installation instructions, usage examples, and API documentation will be provided as the library approaches stability. For now, explore the codebase and experiment with the provided types and methods.
+To install Geom2D, use go get:
+
+```bash
+go get github.com/mikenye/geom2d
+```
+
+### Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/mikenye/geom2d"
+)
+
+func main() {
+    // Create a new point
+    p := geom2d.NewPoint(3, 4)
+
+    // Create a new circle with center p and radius 5
+    c := geom2d.NewCircle(p, 5)
+
+    // Calculate the area of the circle
+    area := c.Area()
+
+    fmt.Println("Circle Area:", area)
+}
+```
+
+## Documentation
+
+Comprehensive documentation exists in the [repository's wiki](https://github.com/mikenye/geom2d/wiki).
 
 ## Geometric Relationships
 
