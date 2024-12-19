@@ -1048,8 +1048,6 @@ func RelativeCosineOfAngle[T SignedNumber](A, B Point[T], O ...Point[T]) float64
 	magnitudeOA := origin.DistanceToPoint(A)
 	magnitudeOB := origin.DistanceToPoint(B)
 
-	// todo: check for divide by zero errors & handle (return error?)
-
 	// Use the Dot Product Formula to Find the Cosine of the Angle
 	return float64(OAdotOB) / (magnitudeOA * magnitudeOB)
 }

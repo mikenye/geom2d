@@ -1323,32 +1323,12 @@ func TestLineSegment_Scale_Int(t *testing.T) {
 			factor:   2,
 			expected: NewLineSegment[int](NewPoint[int](-2, -3), NewPoint[int](4, 5)),
 		},
-		//"int: Scale from midpoint by 2": { // todo: fix test
-		//	segment:  NewLineSegment[int](NewPoint(1, 1), NewPoint(4, 5)),
-		//	origin:   NewLineSegment[int](NewPoint(1, 1), NewPoint(4, 5)).Center(),
-		//	factor:   1.5,
-		//	expected: NewLineSegment[float64](NewPoint[float64](0.25, 0), NewPoint[float64](4.75, 6)),
-		//},
-
-		//// Float64 test cases // todo: move to new test
-		//"float64: Scale from start point by 2.5": {
-		//	segment:  NewLineSegment[float64](NewPoint(1.0, 2.0), NewPoint(3.0, 4.0)),
-		//	origin:   ScaleFromStart,
-		//	factor:   2.5,
-		//	expected: NewLineSegment[float64](NewPoint[float64](1.0, 2.0), NewPoint[float64](6.0, 7.0)),
-		//},
-		//"float64: Scale from end point by 0.75": {
-		//	segment:  NewLineSegment[float64](NewPoint(1.0, 2.0), NewPoint(3.0, 4.0)),
-		//	origin:   ScaleFromEnd,
-		//	factor:   0.75,
-		//	expected: NewLineSegment[float64](NewPoint[float64](1.5, 2.5), NewPoint[float64](3.0, 4.0)),
-		//},
-		//"float64: Scale from midpoint by 0.5": {
-		//	segment:  NewLineSegment[float64](NewPoint(2.0, 3.0), NewPoint(6.0, 7.0)),
-		//	origin:   ScaleFromMidpoint,
-		//	factor:   0.5,
-		//	expected: NewLineSegment[float64](NewPoint[float64](3.0, 4.0), NewPoint[float64](5.0, 6.0)),
-		//},
+		"int: Scale from midpoint by 2": {
+			segment:  NewLineSegment[int](NewPoint(0, 0), NewPoint(10, 10)),
+			origin:   NewPoint(5, 5),
+			factor:   2,
+			expected: NewLineSegment[int](NewPoint[int](-5, -5), NewPoint[int](15, 15)),
+		},
 	}
 
 	for name, tc := range tests {

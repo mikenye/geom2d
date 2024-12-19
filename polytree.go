@@ -373,10 +373,6 @@ type PolyTree[T SignedNumber] struct {
 
 	// hull caches the convex hull of the polygon for faster point-in-polygon checks.
 	hull simpleConvexPolygon[T]
-
-	// maxX stores the maximum X-coordinate among the polygon's vertices. Used for ray-casting
-	// in point-in-polygon checks and other spatial queries. This value is doubled as-per contour.
-	maxX T
 }
 
 // contour represents the outline of a polygon as a slice of polyTreePoint entries.
@@ -583,20 +579,15 @@ func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPo
 	}
 
 	// Assign and double the points for precision handling.
-	p.maxX = points[0].x * 2
 	p.contour = make([]polyTreePoint[T], len(orderedPoints))
 	for i, point := range orderedPoints {
 		p.contour[i] = polyTreePoint[T]{
 			point: NewPoint(point.x*2, point.y*2),
 		}
-		p.maxX = max(p.maxX, p.contour[i].point.x)
 	}
 
 	// Reorder contour points and reset intersection metadata.
 	p.resetIntersectionMetadataAndReorder()
-
-	// Increment maxX to ensure boundary checks in ray-casting operations.
-	p.maxX++
 
 	// Compute and store the convex hull of the polygon for optimisation.
 	hull := ConvexHull(points)
@@ -905,14 +896,12 @@ func (c *contour[T]) isPointInside(point Point[T]) bool {
 	crosses := 0
 
 	// Calculate the farthest x-coordinate to cast a ray.
-	// todo: is this required? possibly redundant code...
 	maxX := point.x
 	for _, p := range *c {
 		maxX = max(maxX, p.point.x)
 	}
-	// Ensure the ray extends beyond the contour's bounds.
-	maxX++
-	ray := NewLineSegment(point, NewPoint(maxX, point.y))
+	maxX++                                                // Ensure the ray extends beyond the contour's bounds.
+	ray := NewLineSegment(point, NewPoint(maxX, point.y)) // Cast the ray.
 
 	// Convert the contour to edges (line segments).
 	edges := c.toEdges()
@@ -2547,52 +2536,19 @@ func (pt *PolyTree[T]) Translate(delta Point[T]) *PolyTree[T] {
 	return out
 }
 
-// ContainsPoint determines whether a given point lies inside the convex polygon.
+// containsPoint determines whether a given point lies inside the convex polygon.
 //
-// This method uses a clockwise orientation check for each edge of the polygon to determine
-// if the point is on the "correct" side of all edges. For convex polygons, this is sufficient
-// to verify containment.
-//
-// Parameters:
-//
-//   - point Point[T]: The point to check.
-//
-// Returns:
-//
-//   - bool: True if the point lies inside or on the boundary of the convex polygon; false otherwise.
-//
-// Algorithm:
-//   - Iterate over each edge of the convex polygon, defined by consecutive points in the Points slice.
-//   - For each edge, check the orientation of the given point relative to the edge using the Orientation function.
-//   - If the point is found to be on the "outside" of any edge (i.e., the orientation is clockwise),
-//     it is determined to be outside the polygon, and the method returns false.
-//   - If the point passes all edge checks, it is inside the polygon, and the method returns true.
-//
-// Notes:
-//   - This method assumes that the `simpleConvexPolygon` is indeed convex. No validation of convexity
-//     is performed, as this type is intended for internal use and relies on being constructed correctly.
-//
-// Example:
-//
-//	scp := simpleConvexPolygon{Contour: []Point{
-//	    {X: 0, Y: 0}, {X: 4, Y: 0}, {X: 4, Y: 4}, {X: 0, Y: 4},
-//	}}
-//	inside := scp.ContainsPoint(Point{X: 2, Y: 2}) // Returns true
-//	outside := scp.ContainsPoint(Point{X: 5, Y: 5}) // Returns false
-//
-// todo: this example only makes sense in the context of this module - users of the module won't be able to do this as simpleConvexPolygon is private. Consider how we address this. Potentially add a ConvexHull method of Polygon?
-func (scp *simpleConvexPolygon[T]) ContainsPoint(point Point[T]) bool {
-	// Loop over each edge, defined by consecutive points
+// This method assumes that the `simpleConvexPolygon` is indeed convex. It is intended for internal use
+// and relies on the correct construction of the type.
+func (scp *simpleConvexPolygon[T]) containsPoint(point Point[T]) bool {
 	for i := 0; i < len(scp.Points); i++ {
 		a := scp.Points[i]
-		b := scp.Points[(i+1)%len(scp.Points)] // Wrap to form a closed polygon
-
-		// Check if the point is on the correct side of the edge
+		b := scp.Points[(i+1)%len(scp.Points)]
 		if Orientation(a, b, point) == PointsClockwise {
-			return false // Point is outside
+			return false
 		}
 	}
-	return true // Point is inside
+	return true
 }
 
 // ApplyPointTransform applies a transformation function to each point in a [PolyTree] and produces a new [PolyTree]

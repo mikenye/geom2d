@@ -54,7 +54,7 @@ func TestSimpleConvexPolygon_ContainsPoint(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			contains := tc.polygon.ContainsPoint(tc.point)
+			contains := tc.polygon.containsPoint(tc.point)
 			assert.Equal(t, tc.expectedContain, contains, "Expected ContainsPoint result does not match")
 		})
 	}
@@ -2479,7 +2479,6 @@ func TestNestPointsToPolyTrees(t *testing.T) {
 					hull: simpleConvexPolygon[int]{
 						Points: []Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}},
 					},
-					maxX: 21,
 				}, nil
 			},
 			wantErr: false,
@@ -2500,7 +2499,6 @@ func TestNestPointsToPolyTrees(t *testing.T) {
 					},
 					polygonType: PTSolid,
 					hull:        simpleConvexPolygon[int]{Points: []Point[int]{{0, 0}, {20, 0}, {20, 20}, {0, 20}}},
-					maxX:        41,
 				}
 				hole := &PolyTree[int]{
 					contour: contour[int]{
@@ -2511,7 +2509,6 @@ func TestNestPointsToPolyTrees(t *testing.T) {
 					},
 					polygonType: PTHole,
 					hull:        simpleConvexPolygon[int]{Points: []Point[int]{{5, 5}, {15, 5}, {15, 15}, {5, 15}}},
-					maxX:        31,
 				}
 				island := &PolyTree[int]{
 					contour: contour[int]{
@@ -2522,7 +2519,6 @@ func TestNestPointsToPolyTrees(t *testing.T) {
 					},
 					polygonType: PTSolid,
 					hull:        simpleConvexPolygon[int]{Points: []Point[int]{{7, 7}, {13, 7}, {13, 13}, {7, 13}}},
-					maxX:        27,
 				}
 				if err := hole.AddChild(island); err != nil {
 					return nil, fmt.Errorf("failed to add island: %w", err)
@@ -2618,7 +2614,6 @@ func TestNewPolyTree(t *testing.T) {
 							{x: 0, y: 6},
 						},
 					},
-					maxX: 13,
 				}
 			},
 		},
@@ -2677,7 +2672,6 @@ func TestNewPolyTree(t *testing.T) {
 							{x: 0, y: 6},
 						},
 					},
-					maxX: 13,
 				}
 			},
 		},
