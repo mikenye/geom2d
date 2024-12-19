@@ -1252,8 +1252,7 @@ func ExamplePolyTree_Translate() {
 }
 
 func ExamplePolygonType_String() {
-	pt := geom2d.PTSolid
-	fmt.Println(pt.String())
+	fmt.Println(geom2d.PTSolid.String())
 	// Output:
 	// PTSolid
 }

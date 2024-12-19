@@ -1651,10 +1651,10 @@ func (pt *PolyTree[T]) Eq(other *PolyTree[T], opts ...polyTreeEqOption[T]) (bool
 	switch {
 	case pt == nil && other == nil:
 		return true, PTMNoMismatch // Both are nil, no mismatch
-	case pt == nil && other != nil:
-		return false, PTMNilPolygonMismatch // One is nil, the other is not
-	case pt != nil && other == nil:
-		return false, PTMNilPolygonMismatch // One is nil, the other is not
+	case pt == nil:
+		return false, PTMNilPolygonMismatch // Only pt is nil
+	case other == nil:
+		return false, PTMNilPolygonMismatch // Only other is nil
 	}
 
 	// Initialize comparison configuration
@@ -1916,7 +1916,7 @@ func (pt *PolyTree[T]) IsRoot() bool {
 //   - int: The total number of PolyTree nodes.
 func (pt *PolyTree[T]) Len() int {
 	i := 0
-	for _ = range pt.Nodes {
+	for range pt.Nodes {
 		i++
 	}
 	return i
@@ -2787,31 +2787,6 @@ func sortPointsByAreaDescending[T SignedNumber](a, b []Point[T]) int {
 	// get signed areas
 	areaA := SignedArea2X(a)
 	areaB := SignedArea2X(b)
-
-	// get absolute values
-	if areaA < 0 {
-		areaA *= -1
-	}
-	if areaB < 0 {
-		areaB *= -1
-	}
-
-	// return expected values to sort by area, descending
-	switch {
-	case areaA > areaB:
-		return -1
-	case areaA < areaB:
-		return 1
-	default:
-		return 0
-	}
-}
-
-func sortPolyTreeByAreaDescending[T SignedNumber](a, b *PolyTree[T]) int {
-
-	// get signed areas
-	areaA := SignedArea2X(a.contour.toPoints())
-	areaB := SignedArea2X(b.contour.toPoints())
 
 	// get absolute values
 	if areaA < 0 {
