@@ -2790,3 +2790,37 @@ func TestNewPolyTree_Errors(t *testing.T) {
 		})
 	}
 }
+
+func TestWithSiblings(t *testing.T) {
+	root1, _ := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(100, 0),
+		NewPoint(100, 100),
+		NewPoint(0, 100),
+	}, PTSolid)
+
+	root2, _ := NewPolyTree([]Point[int]{
+		NewPoint(200, 200),
+		NewPoint(300, 200),
+		NewPoint(300, 300),
+		NewPoint(200, 300),
+	}, PTSolid)
+
+	root3, err := NewPolyTree([]Point[int]{
+		NewPoint(400, 400),
+		NewPoint(500, 400),
+		NewPoint(500, 500),
+		NewPoint(400, 500),
+	}, PTSolid, WithSiblings(root1, root2))
+	require.NoError(t, err)
+
+	// Verify siblings are correctly added
+	require.Len(t, root3.Siblings(), 2)
+	require.Contains(t, root3.Siblings(), root1)
+	require.Contains(t, root3.Siblings(), root2)
+
+	// Verify sibling relationships
+	for _, sibling := range root3.Siblings() {
+		require.Contains(t, sibling.Siblings(), root3)
+	}
+}

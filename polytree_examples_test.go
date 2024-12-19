@@ -93,6 +93,43 @@ func ExampleWithChildren() {
 	//   Contour Points: [(3, 3), (3, 7), (7, 7), (7, 3)]
 }
 
+func ExampleWithSiblings() {
+	// Create the first PolyTree
+	root1, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(100, 0),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(0, 100),
+	}, geom2d.PTSolid)
+
+	// Create the second PolyTree
+	root2, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(200, 200),
+		geom2d.NewPoint(300, 200),
+		geom2d.NewPoint(300, 300),
+		geom2d.NewPoint(200, 300),
+	}, geom2d.PTSolid)
+
+	// Create a third PolyTree and assign siblings
+	root3, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(400, 400),
+		geom2d.NewPoint(500, 400),
+		geom2d.NewPoint(500, 500),
+		geom2d.NewPoint(400, 500),
+	}, geom2d.PTSolid, geom2d.WithSiblings(root1, root2))
+
+	// Check siblings of root3
+	fmt.Println("Siblings of root3:")
+	for _, sibling := range root3.Siblings() {
+		fmt.Println(sibling.Contour())
+	}
+
+	// Output:
+	// Siblings of root3:
+	// [Point[(0, 0)] Point[(100, 0)] Point[(100, 100)] Point[(0, 100)]]
+	// [Point[(200, 200)] Point[(300, 200)] Point[(300, 300)] Point[(200, 300)]]
+}
+
 func ExamplePolyTree_Area() {
 	// Create a square PolyTree
 	contour := []geom2d.Point[int]{
