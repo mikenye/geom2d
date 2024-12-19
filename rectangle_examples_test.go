@@ -19,7 +19,7 @@ func ExampleNewRectangle() {
 	rect := geom2d.NewRectangle(points)
 
 	// Print the corners of the rectangle
-	for _, point := range rect.Points() {
+	for _, point := range rect.Contour() {
 		fmt.Println(point)
 	}
 
@@ -39,7 +39,7 @@ func ExampleNewRectangleFromImageRect() {
 	rect := geom2d.NewRectangleFromImageRect(imgRect)
 
 	// Print the corners of the rectangle
-	for _, point := range rect.Points() {
+	for _, point := range rect.Contour() {
 		fmt.Println(point)
 	}
 
@@ -83,11 +83,11 @@ func ExampleRectangle_AsFloat32() {
 
 	// Print the original and converted rectangle
 	fmt.Println("Original rectangle (int):")
-	for _, point := range rect.Points() {
+	for _, point := range rect.Contour() {
 		fmt.Println(point)
 	}
 	fmt.Println("Converted rectangle (float32):")
-	for _, point := range rectFloat32.Points() {
+	for _, point := range rectFloat32.Contour() {
 		fmt.Println(point)
 	}
 
@@ -118,11 +118,11 @@ func ExampleRectangle_AsFloat64() {
 
 	// Print the original and converted rectangle
 	fmt.Println("Original rectangle (int):")
-	for _, point := range rect.Points() {
+	for _, point := range rect.Contour() {
 		fmt.Println(point)
 	}
 	fmt.Println("Converted rectangle (float64):")
-	for _, point := range rectFloat64.Points() {
+	for _, point := range rectFloat64.Contour() {
 		fmt.Println(point)
 	}
 
@@ -153,11 +153,11 @@ func ExampleRectangle_AsInt() {
 
 	// Print the original and converted rectangle
 	fmt.Println("Original rectangle (float64):")
-	for _, point := range rect.Points() {
+	for _, point := range rect.Contour() {
 		fmt.Println(point)
 	}
 	fmt.Println("Converted rectangle (int):")
-	for _, point := range rectInt.Points() {
+	for _, point := range rectInt.Contour() {
 		fmt.Println(point)
 	}
 
@@ -188,11 +188,11 @@ func ExampleRectangle_AsIntRounded() {
 
 	// Print the original and converted rectangle
 	fmt.Println("Original rectangle (float64):")
-	for _, point := range rect.Points() {
+	for _, point := range rect.Contour() {
 		fmt.Println(point)
 	}
 	fmt.Println("Converted rectangle (int):")
-	for _, point := range rectIntRounded.Points() {
+	for _, point := range rectIntRounded.Contour() {
 		fmt.Println(point)
 	}
 
@@ -328,7 +328,7 @@ func ExampleRectangle_Perimeter() {
 	// Perimeter of the rectangle: 40
 }
 
-func ExampleRectangle_Points() {
+func ExampleRectangle_Contour() {
 	// Create a rectangle
 	rect := geom2d.NewRectangle([]geom2d.Point[int]{
 		geom2d.NewPoint(0, 10),  // top-left
@@ -338,16 +338,16 @@ func ExampleRectangle_Points() {
 	})
 
 	// Get the points of the rectangle
-	points := rect.Points()
+	points := rect.Contour()
 
 	// Print the points
-	fmt.Println("Points of the rectangle:")
+	fmt.Println("Contour of the rectangle:")
 	for _, point := range points {
 		fmt.Println(point)
 	}
 
 	// Output:
-	// Points of the rectangle:
+	// Contour of the rectangle:
 	// Point[(0, 10)]
 	// Point[(10, 10)]
 	// Point[(10, 0)]
@@ -467,12 +467,12 @@ func ExampleRectangle_Scale() {
 	scaled := rect.Scale(geom2d.NewPoint(0, 0), 2)
 
 	// Print the original and scaled rectangles
-	fmt.Println("Original Rectangle Points:", rect.Points())
-	fmt.Println("Scaled Rectangle Points:", scaled.Points())
+	fmt.Println("Original Rectangle Contour:", rect.Contour())
+	fmt.Println("Scaled Rectangle Contour:", scaled.Contour())
 
 	// Output:
-	// Original Rectangle Points: [Point[(0, 10)] Point[(10, 10)] Point[(10, 0)] Point[(0, 0)]]
-	// Scaled Rectangle Points: [Point[(0, 20)] Point[(20, 20)] Point[(20, 0)] Point[(0, 0)]]
+	// Original Rectangle Contour: [Point[(0, 10)] Point[(10, 10)] Point[(10, 0)] Point[(0, 0)]]
+	// Scaled Rectangle Contour: [Point[(0, 20)] Point[(20, 20)] Point[(20, 0)] Point[(0, 0)]]
 }
 
 func ExampleRectangle_ScaleHeight() {
@@ -488,12 +488,12 @@ func ExampleRectangle_ScaleHeight() {
 	scaled := rect.ScaleHeight(1.5)
 
 	// Print the original and scaled rectangles
-	fmt.Println("Original Rectangle Points:", rect.Points())
-	fmt.Println("Scaled Rectangle Points:", scaled.Points())
+	fmt.Println("Original Rectangle Contour:", rect.Contour())
+	fmt.Println("Scaled Rectangle Contour:", scaled.Contour())
 
 	// Output:
-	// Original Rectangle Points: [Point[(0, 10)] Point[(10, 10)] Point[(10, 0)] Point[(0, 0)]]
-	// Scaled Rectangle Points: [Point[(0, 25)] Point[(10, 25)] Point[(10, 10)] Point[(0, 10)]]
+	// Original Rectangle Contour: [Point[(0, 10)] Point[(10, 10)] Point[(10, 0)] Point[(0, 0)]]
+	// Scaled Rectangle Contour: [Point[(0, 25)] Point[(10, 25)] Point[(10, 10)] Point[(0, 10)]]
 }
 
 func ExampleRectangle_ScaleWidth() {
@@ -509,12 +509,12 @@ func ExampleRectangle_ScaleWidth() {
 	scaled := rect.ScaleWidth(2.0)
 
 	// Print the original and scaled rectangles
-	fmt.Println("Original Rectangle Points:", rect.Points())
-	fmt.Println("Scaled Rectangle Points:", scaled.Points())
+	fmt.Println("Original Rectangle Contour:", rect.Contour())
+	fmt.Println("Scaled Rectangle Contour:", scaled.Contour())
 
 	// Output:
-	// Original Rectangle Points: [Point[(0, 10)] Point[(10, 10)] Point[(10, 0)] Point[(0, 0)]]
-	// Scaled Rectangle Points: [Point[(0, 10)] Point[(20, 10)] Point[(20, 0)] Point[(0, 0)]]
+	// Original Rectangle Contour: [Point[(0, 10)] Point[(10, 10)] Point[(10, 0)] Point[(0, 0)]]
+	// Scaled Rectangle Contour: [Point[(0, 10)] Point[(20, 10)] Point[(20, 0)] Point[(0, 0)]]
 }
 
 func ExampleRectangle_String() {

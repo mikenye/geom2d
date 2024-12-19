@@ -142,12 +142,12 @@ func (r Rectangle[T]) Perimeter() T {
 	return 2 * (r.Width() + r.Height())
 }
 
-// Points returns the four corner points of the rectangle in the following order:
+// Contour returns the four corner points of the rectangle in the following order:
 // top-left, top-right, bottom-right, and bottom-left.
 //
 // Returns:
 //   - [][Point][T]: A slice containing the four corner points of the rectangle.
-func (r Rectangle[T]) Points() []Point[T] {
+func (r Rectangle[T]) Contour() []Point[T] {
 	return []Point[T]{
 		r.topLeft,
 		r.topRight,
@@ -288,7 +288,7 @@ RelationshipToPolyTreeIterPolys:
 			}
 
 			// Check containment of rectangle by poly
-			for _, rectVertex := range r.Points() {
+			for _, rectVertex := range r.Contour() {
 				rectVertexDoubled := NewPoint[T](rectVertex.x*2, rectVertex.y*2)
 				if !poly.contour.isPointInside(rectVertexDoubled) {
 					polyContainsRectangle = false

@@ -805,32 +805,6 @@ func ExamplePolyTree_Perimeter() {
 	// The perimeter of the triangle is: 34.14
 }
 
-func ExamplePolyTree_Points() {
-	// Define a triangle contour
-	triangleContour := []geom2d.Point[int]{
-		geom2d.NewPoint(0, 0),
-		geom2d.NewPoint(0, 10),
-		geom2d.NewPoint(10, 0),
-	}
-	triangle, err := geom2d.NewPolyTree(triangleContour, geom2d.PTSolid)
-	if err != nil {
-		fmt.Printf("Error creating PolyTree: %v\n", err)
-		return
-	}
-
-	// Retrieve the points
-	points := triangle.Points()
-
-	// Print the points
-	for _, point := range points {
-		fmt.Printf("Point: (%d, %d)\n", point.X(), point.Y())
-	}
-	// Output:
-	// Point: (0, 0)
-	// Point: (10, 0)
-	// Point: (0, 10)
-}
-
 func ExamplePolyTree_PolygonType() {
 	// Define a polygon contour
 	contour := []geom2d.Point[int]{

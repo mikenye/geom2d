@@ -1823,24 +1823,6 @@ func TestPolyTree_Perimeter(t *testing.T) {
 	assert.InDelta(t, expectedPerimeter, actualPerimeter, 1e-10, "Unexpected perimeter value")
 }
 
-func TestPolyTree_Points(t *testing.T) {
-	// Define a square contour
-	cont := []Point[int]{
-		NewPoint(0, 0),
-		NewPoint(10, 0),
-		NewPoint(10, 10),
-		NewPoint(0, 10),
-	}
-	polyTree, err := NewPolyTree(cont, PTSolid)
-	require.NoError(t, err, "Unexpected error creating PolyTree")
-
-	// Retrieve the points
-	points := polyTree.Points()
-
-	// Verify the points match the contour
-	assert.Equal(t, cont, points, "Unexpected points returned from PolyTree")
-}
-
 func TestPolyTree_PolygonType(t *testing.T) {
 	// Define a solid polygon
 	solidContour := []Point[int]{
@@ -2288,7 +2270,7 @@ func TestPolyTree_Rotate(t *testing.T) {
 	}
 
 	// Verify rotation result
-	for i, point := range rotated.Points() {
+	for i, point := range rotated.Contour() {
 		assert.InDelta(t, expectedContour[i].X(), point.X(), 1e-10, "Contour should be rotated correctly")
 		assert.InDelta(t, expectedContour[i].Y(), point.Y(), 1e-10, "Contour should be rotated correctly")
 	}
@@ -2336,7 +2318,7 @@ func TestPolyTree_Scale(t *testing.T) {
 		NewPoint(200, 200),
 		NewPoint(0, 200),
 	}
-	assert.Equal(t, expectedRoot, scaled.Points(), "Root contour should be scaled correctly")
+	assert.Equal(t, expectedRoot, scaled.Contour(), "Root contour should be scaled correctly")
 
 	// Check hole contour
 	expectedHole := []Point[int]{
@@ -2345,7 +2327,7 @@ func TestPolyTree_Scale(t *testing.T) {
 		NewPoint(160, 40),
 		NewPoint(40, 40),
 	}
-	assert.Equal(t, expectedHole, scaled.Children()[0].Points(), "Hole contour should be scaled correctly")
+	assert.Equal(t, expectedHole, scaled.Children()[0].Contour(), "Hole contour should be scaled correctly")
 
 	// Check island contour
 	expectedIsland := []Point[int]{
@@ -2354,7 +2336,7 @@ func TestPolyTree_Scale(t *testing.T) {
 		NewPoint(120, 120),
 		NewPoint(80, 120),
 	}
-	assert.Equal(t, expectedIsland, scaled.Children()[0].Children()[0].Points(), "Island contour should be scaled correctly")
+	assert.Equal(t, expectedIsland, scaled.Children()[0].Children()[0].Contour(), "Island contour should be scaled correctly")
 }
 
 func TestPolyTree_Siblings(t *testing.T) {
@@ -2432,7 +2414,7 @@ func TestPolyTree_Translate(t *testing.T) {
 		NewPoint(110, 110),
 		NewPoint(10, 110),
 	}
-	assert.Equal(t, expectedRoot, translated.Points(), "Root contour should be translated correctly")
+	assert.Equal(t, expectedRoot, translated.Contour(), "Root contour should be translated correctly")
 
 	// Check hole contour
 	expectedHole := []Point[int]{
@@ -2441,7 +2423,7 @@ func TestPolyTree_Translate(t *testing.T) {
 		NewPoint(90, 30),
 		NewPoint(30, 30),
 	}
-	assert.Equal(t, expectedHole, translated.Children()[0].Points(), "Hole contour should be translated correctly")
+	assert.Equal(t, expectedHole, translated.Children()[0].Contour(), "Hole contour should be translated correctly")
 }
 
 func TestNestPointsToPolyTrees(t *testing.T) {

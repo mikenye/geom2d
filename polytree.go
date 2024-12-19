@@ -384,7 +384,7 @@ type PolyTree[T SignedNumber] struct {
 // an intersection point, or a midpoint between intersections.
 //
 // The contour is used to define the polygon's shape and is processed during boolean
-// operations. Points within the contour are typically doubled to facilitate calculations
+// operations. Contour within the contour are typically doubled to facilitate calculations
 // involving midpoints and to avoid precision issues when working with integer-based
 // coordinates.
 type contour[T SignedNumber] []polyTreePoint[T]
@@ -549,7 +549,7 @@ type simpleConvexPolygon[T SignedNumber] struct {
 //
 // Notes:
 //   - The function ensures that the polygon's points are oriented correctly based on its type.
-//   - Points are doubled internally to avoid integer division/precision issues during midpoint calculations.
+//   - Contour are doubled internally to avoid integer division/precision issues during midpoint calculations.
 //   - The polygon's convex hull is computed and stored for potential optimisations.
 //   - Child polygons must have the opposite [PolygonType] (e.g., holes for a solid polygon and solids for a hole polygon).
 func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPolyTreeOption[T]) (*PolyTree[T], error) {
@@ -900,7 +900,7 @@ func (c *contour[T]) isContourInside(other contour[T]) bool {
 //   - This function uses the ray-casting algorithm to determine the point's relationship to the contour.
 //   - A horizontal ray is cast from the point to the right, and the number of times it crosses contour edges is counted.
 //   - If the number of crossings is odd, the point is inside; if even, the point is outside.
-//   - Points lying directly on the contour edges are considered inside.
+//   - Contour lying directly on the contour edges are considered inside.
 func (c *contour[T]) isPointInside(point Point[T]) bool {
 	crosses := 0
 
@@ -1444,7 +1444,7 @@ func (pt *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOpe
 //
 // Note:
 //   - Polygons are assumed to have properly marked entry and exit points before calling this function.
-//   - Points are halved during traversal to revert the earlier doubling for precision handling.
+//   - Contour are halved during traversal to revert the earlier doubling for precision handling.
 func (pt *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation BooleanOperation) [][]Point[T] {
 	var direction polyTraversalDirection
 
@@ -2132,26 +2132,6 @@ func (pt *PolyTree[T]) Perimeter(opts ...Option) float64 {
 	return length
 }
 
-// Points returns the points that make up the contour of the PolyTree.
-//
-// This function extracts the vertices of the PolyTree's contour as a slice of [Point].
-// The points represent the outline of the polygon described by the PolyTree.
-//
-// Returns:
-//   - []Point[T]: A slice of [Point] representing the contour of the PolyTree.
-//
-// Notes:
-//   - The points are returned in the order they appear in the contour.
-//   - This function only includes the points of the current PolyTree's contour and does not
-//     include points from child polygons.
-//
-// Example Use Case:
-//
-//	Use this function to retrieve the vertices of a PolyTree for further geometric processing or visualization.
-func (pt *PolyTree[T]) Points() []Point[T] {
-	return pt.contour.toPoints()
-}
-
 // PolygonType returns the type of the PolyTree's polygon.
 //
 // This function identifies whether the polygon represented by the PolyTree
@@ -2594,7 +2574,7 @@ func (pt *PolyTree[T]) Translate(delta Point[T]) *PolyTree[T] {
 //
 // Example:
 //
-//	scp := simpleConvexPolygon{Points: []Point{
+//	scp := simpleConvexPolygon{Contour: []Point{
 //	    {X: 0, Y: 0}, {X: 4, Y: 0}, {X: 4, Y: 4}, {X: 0, Y: 4},
 //	}}
 //	inside := scp.ContainsPoint(Point{X: 2, Y: 2}) // Returns true
@@ -2715,7 +2695,7 @@ func compareLowestLeftmost[T SignedNumber](a, b contour[T]) int {
 //     are classified as solid islands.
 //
 // Parameters:
-//   - contours: A slice of slices of Points, where each inner slice represents a closed polygon contour.
+//   - contours: A slice of slices of Contour, where each inner slice represents a closed polygon contour.
 //
 // Returns:
 //   - A pointer to the root PolyTree if the nesting is successful.

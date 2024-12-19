@@ -202,7 +202,7 @@ func TestRectangle_Points(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			actual := tc.rect.Points()
+			actual := tc.rect.Contour()
 			assert.Len(t, actual, 4)
 			for _, expectedPoint := range tc.expected {
 				assert.Contains(t, actual, expectedPoint)
@@ -783,7 +783,7 @@ func TestNewRectangleFromImageRect(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			actual := NewRectangleFromImageRect(tc.imgRect)
-			for _, p := range actual.Points() {
+			for _, p := range actual.Contour() {
 				assert.Contains(t, tc.expected, p)
 			}
 		})
