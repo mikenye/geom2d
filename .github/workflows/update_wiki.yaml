@@ -12,7 +12,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.0'
 
       - name: Install gomarkdoc
         run: go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest
@@ -22,7 +27,7 @@ jobs:
           git clone https://github.com/${{ github.repository }}.wiki.git wiki
 
       - name: Generate documentation
-        run: $GOPATH/bin/gomarkdoc --output wiki/Home.md
+        run: gomarkdoc --output wiki/Home.md
 
       - name: Commit and push changes
         run: |
