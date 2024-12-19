@@ -22,7 +22,7 @@ jobs:
           git clone https://github.com/${{ github.repository }}.wiki.git wiki
 
       - name: Generate documentation
-        run: gomarkdoc --output wiki/Home.md
+        run: $GOPATH/bin/gomarkdoc --output wiki/Home.md
 
       - name: Commit and push changes
         run: |
