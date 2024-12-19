@@ -3,7 +3,12 @@ package geom2d
 import (
 	"fmt"
 	"slices"
+	"strings"
 )
+
+// BooleanOperation defines the types of Boolean operations that can be performed on polygons.
+// These operations are fundamental in computational geometry for combining or modifying shapes.
+type BooleanOperation uint8
 
 // Valid values for BooleanOperation
 const (
@@ -21,32 +26,63 @@ const (
 	BooleanSubtraction
 )
 
-// Valid values for PointPolygonRelationship
-const (
-	// PPRPointInHole indicates the point is inside a hole within the polygon.
-	// Holes are void regions within the polygon that are not part of its solid area.
-	PPRPointInHole PointPolygonRelationship = iota - 1
+// NewPolyTreeOption defines a functional option type for configuring a new [PolyTree] during creation.
+//
+// This type allows for flexible and extensible initialization of [PolyTree] objects by applying optional
+// configurations after the core properties have been set.
+//
+// Parameters:
+//   - T: The numeric type of the coordinates in the [PolyTree], constrained by the [SignedNumber] interface.
+//
+// This pattern makes it easy to add optional properties to a PolyTree without requiring an extensive list
+// of parameters in the NewPolyTree function.
+type NewPolyTreeOption[T SignedNumber] func(*PolyTree[T]) error
 
-	// PPRPointOutside indicates the point lies outside the root polygon.
-	// This includes points outside the boundary and not within any nested holes or islands.
-	PPRPointOutside
+// WithChildren is an option for the [NewPolyTree] function that assigns child polygons to the created [PolyTree].
+// It also sets up parent-child relationships and orders the children for consistency.
+//
+// Parameters:
+//   - children: A variadic list of pointers to [PolyTree] objects representing the child polygons.
+//
+// Behavior:
+//   - The function assigns the provided children to the [PolyTree] being created.
+//   - It establishes the parent-child relationship by setting the parent of each child to the newly created [PolyTree].
+//
+// Returns:
+//   - A [NewPolyTreeOption] that can be passed to the [NewPolyTree] function.
+func WithChildren[T SignedNumber](children ...*PolyTree[T]) NewPolyTreeOption[T] {
+	return func(p *PolyTree[T]) error {
+		for _, child := range children {
+			err := p.AddChild(child)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
 
-	// PPRPointOnVertex indicates the point coincides with a vertex of the polygon,
-	// including vertices of its holes or nested islands.
-	PPRPointOnVertex
-
-	// PPRPointOnEdge indicates the point lies exactly on an edge of the polygon.
-	// This includes edges of the root polygon, its holes, or its nested islands.
-	PPRPointOnEdge
-
-	// PPRPointInside indicates the point is strictly inside the solid area of the polygon,
-	// excluding any holes within the polygon.
-	PPRPointInside
-
-	// PPRPointInsideIsland indicates the point lies within a nested island inside the polygon.
-	// Islands are solid regions contained within holes of the polygon.
-	PPRPointInsideIsland
-)
+// WithSiblings is an option for the [NewPolyTree] function that assigns sibling polygons to the created [PolyTree].
+//
+// Parameters:
+//   - siblings: A variadic list of pointers to [PolyTree] objects representing the sibling polygons.
+//
+// Behavior:
+//   - The function assigns the provided children to the [PolyTree] being created.
+//
+// Returns:
+//   - A [NewPolyTreeOption] that can be passed to the [NewPolyTree] function.
+func WithSiblings[T SignedNumber](siblings ...*PolyTree[T]) NewPolyTreeOption[T] {
+	return func(p *PolyTree[T]) error {
+		for _, sibling := range siblings {
+			err := p.AddSibling(sibling)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
 
 // Valid values for PolygonType
 const (
@@ -58,6 +94,31 @@ const (
 	// Holes are not part of the filled area of the polygon and are treated as exclusions.
 	PTHole
 )
+
+// String returns a string representation of the [PolygonType].
+//
+// This method converts the enum value of a [PolygonType] into a human-readable string,
+// making it useful for debugging, logging, or providing textual representations.
+//
+// Returns:
+//   - string: A string representation of the [PolygonType], such as [PTSolid] or [PTHole].
+//
+// Panics:
+//   - If the [PolygonType] value is unsupported, the method will panic with an appropriate error message.
+//
+// Notes:
+//   - This method assumes that the [PolygonType] is valid. If new polygon types are added
+//     in the future, ensure this method is updated to include them to avoid panics.
+func (t PolygonType) String() string {
+	switch t {
+	case PTSolid:
+		return "PTSolid"
+	case PTHole:
+		return "PTHole"
+	default:
+		panic(fmt.Errorf("unsupported PolygonType"))
+	}
+}
 
 // Valid values for polyIntersectionType
 const (
@@ -80,10 +141,6 @@ const (
 	// These points are part of the polygon's initial definition.
 	pointTypeOriginal polyPointType = iota
 
-	// pointTypeOriginalAndIntersection indicates that the point is an original vertex that also serves
-	// as an intersection point between polygons during operations such as union or intersection.
-	pointTypeOriginalAndIntersection
-
 	// pointTypeAddedIntersection indicates that the point is an intersection point that was added
 	// during a polygon operation. These points are not part of the polygon's original definition
 	// but are dynamically introduced for computational purposes.
@@ -100,6 +157,9 @@ const (
 	// in a clockwise direction through the polygon's vertices or edges.
 	polyTraversalReverse
 )
+
+// PolyTreeMismatch represents a bitmask of potential mismatches between two PolyTree structures.
+type PolyTreeMismatch uint8
 
 // Valid values for PolyTreeMismatch
 const (
@@ -252,52 +312,6 @@ var entryExitPointLookUpTable = map[BooleanOperation]map[PolygonType]map[Polygon
 	},
 }
 
-// BooleanOperation defines the types of Boolean operations that can be performed on polygons.
-// These operations are fundamental in computational geometry for combining or modifying shapes.
-//
-// The supported operations are:
-// - Union: Combines two polygons into one, merging their areas.
-// - Intersection: Finds the overlapping region between two polygons.
-// - Subtraction: Subtracts one polygon's area from another.
-type BooleanOperation uint8
-
-// NewPolyTreeOption defines a functional option type for configuring a new PolyTree during creation.
-//
-// This type allows for flexible and extensible initialization of PolyTree objects by applying optional
-// configurations after the core properties have been set.
-//
-// Parameters:
-//   - T: The numeric type of the coordinates in the PolyTree, constrained by the SignedNumber interface.
-//
-// Example Usage:
-//
-//	// Define an option that adds children to a PolyTree
-//	func WithChildren[T SignedNumber](children ...*PolyTree[T]) NewPolyTreeOption[T] {
-//	    return func(pt *PolyTree[T]) {
-//	        pt.children = append(pt.children, children...)
-//	    }
-//	}
-//
-//	// Create a new PolyTree with a child
-//	child, _ := NewPolyTree([]Point[int]{{1, 1}, {2, 1}, {2, 2}, {1, 2}}, PTSolid)
-//	parent, _ := NewPolyTree([]Point[int]{{0, 0}, {3, 0}, {3, 3}, {0, 3}}, PTSolid, WithChildren(child))
-//
-// This pattern makes it easy to add optional properties to a PolyTree without requiring an extensive list
-// of parameters in the NewPolyTree function.
-type NewPolyTreeOption[T SignedNumber] func(*PolyTree[T])
-
-// PointPolygonRelationship (PPR) defines the possible spatial relationships between a point
-// and a polygon, accounting for structures such as holes and nested islands.
-//
-// The relationships are enumerated as follows:
-//   - PPRPointInside: The point lies strictly within the boundaries of the polygon.
-//   - PPRPointOutside: The point lies outside the outermost boundary of the polygon.
-//   - PPRPointOnVertex: The point coincides with a vertex of the polygon or one of its holes/islands.
-//   - PPRPointOnEdge: The point lies exactly on an edge of the polygon or one of its holes/islands.
-//   - PPRPointInHole: The point lies inside a hole within the polygon.
-//   - PPRPointInsideIsland: The point lies inside an island nested within the polygon.
-type PointPolygonRelationship int8
-
 // PolygonType (PT) defines whether the inside of the contour of a polygon represents either a solid region (island)
 // or a void region (hole). This distinction is essential for operations involving polygons
 // with complex structures, such as those containing holes or nested islands.
@@ -311,21 +325,21 @@ type PolygonType uint8
 //   - A contour: The outer boundary of the polygon, represented as a sequence of vertices.
 //     This includes all the original points, intersection points, and added midpoints as needed
 //     for polygon operations.
-//   - A PolygonType: Indicates whether the polygon is a solid region (PTSolid) or a hole (PTHole).
+//   - A [PolygonType]: Indicates whether the polygon is a solid region ([PTSolid]) or a hole ([PTHole]).
 //     This classification is essential for understanding the relationship between the polygon
 //     and its children.
-//   - A parent: Points to the parent polygon in the hierarchy. For example, a hole's parent
+//   - A parent: a pointer to the parent polygon in the hierarchy. For example, a hole's parent
 //     would be the solid polygon that contains it. If a polygon is the root polygon in the PolyTree, its parent is nil.
 //   - Zero or more siblings: A list of sibling polygons that are not nested within each other but share
-//     the same parent. Siblings must be of the same PolygonType.
-//   - Zero or more children: A list of child polygons nested within this polygon. If the PolygonType is
-//     PTSolid, the children are holes (PTHole). If the PolygonType is PTHole, the children
-//     are solid islands (PTSolid).
+//     the same parent. Siblings must be of the same [PolygonType].
+//   - Zero or more children: A list of child polygons nested within this polygon. If the [PolygonType] is
+//     [PTSolid], the children are holes ([PTHole]). If the [PolygonType] is [PTHole], the children
+//     are solid islands ([PTSolid]).
 //
 // Hierarchy Rules:
-//   - A solid polygon (PTSolid) can contain holes (PTHole) as its children.
-//   - A hole (PTHole) can contain solid polygons (PTSolid) as its children.
-//   - Siblings are polygons of the same PolygonType that do not overlap.
+//   - A solid polygon ([PTSolid]) can contain holes ([PTHole]) as its children.
+//   - A hole ([PTHole]) can contain solid polygons ([PTSolid]) as its children.
+//   - Siblings are polygons of the same [PolygonType] that do not overlap.
 //
 // These relationships form a tree structure, where each node is a PolyTree, allowing for
 // complex geometric modeling and operations.
@@ -359,24 +373,42 @@ type PolyTree[T SignedNumber] struct {
 
 	// hull caches the convex hull of the polygon for faster point-in-polygon checks.
 	hull simpleConvexPolygon[T]
-
-	// maxX stores the maximum X-coordinate among the polygon's vertices. Used for ray-casting
-	// in point-in-polygon checks and other spatial queries.
-	maxX T
 }
-
-// PolyTreeMismatch represents a bitmask of potential mismatches between two PolyTree structures.
-type PolyTreeMismatch uint8
 
 // contour represents the outline of a polygon as a slice of polyTreePoint entries.
 // Each entry contains metadata about the point, such as whether it is a normal vertex,
 // an intersection point, or a midpoint between intersections.
 //
 // The contour is used to define the polygon's shape and is processed during boolean
-// operations. Points within the contour are typically doubled to facilitate calculations
+// operations. Contour within the contour are typically doubled to facilitate calculations
 // involving midpoints and to avoid precision issues when working with integer-based
 // coordinates.
 type contour[T SignedNumber] []polyTreePoint[T]
+
+// String returns a string representation of the contour, listing all its points in order.
+//
+// This method iterates through all polyTreePoints in the contour and appends their coordinates
+// to a human-readable string.
+//
+// Returns:
+//   - string: A formatted string showing the list of points in the contour.
+func (c *contour[T]) String() string {
+	var builder strings.Builder
+	builder.WriteString("Contour Points: [")
+
+	first := true
+	for _, pt := range c.toPoints() {
+		if first {
+			builder.WriteString(fmt.Sprintf("(%v, %v)", pt.x, pt.y))
+			first = false
+			continue
+		}
+		builder.WriteString(fmt.Sprintf(", (%v, %v)", pt.x, pt.y))
+	}
+
+	builder.WriteString("]")
+	return builder.String()
+}
 
 // polyEdge represents an edge of a polygon, storing the geometric line segment
 // and additional metadata for polygon operations.
@@ -392,7 +424,7 @@ type polyEdge[T SignedNumber] struct {
 	// rel specifies the relationship of this edge with a ray during point-in-polygon tests.
 	// This field is primarily used for algorithms like ray-casting to determine whether
 	// a point is inside or outside the polygon.
-	rel LineSegmentsRelationship
+	rel detailedLineSegmentRelationship
 }
 
 // polyIntersectionType defines the type of intersection point in polygon operations,
@@ -497,9 +529,15 @@ type simpleConvexPolygon[T SignedNumber] struct {
 // The function also allows for optional configuration using [NewPolyTreeOption].
 //
 // Parameters:
-//   - points: A slice of Point[T] representing the vertices of the polygon.
-//   - t: The type of polygon, either PTSolid or PTHole.
-//   - opts: Optional function configurations applied to the resulting PolyTree.
+//   - points ([][Point][T]): A slice of [Point][T] representing the vertices of the polygon.
+//   - t ([PolygonType]): The type of polygon, either [PTSolid] or [PTHole].
+//   - opts: A variadic slice of [NewPolyTreeOption] functions, see below.
+//
+// [NewPolyTreeOption] functions:
+//   - [WithChildren]: is an option for the [NewPolyTree] function that assigns child polygons to the
+//     created [PolyTree]. This can also be done later with the [PolyTree.AddChild] method.
+//   - [WithSiblings]: is an option for the [NewPolyTree] function that assigns sibling polygons to the
+//     created [PolyTree]. This can also be done later with the [PolyTree.AddSibling] method.
 //
 // Returns:
 //   - A pointer to the newly created PolyTree.
@@ -507,9 +545,9 @@ type simpleConvexPolygon[T SignedNumber] struct {
 //
 // Notes:
 //   - The function ensures that the polygon's points are oriented correctly based on its type.
-//   - Points are doubled internally to avoid integer division/precision issues during midpoint calculations.
+//   - Contour are doubled internally to avoid integer division/precision issues during midpoint calculations.
 //   - The polygon's convex hull is computed and stored for potential optimisations.
-//   - Child polygons must have the opposite PolygonType (e.g., holes for a solid polygon and solids for a hole polygon).
+//   - Child polygons must have the opposite [PolygonType] (e.g., holes for a solid polygon and solids for a hole polygon).
 func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPolyTreeOption[T]) (*PolyTree[T], error) {
 
 	// Sanity check: A polygon must have at least three points.
@@ -541,20 +579,15 @@ func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPo
 	}
 
 	// Assign and double the points for precision handling.
-	p.maxX = points[0].x * 2
 	p.contour = make([]polyTreePoint[T], len(orderedPoints))
 	for i, point := range orderedPoints {
 		p.contour[i] = polyTreePoint[T]{
 			point: NewPoint(point.x*2, point.y*2),
 		}
-		p.maxX = max(p.maxX, p.contour[i].point.x)
 	}
 
 	// Reorder contour points and reset intersection metadata.
 	p.resetIntersectionMetadataAndReorder()
-
-	// Increment maxX to ensure boundary checks in ray-casting operations.
-	p.maxX++
 
 	// Compute and store the convex hull of the polygon for optimisation.
 	hull := ConvexHull(points)
@@ -563,7 +596,10 @@ func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPo
 
 	// Apply optional configurations.
 	for _, opt := range opts {
-		opt(p)
+		err := opt(p)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Sanity check: Ensure all children have the opposite PolygonType.
@@ -620,34 +656,6 @@ func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPo
 func newSimpleConvexPolygon[T SignedNumber](points []Point[T]) simpleConvexPolygon[T] {
 	// Assume `points` is already ordered to form a convex polygon
 	return simpleConvexPolygon[T]{Points: points}
-}
-
-// WithChildren is an option for the NewPolyTree function that assigns child polygons to the created PolyTree.
-// It also sets up parent-child relationships and orders the children for consistency.
-//
-// Parameters:
-//   - children: A variadic list of pointers to PolyTree objects representing the child polygons.
-//
-// Behavior:
-//   - The function assigns the provided children to the PolyTree being created.
-//   - It establishes the parent-child relationship by setting the parent of each child to the newly created PolyTree.
-//
-// Returns:
-//   - A NewPolyTreeOption that can be passed to the NewPolyTree function.
-func WithChildren[T SignedNumber](children ...*PolyTree[T]) NewPolyTreeOption[T] {
-	return func(p *PolyTree[T]) {
-
-		// Assign the provided children to the parent polygon.
-		p.children = children
-
-		// Order the children for consistency in traversal and comparison.
-		p.orderSiblingsAndChildren()
-
-		// Set the parent field of each child to the current polygon.
-		for i := range p.children {
-			p.children[i].parent = p
-		}
-	}
 }
 
 // contains checks whether a given point is present in the contour.
@@ -727,6 +735,48 @@ func (c *contour[T]) eq(other contour[T]) bool {
 
 	// No rotation of the second contour resulted in a match, so the contours are not equivalent.
 	return false
+}
+
+// ensureClockwise ensures that the contour points are ordered in a clockwise direction.
+//
+// This function calculates the signed area of the contour. If the area is positive, it indicates
+// that the points are in a counterclockwise order. In such cases, the function reverses the order
+// of the points to make the contour clockwise. If the area is already negative (indicating clockwise
+// order), no action is taken.
+//
+// This is particularly useful for consistency when dealing with hole polygons or when ensuring
+// correct orientation for geometric operations like Boolean polygon operations.
+//
+// Notes:
+//   - A positive signed area indicates counterclockwise orientation.
+//   - A negative signed area indicates clockwise orientation.
+func (c *contour[T]) ensureClockwise() {
+	area := SignedArea2X(c.toPoints())
+	if area < 0 {
+		return // Already clockwise
+	}
+	slices.Reverse(*c)
+}
+
+// ensureCounterClockwise ensures that the contour points are ordered in a counterclockwise direction.
+//
+// This function calculates the signed area of the contour. If the area is negative, it indicates
+// that the points are in a clockwise order. In such cases, the function reverses the order of
+// the points to make the contour counterclockwise. If the area is already positive (indicating
+// counterclockwise order), no action is taken.
+//
+// This is particularly useful for consistency when dealing with solid polygons or for geometric
+// operations that require specific point orientations.
+//
+// Notes:
+//   - A positive signed area indicates counterclockwise orientation.
+//   - A negative signed area indicates clockwise orientation.
+func (c *contour[T]) ensureCounterClockwise() {
+	area := SignedArea2X(c.toPoints())
+	if area > 0 {
+		return // Already counterclockwise
+	}
+	slices.Reverse(*c)
 }
 
 // findLowestLeftmost identifies the lowest, leftmost point in a given contour.
@@ -815,7 +865,7 @@ func (c *contour[T]) insertIntersectionPoint(start, end int, intersection polyTr
 //   - If any point of c2 is found to be outside c, the function returns false immediately.
 //   - The function assumes that the orientation of c and c2 is correct (i.e., counter-clockwise for solids and clockwise for holes).
 func (c *contour[T]) isContourInside(other contour[T]) bool {
-	// Iterate over each point in other.
+	// Iterate over each point in "other".
 	for _, p := range other {
 		// Check if the point is not inside c.
 		if !c.isPointInside(p.point) {
@@ -841,19 +891,17 @@ func (c *contour[T]) isContourInside(other contour[T]) bool {
 //   - This function uses the ray-casting algorithm to determine the point's relationship to the contour.
 //   - A horizontal ray is cast from the point to the right, and the number of times it crosses contour edges is counted.
 //   - If the number of crossings is odd, the point is inside; if even, the point is outside.
-//   - Points lying directly on the contour edges are considered inside.
+//   - Contour lying directly on the contour edges are considered inside.
 func (c *contour[T]) isPointInside(point Point[T]) bool {
 	crosses := 0
 
 	// Calculate the farthest x-coordinate to cast a ray.
-	// todo: is this required? possibly redundant code...
 	maxX := point.x
 	for _, p := range *c {
 		maxX = max(maxX, p.point.x)
 	}
-	// Ensure the ray extends beyond the contour's bounds.
-	maxX++
-	ray := NewLineSegment(point, NewPoint(maxX, point.y))
+	maxX++                                                // Ensure the ray extends beyond the contour's bounds.
+	ray := NewLineSegment(point, NewPoint(maxX, point.y)) // Cast the ray.
 
 	// Convert the contour to edges (line segments).
 	edges := c.toEdges()
@@ -861,12 +909,12 @@ func (c *contour[T]) isPointInside(point Point[T]) bool {
 	// Determine the relationship of each edge to the ray.
 	for i := range edges {
 		// If the point lies directly on the edge, consider it inside.
-		if point.IsOnLineSegment(edges[i].lineSegment) {
+		if edges[i].lineSegment.ContainsPoint(point) {
 			return true
 		}
 
 		// Determine the relationship of the edge to the ray.
-		edges[i].rel = ray.RelationshipToLineSegment(edges[i].lineSegment)
+		edges[i].rel = ray.detailedRelationshipToLineSegment(edges[i].lineSegment)
 	}
 
 	// Analyze the relationships and count ray crossings.
@@ -875,27 +923,27 @@ func (c *contour[T]) isPointInside(point Point[T]) bool {
 		iNext := (i + 1) % len(edges)
 
 		switch edges[i].rel {
-		case LSRIntersects: // Ray intersects the edge.
+		case lsrIntersects: // Ray intersects the edge.
 			crosses++
 
-		case LSRCollinearCDinAB: // Ray is collinear with the edge and overlaps it.
-			crosses += 2
+		case lsrCollinearCDinAB: // Ray is collinear with the edge and overlaps it.
+			crosses += 1
 
-		case LSRConAB: // Ray starts on the edge.
+		case lsrConAB: // Ray starts on the edge.
 			crosses++
 
 			// Handle potential overlaps with the next edge.
-			if edges[iNext].rel == LSRDonAB {
+			if edges[iNext].rel == lsrDonAB {
 				if inOrder(edges[i].lineSegment.start.y, point.y, edges[iNext].lineSegment.end.y) {
 					crosses++
 				}
 			}
 
-		case LSRDonAB: // Ray ends on the edge.
+		case lsrDonAB: // Ray ends on the edge.
 			crosses++
 
 			// Handle potential overlaps with the next edge.
-			if edges[iNext].rel == LSRConAB {
+			if edges[iNext].rel == lsrConAB {
 				if inOrder(edges[i].lineSegment.start.y, point.y, edges[iNext].lineSegment.end.y) {
 					crosses++
 				}
@@ -1046,6 +1094,16 @@ func (c *contour[T]) toPoints() []Point[T] {
 	return originalPoints
 }
 
+// String converts a polyIntersectionType value to its corresponding string representation.
+//
+// This method provides a human-readable string for the polyIntersectionType value, such as
+// "not set", "entry", or "exit". If the value is unsupported, the method panics.
+//
+// Returns:
+//   - string: A string representation of the polyIntersectionType.
+//
+// Panics:
+//   - If the polyIntersectionType value is not one of the defined constants.
 func (p *polyIntersectionType) String() string {
 	switch *p {
 	case intersectionTypeNotSet:
@@ -1054,8 +1112,240 @@ func (p *polyIntersectionType) String() string {
 		return "entry"
 	case intersectionTypeExit:
 		return "exit"
+	default:
+		panic("unsupported polyIntersectionType")
 	}
-	return ""
+}
+
+// AddChild adds a child PolyTree to the current PolyTree.
+//
+// Parameters:
+//   - child (*PolyTree[T]): A pointer to the PolyTree to be added as a child.
+//
+// Returns:
+//
+// error: An error if the operation fails. Possible error scenarios include:
+//   - The child is nil.
+//   - The child has the same [PolygonType] as the parent.
+//   - The child polygon does not fit entirely within the parent's contour.
+//   - The child polygon overlaps with existing children.
+func (pt *PolyTree[T]) AddChild(child *PolyTree[T]) error {
+	// Check if the child is nil
+	if child == nil {
+		return fmt.Errorf("attempt to add nil child")
+	}
+
+	// Ensure the polygon types are compatible
+	if pt.polygonType == child.polygonType {
+		return fmt.Errorf(
+			"cannot add child: mismatched polygon types (parent: %v, child: %v)",
+			pt.polygonType,
+			child.polygonType,
+		)
+	}
+
+	// Check if the child fits within the parent's contour
+	if !pt.contour.isContourInside(child.contour) {
+		return fmt.Errorf("child polygon does not fit entirely within the parent polygon")
+	}
+
+	// Check if the child overlaps with existing children
+	for _, sibling := range pt.children {
+		for siblingEdge := range sibling.contour.iterEdges {
+			for childEdge := range child.contour.iterEdges {
+				if siblingEdge.detailedRelationshipToLineSegment(childEdge) > lsrMiss {
+					return fmt.Errorf("child polygon overlaps with an existing sibling polygon")
+				}
+			}
+		}
+	}
+
+	// Set point directionality
+	switch child.polygonType {
+	case PTSolid:
+		child.contour.ensureCounterClockwise()
+	case PTHole:
+		child.contour.ensureClockwise()
+	}
+
+	// Set the parent of the child
+	child.parent = pt
+
+	// Append the child to the children slice
+	pt.children = append(pt.children, child)
+
+	// Order siblings and children for consistency
+	pt.orderSiblingsAndChildren()
+
+	return nil
+}
+
+// AddSibling adds a sibling PolyTree to the current PolyTree.
+//
+// Parameters:
+//   - sibling (*PolyTree[T]): A pointer to the PolyTree to be added as a sibling.
+//
+// Returns:
+//
+// error: An error if the operation fails. Possible error scenarios include:
+//   - The sibling is nil.
+//   - The sibling has a different [PolygonType] than the current PolyTree.
+//   - The sibling polygon overlaps with existing siblings.
+func (pt *PolyTree[T]) AddSibling(sibling *PolyTree[T]) error {
+	// Check if the sibling is nil
+	if sibling == nil {
+		return fmt.Errorf("attempt to add nil sibling")
+	}
+
+	// Ensure the polygon types match
+	if pt.polygonType != sibling.polygonType {
+		return fmt.Errorf("cannot add sibling: mismatched polygon types")
+	}
+
+	// Check if the sibling overlaps with existing siblings
+	for _, existingSibling := range pt.siblings {
+		for existingSiblingEdge := range existingSibling.contour.iterEdges {
+			for siblingEdge := range sibling.contour.iterEdges {
+				if siblingEdge.detailedRelationshipToLineSegment(existingSiblingEdge) > lsrMiss {
+					return fmt.Errorf("child polygon overlaps with an existing sibling polygon")
+				}
+			}
+		}
+	}
+
+	// Add the new sibling to the sibling lists of existing siblings
+	for _, existingSibling := range pt.siblings {
+		// Update sibling relationships
+		existingSibling.siblings = append(existingSibling.siblings, sibling)
+
+		// Maintain consistent ordering
+		existingSibling.orderSiblingsAndChildren()
+
+		// Add the existing sibling to the new sibling's sibling list
+		sibling.siblings = append(sibling.siblings, existingSibling)
+	}
+
+	// Add the current `PolyTree` to the new sibling's sibling list
+	sibling.siblings = append(sibling.siblings, pt)
+
+	// Maintain consistent ordering
+	sibling.orderSiblingsAndChildren()
+
+	// Add the new sibling to the current `PolyTree`'s sibling list
+	pt.siblings = append(pt.siblings, sibling)
+
+	// Maintain consistent ordering
+	pt.orderSiblingsAndChildren()
+
+	return nil
+}
+
+// Area calculates the area of the polygon represented by the PolyTree.
+// This method computes the absolute area of the PolyTree's contour, ensuring
+// that the result is always positive, regardless of the orientation of the contour.
+//
+// Returns:
+//   - float64: The absolute area of the PolyTree.
+//
+// Notes:
+//   - The method operates only on the contour of the PolyTree and does not account for any children polygons.
+func (pt *PolyTree[T]) Area() float64 {
+	area := float64(SignedArea2X(pt.Contour()))
+	if area < 0 {
+		area *= -1
+	}
+	area /= 2
+	return area
+}
+
+// AsFloat32 converts a [PolyTree] with generic numeric type T to a new [PolyTree] with points of type float32.
+//
+// This method iterates over the contours and nodes of the current [PolyTree], converting all points
+// to float32 using the [Point.AsFloat32] method. It then rebuilds the [PolyTree] with the converted points.
+//
+// Returns:
+//   - *PolyTree[float32]: A new [PolyTree] instance where all points are of type float32.
+//
+// Panics:
+//   - If an error occurs during the nesting of contours into the new [PolyTree], the function panics.
+func (pt *PolyTree[T]) AsFloat32() *PolyTree[float32] {
+	output, err := ApplyPointTransform[T](pt, func(p Point[T]) (Point[float32], error) {
+		return p.AsFloat32(), nil
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	return output
+}
+
+// AsFloat64 converts a [PolyTree] with generic numeric type T to a new [PolyTree] with points of type float64.
+//
+// This method iterates over the contours and nodes of the current [PolyTree], converting all points
+// to float64 using the [Point.AsFloat64] method. It then rebuilds the [PolyTree] with the converted points.
+//
+// Returns:
+//   - *PolyTree[float64]: A new [PolyTree] instance where all points are of type float64.
+//
+// Panics:
+//   - If an error occurs during the nesting of contours into the new [PolyTree], the function panics.
+func (pt *PolyTree[T]) AsFloat64() *PolyTree[float64] {
+	output, err := ApplyPointTransform[T](pt, func(p Point[T]) (Point[float64], error) {
+		return p.AsFloat64(), nil
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	return output
+}
+
+// AsInt converts a [PolyTree] with generic numeric type T to a new [PolyTree] with points of type int.
+//
+// This method iterates over the contours and nodes of the current [PolyTree], converting all points
+// to int using the [Point.AsInt] method. It then rebuilds the [PolyTree] with the converted points.
+//
+// Returns:
+//   - *PolyTree[int]: A new [PolyTree] instance where all points are of type int.
+//
+// Panics:
+//   - If an error occurs during the nesting of contours into the new [PolyTree], the function panics.
+func (pt *PolyTree[T]) AsInt() *PolyTree[int] {
+
+	output, err := ApplyPointTransform[T](pt, func(p Point[T]) (Point[int], error) {
+		return p.AsInt(), nil
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	return output
+}
+
+// AsIntRounded converts a [PolyTree] with generic numeric type T to a new [PolyTree] with points of type int,
+// rounding the coordinates of each point to the nearest integer.
+//
+// This method iterates over the contours and nodes of the current [PolyTree], converting all points to int
+// using the [Point.AsIntRounded] method. It then rebuilds the [PolyTree] with the rounded points.
+//
+// Returns:
+//   - *PolyTree[int]: A new [PolyTree] instance where all points are of type int, with coordinates rounded.
+//
+// Panics:
+//   - If an error occurs during the nesting of contours into the new [PolyTree], the function panics.
+func (pt *PolyTree[T]) AsIntRounded() *PolyTree[int] {
+	output, err := ApplyPointTransform[T](pt, func(p Point[T]) (Point[int], error) {
+		return p.AsIntRounded(), nil
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	return output
 }
 
 // BooleanOperation performs a Boolean operation (union, intersection, or subtraction)
@@ -1063,11 +1353,20 @@ func (p *polyIntersectionType) String() string {
 // returned as a new PolyTree, or an error is returned if the operation fails.
 //
 // Parameters:
-//   - other: The polygon to perform the operation with.
-//   - operation: The type of Boolean operation to perform (e.g., union, intersection, subtraction).
+//   - other (*PolyTree[T]): The polygon to perform the operation with.
+//   - operation ([BooleanOperation]): The type of Boolean operation to perform (e.g., union, intersection, subtraction).
 //
 // Returns:
 //   - A new PolyTree resulting from the operation, or an error if the operation fails.
+//
+// Supported Operations:
+//   - [BooleanIntersection] returns the result of the intersection operation, combining two polytrees into a single
+//     polytree that encompasses the areas of both input polytrees. Overlapping regions are merged.
+//   - [BooleanSubtraction] returns the result of the subtraction operation, which removes the area of polytree "other"
+//     from the calling PolyTree. The result is a polytree containing one or more polygons representing the area of the
+//     calling polygon excluding the overlapping region with the "other" polygon.
+//   - [BooleanUnion] returns the result of the union operation, which computes the region(s)
+//     where two polygons overlap. The result is a polytree with overlapping regions merged.
 //
 // Behavior:
 //
@@ -1080,24 +1379,24 @@ func (p *polyIntersectionType) String() string {
 //   - Computes intersection points and marks entry/exit points for traversal.
 //   - Traverses the polygons to construct the result of the operation.
 //   - Returns a nested PolyTree structure representing the operation result.
-func (p *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOperation) (*PolyTree[T], error) {
+func (pt *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOperation) (*PolyTree[T], error) {
 	// Edge Case: Check if the polygons intersect
-	if !p.Intersects(other) {
+	if !pt.Intersects(other) {
 		switch operation {
 		case BooleanUnion:
 			// Non-intersecting polygons: Add other as a sibling
-			if err := p.addSibling(other); err != nil {
+			if err := pt.AddSibling(other); err != nil {
 				return nil, fmt.Errorf("failed to add sibling: %w", err)
 			}
-			return p, nil
+			return pt, nil
 
 		case BooleanIntersection:
 			// Non-intersecting polygons: No intersection, return nil
 			return nil, nil
 
 		case BooleanSubtraction:
-			// Non-intersecting polygons: No change to p
-			return p, nil
+			// Non-intersecting polygons: No change to pt
+			return pt, nil
 
 		default:
 			// Invalid or unsupported operation
@@ -1106,256 +1405,15 @@ func (p *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOper
 	}
 
 	// Step 1: Find intersection points between all polygons
-	p.findIntersections(other)
+	pt.findIntersections(other)
 
 	// Step 2: Mark entry/exit points for traversal based on the operation
-	p.markEntryExitPoints(other, operation)
+	pt.markEntryExitPoints(other, operation)
 
 	// Step 3: Perform traversal to construct the result of the Boolean operation
-	return nestPointsToPolyTrees(p.booleanOperationTraversal(other, operation))
-}
+	contours := pt.booleanOperationTraversal(other, operation)
 
-// Eq compares two PolyTree objects (p and other) for structural and content equality.
-// It identifies mismatches in contours, siblings, and children while avoiding infinite recursion
-// by tracking visited nodes. The comparison results are represented as a boolean and a bitmask.
-//
-// Parameters:
-//   - other: The PolyTree to compare with the current PolyTree.
-//   - opts: Optional configurations for the comparison, such as tracking visited nodes.
-//
-// Returns:
-//   - A boolean indicating whether the two PolyTree objects are equal.
-//   - A PolyTreeMismatch bitmask that specifies which aspects (if any) differ.
-//
-// Behavior:
-//   - Handles nil cases for the p and other PolyTree objects.
-//   - Recursively compares contours, siblings, and children, considering different sibling/child orders.
-//   - Uses the visited map to prevent infinite recursion in cyclic structures.
-func (p *PolyTree[T]) Eq(other *PolyTree[T], opts ...polyTreeEqOption[T]) (bool, PolyTreeMismatch) {
-	var mismatches PolyTreeMismatch
-
-	// Handle nil cases
-	switch {
-	case p == nil && other == nil:
-		return true, PTMNoMismatch // Both are nil, no mismatch
-	case p == nil && other != nil:
-		return false, PTMNilPolygonMismatch // One is nil, the other is not
-	case p != nil && other == nil:
-		return false, PTMNilPolygonMismatch // One is nil, the other is not
-	}
-
-	// Initialize comparison configuration
-	config := &polyTreeEqConfig[T]{
-		visited: make(map[*PolyTree[T]]bool),
-	}
-	for _, opt := range opts {
-		opt(config) // Apply configuration options
-	}
-
-	// Avoid comparing the same PolyTree objects multiple times
-	if config.visited[p] || config.visited[other] {
-		return true, PTMNoMismatch // Already compared, no mismatch
-	}
-	config.visited[p] = true
-	config.visited[other] = true
-
-	// Compare contours
-	if !p.contour.eq(other.contour) {
-		mismatches |= PTMContourMismatch
-		fmt.Println("Mismatch in contours detected")
-	}
-
-	// Compare siblings
-	if len(p.siblings) != len(other.siblings) {
-		mismatches |= PTMSiblingMismatch
-		fmt.Println("Mismatch in siblings count detected")
-	} else {
-		// Siblings order doesn't matter, check if each sibling matches
-		for _, sibling := range p.siblings {
-			found := false
-			for _, otherSibling := range other.siblings {
-				if eq, _ := sibling.Eq(otherSibling, withVisited(config.visited)); eq {
-					found = true
-					break
-				}
-			}
-			if !found {
-				mismatches |= PTMSiblingMismatch
-				fmt.Println("Mismatch in siblings content detected")
-				break
-			}
-		}
-	}
-
-	// Compare children
-	if len(p.children) != len(other.children) {
-		mismatches |= PTMChildMismatch
-		fmt.Println("Mismatch in children count detected")
-	} else {
-		// Children order doesn't matter, check if each child matches
-		for _, child := range p.children {
-			found := false
-			for _, otherChild := range other.children {
-				if eq, _ := child.Eq(otherChild, withVisited(config.visited)); eq {
-					found = true
-					break
-				}
-			}
-			if !found {
-				mismatches |= PTMChildMismatch
-				fmt.Println("Mismatch in children content detected")
-				break
-			}
-		}
-	}
-
-	// Return whether there are no mismatches and the mismatch bitmask
-	return mismatches == PTMNoMismatch, mismatches
-}
-
-// Intersects checks whether the current PolyTree intersects with another PolyTree.
-//
-// Parameters:
-//   - other: The PolyTree to compare against the current PolyTree.
-//
-// Returns:
-//   - true if the two PolyTree objects intersect, either by containment or edge overlap.
-//   - false if there is no intersection.
-//
-// Behavior:
-//   - Checks if any point from one PolyTree lies inside the contour of the other PolyTree.
-//   - Verifies if any edges of the two PolyTree objects intersect.
-//
-// This method accounts for all potential intersection cases, including:
-//   - One polygon entirely inside the other.
-//   - Overlapping polygons with shared edges.
-//   - Polygons touching at vertices or along edges.
-func (p *PolyTree[T]) Intersects(other *PolyTree[T]) bool {
-	// Check if any point of "other" is inside the contour of "p"
-	for _, otherPoint := range other.contour {
-		if p.contour.isPointInside(otherPoint.point) {
-			return true // Intersection found via point containment
-		}
-	}
-
-	// Check if any point of "p" is inside the contour of "other"
-	for _, point := range p.contour {
-		if other.contour.isPointInside(point.point) {
-			return true // Intersection found via point containment
-		}
-	}
-
-	// Check for edge intersections between "p" and "other"
-	for poly1Edge := range p.contour.iterEdges {
-		for poly2Edge := range other.contour.iterEdges {
-			if poly1Edge.IntersectsLineSegment(poly2Edge) {
-				return true // Intersection found via edge overlap
-			}
-		}
-	}
-
-	// No intersections detected
-	return false
-}
-
-// addChild adds a child PolyTree to the current PolyTree.
-//
-// Parameters:
-// - child: A pointer to the PolyTree to be added as a child.
-//
-// Returns:
-// - error: An error if the operation fails. Possible error scenarios include:
-//   - The child is nil.
-//   - The child has the same polygonType as the parent.
-//
-// Behavior:
-//   - Validates that the child is not nil.
-//   - Ensures that the PolygonType of the child is the opposite of the parent's. A PTSolid parent can only have PTHole children. A PTHole parent can only have PTSolid children.
-//   - Sets the current PolyTree as the parent of the child.
-//   - Adds the child to the children slice and ensures proper ordering of siblings and children.
-//
-// todo: make public?
-func (p *PolyTree[T]) addChild(child *PolyTree[T]) error {
-	// Check if the child is nil
-	if child == nil {
-		return fmt.Errorf("attempt to add nil child")
-	}
-
-	// Ensure the polygon types are compatible
-	if p.polygonType == child.polygonType {
-		return fmt.Errorf(
-			"cannot add child: mismatched polygon types (parent: %v, child: %v)",
-			p.polygonType,
-			child.polygonType,
-		)
-	}
-
-	// Set the parent of the child
-	child.parent = p
-
-	// Append the child to the children slice
-	p.children = append(p.children, child)
-
-	// Order siblings and children for consistency
-	p.orderSiblingsAndChildren()
-
-	// Successfully added the child
-	return nil
-}
-
-// addSibling adds a sibling PolyTree to the current PolyTree.
-//
-// Parameters:
-//   - sibling: A pointer to the PolyTree to be added as a sibling.
-//
-// Returns:
-//
-// error: An error if the operation fails. Possible error scenarios include:
-//   - The sibling is nil.
-//   - The sibling has a different PolygonType than the current PolyTree.
-//
-// Behavior:
-//   - Validates that the sibling is not nil.
-//   - Ensures that the PolygonType of the sibling matches the current PolyTree.
-//   - Establishes sibling relationships between the current PolyTree and the new sibling,
-//     as well as among existing siblings, ensuring a consistent sibling list across all related PolyTree nodes.
-//   - Calls orderSiblingsAndChildren on all affected nodes to maintain consistent ordering.
-func (p *PolyTree[T]) addSibling(sibling *PolyTree[T]) error {
-	// Check if the sibling is nil
-	if sibling == nil {
-		return fmt.Errorf("attempt to add nil sibling")
-	}
-
-	// Ensure the polygon types match
-	if p.polygonType != sibling.polygonType {
-		return fmt.Errorf("cannot add sibling as polygonType is mismatched")
-	}
-
-	// Add the new sibling to the sibling lists of existing siblings
-	for _, existingSibling := range p.siblings {
-		// Update sibling relationships
-		existingSibling.siblings = append(existingSibling.siblings, sibling)
-
-		// Maintain consistent ordering
-		existingSibling.orderSiblingsAndChildren()
-
-		// Add the existing sibling to the new sibling's sibling list
-		sibling.siblings = append(sibling.siblings, existingSibling)
-	}
-
-	// Add the current `PolyTree` to the new sibling's sibling list
-	sibling.siblings = append(sibling.siblings, p)
-
-	// Maintain consistent ordering
-	sibling.orderSiblingsAndChildren()
-
-	// Add the new sibling to the current `PolyTree`'s sibling list
-	p.siblings = append(p.siblings, sibling)
-
-	// Maintain consistent ordering
-	p.orderSiblingsAndChildren()
-
-	return nil
+	return nestPointsToPolyTrees(contours)
 }
 
 // booleanOperationTraversal performs a Boolean operation (Union, Intersection, Subtraction) between
@@ -1375,8 +1433,8 @@ func (p *PolyTree[T]) addSibling(sibling *PolyTree[T]) error {
 //
 // Note:
 //   - Polygons are assumed to have properly marked entry and exit points before calling this function.
-//   - Points are halved during traversal to revert the earlier doubling for precision handling.
-func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation BooleanOperation) [][]Point[T] {
+//   - Contour are halved during traversal to revert the earlier doubling for precision handling.
+func (pt *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation BooleanOperation) [][]Point[T] {
 	var direction polyTraversalDirection
 
 	// Initialize the resulting contours
@@ -1384,14 +1442,14 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 
 	for {
 		// Find the starting point for traversal
-		currentPoly, currentPointIndex := p.findTraversalStartingPoint(other)
+		currentPoly, currentPointIndex := pt.findTraversalStartingPoint(other)
 		if currentPoly == nil || currentPointIndex == -1 {
 			// No unvisited entry points, traversal is complete
 			break
 		}
 
 		// Initialize a new contour for the result
-		resultContour := make([]Point[T], 0, len(p.contour)+len(other.contour))
+		resultContour := make([]Point[T], 0, len(pt.contour)+len(other.contour))
 
 		// Set the initial traversal direction
 		direction = polyTraversalForward
@@ -1418,7 +1476,14 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 				currentPointIndex = (currentPointIndex - 1 + len(currentPoly.contour)) % len(currentPoly.contour)
 			}
 
-			// Handle polygon switching at entry/exit points and adjust traversal direction if needed
+			// Handle polygon switching at entry/exit points and adjust traversal direction if needed.
+			// The if condition is true when:
+			//   1. The current point is an exit point (intersectionTypeExit),
+			//	  OR
+			//   2. The operation is BooleanSubtraction AND:
+			//        - The polygon is a hole and the current point is an entry point,
+			//	       OR
+			//        - The polygon is solid, the current point is an entry point, and the traversal direction is reverse.
 			if currentPoly.contour[currentPointIndex].entryExit == intersectionTypeExit ||
 				(operation == BooleanSubtraction &&
 					((currentPoly.polygonType == PTHole && currentPoly.contour[currentPointIndex].entryExit == intersectionTypeEntry) ||
@@ -1451,14 +1516,14 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 		switch operation {
 		case BooleanUnion:
 			return [][]Point[T]{
-				p.contour.toPoints(),
+				pt.contour.toPoints(),
 				other.contour.toPoints(),
 			}
 		case BooleanIntersection:
 			return nil // No intersection
 		case BooleanSubtraction:
 			return [][]Point[T]{
-				p.contour.toPoints(),
+				pt.contour.toPoints(),
 			}
 		default:
 			panic(fmt.Errorf("unknown BooleanOperation: %v", operation))
@@ -1466,6 +1531,188 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 	}
 
 	return resultContours
+}
+
+// BoundingBox calculates the axis-aligned bounding box (AABB) of the PolyTree.
+//
+// The bounding box is the smallest rectangle, aligned with the coordinate axes, that completely encloses
+// all polygons in the PolyTree. The calculation uses the convex hull of each polygon in the tree, ensuring
+// efficiency and accuracy.
+//
+// Returns:
+//   - [Rectangle][T]: The axis-aligned bounding box that encloses all polygons in the PolyTree.
+//
+// Notes:
+//   - The bounding box is computed by iterating through the convex hull points of all polygons in the PolyTree.
+//   - If the PolyTree is empty, the behavior is undefined and should be handled externally by the caller.
+func (pt *PolyTree[T]) BoundingBox() Rectangle[T] {
+	minX := pt.contour[0].point.x / 2
+	maxX := pt.contour[0].point.x / 2
+	minY := pt.contour[0].point.y / 2
+	maxY := pt.contour[0].point.y / 2
+	for poly := range pt.Nodes {
+		for _, point := range poly.hull.Points {
+			minX = min(minX, point.x)
+			maxX = max(maxX, point.x)
+			minY = min(minY, point.y)
+			maxY = max(maxY, point.y)
+		}
+	}
+	// output points are divided by 2 as points in polytree are doubled
+	return NewRectangle([]Point[T]{
+		NewPoint[T](minX, minY),
+		NewPoint[T](maxX, minY),
+		NewPoint[T](maxX, maxY),
+		NewPoint[T](minX, maxY),
+	})
+}
+
+// Children returns the immediate child polygons of the current PolyTree node.
+//
+// The children are represented as a slice of pointers to PolyTree instances.
+// Each child polygon is nested directly within the current PolyTree node.
+//
+// Returns:
+//   - []*PolyTree[T]: A slice containing the children of the current PolyTree.
+//
+// Notes:
+//   - The method does not include grandchildren or deeper descendants in the returned slice.
+//   - If the current PolyTree node has no children, an empty slice is returned.
+func (pt *PolyTree[T]) Children() []*PolyTree[T] {
+	return pt.children
+}
+
+// Contour returns a slice of points that make up the external contour of the current PolyTree node.
+// The contour represents the boundary of the polygon associated with the node.
+//
+// The last [Point] in the slice is assumed to connect to the first [Point], forming a closed contour.
+//
+// Returns:
+//   - []Point[T]: A slice of [Point] representing the vertexes of the PolyTree node's contour.
+func (pt *PolyTree[T]) Contour() []Point[T] {
+	return pt.contour.toPoints()
+}
+
+// Edges returns the edges of the current PolyTree node as a slice of [LineSegment].
+//
+// Each edge represents a segment of the current PolyTree node's contour.
+//
+// Returns:
+//   - [][LineSegment][T]: A slice of [LineSegment] representing the edges of the PolyTree node's contour.
+//
+// Notes:
+//   - If the PolyTree node has no contour, an empty slice is returned.
+//   - This method does not include edges from child polygons or sibling polygons.
+func (pt *PolyTree[T]) Edges() []LineSegment[T] {
+	edges := make([]LineSegment[T], 0, len(pt.contour))
+	for edge := range pt.contour.iterEdges {
+		edges = append(edges, NewLineSegment(
+			NewPoint(edge.start.x/2, edge.start.y/2),
+			NewPoint(edge.end.x/2, edge.end.y/2),
+		))
+	}
+	return edges
+}
+
+// Eq compares two PolyTree objects (pt and other) for structural and content equality.
+// It identifies mismatches in contours, siblings, and children while avoiding infinite recursion
+// by tracking visited nodes. The comparison results are represented as a boolean and a bitmask.
+//
+// Parameters:
+//   - other (*PolyTree[T]): The PolyTree to compare with the current PolyTree.
+//   - opts: A variadic slice of [Option] functions to customize the equality check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the start and end
+//     points of the line segments. If the absolute difference between the coordinates of
+//     the points is less than epsilon, they are considered equal.
+//
+// Returns:
+//   - A boolean indicating whether the two PolyTree objects are equal.
+//   - A [PolyTreeMismatch] bitmask that specifies which aspects (if any) differ.
+//
+// Behavior:
+//   - Handles nil cases for the "pt" and "other" PolyTree objects.
+//   - Recursively compares contours, siblings, and children, considering different sibling/child orders.
+//   - Uses the visited map to prevent infinite recursion in cyclic structures.
+func (pt *PolyTree[T]) Eq(other *PolyTree[T], opts ...polyTreeEqOption[T]) (bool, PolyTreeMismatch) {
+	var mismatches PolyTreeMismatch
+
+	// Handle nil cases
+	switch {
+	case pt == nil && other == nil:
+		return true, PTMNoMismatch // Both are nil, no mismatch
+	case pt == nil:
+		return false, PTMNilPolygonMismatch // Only pt is nil
+	case other == nil:
+		return false, PTMNilPolygonMismatch // Only other is nil
+	}
+
+	// Initialize comparison configuration
+	config := &polyTreeEqConfig[T]{
+		visited: make(map[*PolyTree[T]]bool),
+	}
+	for _, opt := range opts {
+		opt(config) // Apply configuration options
+	}
+
+	// Avoid comparing the same PolyTree objects multiple times
+	if config.visited[pt] || config.visited[other] {
+		return true, PTMNoMismatch // Already compared, no mismatch
+	}
+	config.visited[pt] = true
+	config.visited[other] = true
+
+	// Compare contours
+	if !pt.contour.eq(other.contour) {
+		mismatches |= PTMContourMismatch
+		fmt.Println("Mismatch in contours detected")
+	}
+
+	// Compare siblings
+	if len(pt.siblings) != len(other.siblings) {
+		mismatches |= PTMSiblingMismatch
+		fmt.Println("Mismatch in siblings count detected")
+	} else {
+		// Siblings order doesn't matter, check if each sibling matches
+		for _, sibling := range pt.siblings {
+			found := false
+			for _, otherSibling := range other.siblings {
+				if eq, _ := sibling.Eq(otherSibling, withVisited(config.visited)); eq {
+					found = true
+					break
+				}
+			}
+			if !found {
+				mismatches |= PTMSiblingMismatch
+				fmt.Println("Mismatch in siblings content detected")
+				break
+			}
+		}
+	}
+
+	// Compare children
+	if len(pt.children) != len(other.children) {
+		mismatches |= PTMChildMismatch
+		fmt.Println("Mismatch in children count detected")
+	} else {
+		// Children order doesn't matter, check if each child matches
+		for _, child := range pt.children {
+			found := false
+			for _, otherChild := range other.children {
+				if eq, _ := child.Eq(otherChild, withVisited(config.visited)); eq {
+					found = true
+					break
+				}
+			}
+			if !found {
+				mismatches |= PTMChildMismatch
+				fmt.Println("Mismatch in children content detected")
+				break
+			}
+		}
+	}
+
+	// Return whether there are no mismatches and the mismatch bitmask
+	return mismatches == PTMNoMismatch, mismatches
 }
 
 // findIntersections identifies intersection points between the contours of two PolyTrees
@@ -1486,15 +1733,15 @@ func (p *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation Bo
 //
 // Assumptions:
 //   - The input PolyTrees represent closed polygons with properly ordered contours.
-func (p *PolyTree[T]) findIntersections(other *PolyTree[T]) {
+func (pt *PolyTree[T]) findIntersections(other *PolyTree[T]) {
 
 	// Step 1: Reset intersection metadata and reorder both PolyTrees
-	p.resetIntersectionMetadataAndReorder()
+	pt.resetIntersectionMetadataAndReorder()
 	other.resetIntersectionMetadataAndReorder()
 
 	// Step 2: Iterate through all combinations of polygons
-	for poly1 := range p.iterPolys {
-		for poly2 := range other.iterPolys {
+	for poly1 := range pt.Nodes {
+		for poly2 := range other.Nodes {
 
 			// Step 3: Check all edge combinations between poly1 and poly2
 			for i1 := 0; i1 < len(poly1.contour); i1++ {
@@ -1541,42 +1788,6 @@ func (p *PolyTree[T]) findIntersections(other *PolyTree[T]) {
 	}
 }
 
-// findParentPolygon determines the most suitable parent polygon for a given polygon to nest inside.
-// This is part of the hierarchical structure of polygons, where polygons may contain holes or islands.
-//
-// Parameters:
-//   - polyToNest: The polygon that needs to be nested.
-//
-// Returns:
-//   - A pointer to the parent polygon (*PolyTree[T]) in which polyToNest should be nested.
-//   - nil if polyToNest does not belong inside the current polygon.
-//
-// Behavior:
-//   - Checks if polyToNest is completely contained within the current polygon.
-//   - Recursively evaluates children polygons to find the most specific parent polygon.
-//   - If no child contains polyToNest, the current polygon (p) is considered the parent.
-//
-// Assumptions:
-//   - polyToNest and p are valid, non-nil polygons with correctly ordered contours.
-//
-// Complexity:
-//   - The complexity depends on the number of children polygons and the depth of the polygon hierarchy.
-func (p *PolyTree[T]) findParentPolygon(polyToNest *PolyTree[T]) *PolyTree[T] {
-	// Step 1: Check if polyToNest is entirely inside the current polygon
-	if p.contour.isContourInside(polyToNest.contour) {
-		// Step 2: Recursively check children for a more specific parent
-		for _, child := range p.children {
-			if nestedParent := child.findParentPolygon(polyToNest); nestedParent != nil {
-				return nestedParent // Found a more specific parent
-			}
-		}
-		// Step 3: If no child contains polyToNest, the current polygon is the parent
-		return p
-	}
-	// Step 4: If polyToNest is not inside the current polygon, return nil
-	return nil
-}
-
 // findTraversalStartingPoint identifies the first unvisited entry point for polygon traversal.
 // This is used during Boolean operations to start traversing a polygon's contours from a valid entry point.
 //
@@ -1592,11 +1803,11 @@ func (p *PolyTree[T]) findParentPolygon(polyToNest *PolyTree[T]) *PolyTree[T] {
 //   - Iterates through the current polygon (p) and the other polygon (other).
 //   - Searches all polygons in both trees for the first unvisited entry point (marked as intersectionTypeEntry).
 //   - Skips any points that are already visited.
-func (p *PolyTree[T]) findTraversalStartingPoint(other *PolyTree[T]) (*PolyTree[T], int) {
-	// Iterate through both polygons (`p` and `other`) to check their contours for unvisited entry points.
-	for _, ptOuter := range []*PolyTree[T]{p, other} {
+func (pt *PolyTree[T]) findTraversalStartingPoint(other *PolyTree[T]) (*PolyTree[T], int) {
+	// Iterate through both polygons (`pt` and `other`) to check their contours for unvisited entry points.
+	for _, ptOuter := range []*PolyTree[T]{pt, other} {
 		// Iterate through all polygons in the current tree
-		for polyTree := range ptOuter.iterPolys {
+		for polyTree := range ptOuter.Nodes {
 			// Iterate through all points in the current polygon's contour
 			for pointIndex := range polyTree.contour {
 				// Check if the point is an entry point and has not been visited
@@ -1611,47 +1822,93 @@ func (p *PolyTree[T]) findTraversalStartingPoint(other *PolyTree[T]) (*PolyTree[
 	return nil, -1
 }
 
-// iterPolys iterates over this PolyTree and all its nested polygons, including siblings and children at all levels.
-// It calls the yield function for each polygon, and the iteration continues as long as yield returns true.
+// Hull returns the convex hull of the PolyTree node's contour as a slice of [Point].
+//
+// The convex hull represents the smallest convex polygon that can enclose the points
+// of the PolyTree node's contour. This is useful for optimizations in geometric operations.
+//
+// Returns:
+//   - [][Point][T]: A slice of points representing the convex hull of the PolyTree node.
+//
+// Notes:
+//   - If the PolyTree node does not have a contour, an empty slice is returned.
+//   - The points in the hull are ordered counterclockwise.
+func (pt *PolyTree[T]) Hull() []Point[T] {
+	return pt.hull.Points
+}
+
+// Intersects checks whether the current PolyTree intersects with another PolyTree.
 //
 // Parameters:
-//   - yield: A callback function that receives a pointer to the current PolyTree being iterated over.
-//     The iteration stops early if yield returns false.
+//   - other (*PolyTree[T]): The PolyTree to compare against the current PolyTree.
+//
+// Returns:
+//   - true if the two PolyTree objects intersect, either by containment or edge overlap.
+//   - false if there is no intersection.
 //
 // Behavior:
-//   - Starts with the current polygon (p) and yields it to the yield function.
-//   - Recursively iterates over all siblings and their nested polygons.
-//   - Recursively iterates over all children and their nested polygons.
+//   - Checks if any point from one PolyTree lies inside the contour of the other PolyTree.
+//   - Verifies if any edges of the two PolyTree objects intersect.
 //
-// Example:
-//
-//	p := ... // Root PolyTree
-//	for poly := range p.iterPolys {
-//	    fmt.Printf("Polygon ID: %v, Type: %v\n", poly.ID, poly.polygonType)
-//	}
-func (p *PolyTree[T]) iterPolys(yield func(*PolyTree[T]) bool) {
-	// Yield the current polygon (p)
-	if !yield(p) {
-		return // Stop if yield returns false
+// This method accounts for all potential intersection cases, including:
+//   - One polygon entirely inside the other.
+//   - Overlapping polygons with shared edges.
+//   - Polygons touching at vertices or along edges.
+func (pt *PolyTree[T]) Intersects(other *PolyTree[T]) bool {
+	// Check if any point of "other" is inside the contour of "pt"
+	for _, otherPoint := range other.contour {
+		if pt.contour.isPointInside(otherPoint.point) {
+			return true // Intersection found via point containment
+		}
 	}
 
-	// Yield all siblings and their nested polygons
-	for _, sibling := range p.siblings {
-		for s := range sibling.iterPolys {
-			if !yield(s) {
-				return // Stop if yield returns false
+	// Check if any point of "pt" is inside the contour of "other"
+	for _, point := range pt.contour {
+		if other.contour.isPointInside(point.point) {
+			return true // Intersection found via point containment
+		}
+	}
+
+	// Check for edge intersections between "pt" and "other"
+	for poly1Edge := range pt.contour.iterEdges {
+		for poly2Edge := range other.contour.iterEdges {
+			if poly1Edge.IntersectsLineSegment(poly2Edge) {
+				return true // Intersection found via edge overlap
 			}
 		}
 	}
 
-	// Yield all children and their nested polygons
-	for _, child := range p.children {
-		for c := range child.iterPolys {
-			if !yield(c) {
-				return // Stop if yield returns false
-			}
-		}
+	// No intersections detected
+	return false
+}
+
+// IsRoot determines if the current PolyTree node is the root of the tree.
+//
+// A PolyTree node is considered root if it does not have a parent.
+//
+// Returns:
+//   - bool: true if the PolyTree node is the root (has no parent),
+//     false otherwise.
+func (pt *PolyTree[T]) IsRoot() bool {
+	if pt.parent == nil {
+		return true
 	}
+	return false
+}
+
+// Len returns the total number of PolyTree nodes in the current PolyTree structure,
+// including the root, its siblings, and all nested children.
+//
+// This method iterates through all nodes in the PolyTree and counts them.
+//
+// Returns:
+//   - int: The total number of PolyTree nodes.
+func (pt *PolyTree[T]) Len() int {
+	i := 0
+	for range pt.Nodes {
+		i++
+	}
+	return i
 }
 
 // markEntryExitPoints assigns entry and exit metadata to intersection points for Boolean operations
@@ -1674,12 +1931,12 @@ func (p *PolyTree[T]) iterPolys(yield func(*PolyTree[T]) bool) {
 //   - Uses a lookup table (entryExitPointLookUpTable) to assign entryExit types to both p and other.
 //
 // Links intersection points in p and other to ensure traversal can switch between polygons.
-func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanOperation) {
-	// Iterate through all combinations of polygons in `p` and `other`
+func (pt *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanOperation) {
+	// Iterate through all combinations of polygons in `pt` and `other`
 	poly1i := 0
-	for poly1 := range p.iterPolys {
+	for poly1 := range pt.Nodes {
 		poly2i := 0
-		for poly2 := range other.iterPolys {
+		for poly2 := range other.Nodes {
 
 			// Iterate through each edge in `poly1`
 			for poly1Point1Index, poly1Point1 := range poly1.contour {
@@ -1701,7 +1958,7 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 							// Determine if `poly1` is entering or exiting `poly2` using a midpoint test
 							mid := NewLineSegment(
 								poly1Point1.point,
-								poly1.contour[poly1Point2Index].point).Midpoint()
+								poly1.contour[poly1Point2Index].point).Center()
 							midT := NewPoint[T](T(mid.x), T(mid.y))
 							poly1EnteringPoly2 := poly2.contour.isPointInside(midT)
 
@@ -1718,7 +1975,7 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 							//}
 							//fmt.Printf("Poly1 [%d]: %v -> Poly2 [%d]: %v\n",
 							//	poly1Point1Index, poly1Point1.point, poly2PointIndex, poly2Point.point)
-							//fmt.Printf("Midpoint: %v, Inside Poly2: %t\n", midT, poly1EnteringPoly2)
+							//fmt.Printf("Center: %v, Inside Poly2: %t\n", midT, poly1EnteringPoly2)
 
 							// Use the lookup table to determine and set entry/exit points
 							poly1.contour[poly1Point1Index].entryExit =
@@ -1747,6 +2004,61 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 	}
 }
 
+// Nodes iterates over this PolyTree and all its nested polygons, including siblings and children at all levels equal to
+// and below the current node's level. It does not traverse above the current level, if this is required, it is
+// suggested to first obtain the root using [PolyTree.Root].
+//
+// This function is an iterator, designed for use in a for loop, for example:
+//
+//	for node := range polytree.Nodes {
+//	    // do something
+//	}
+//
+// Parameters:
+//   - yield: A callback function that receives a pointer to the current PolyTree being iterated over.
+//     The iteration stops early if yield returns false.
+//
+// Behavior:
+//   - Starts with the current polygon (p) and yields it to the yield function.
+//   - Recursively iterates over all siblings and their nested polygons.
+//   - Recursively iterates over all children and their nested polygons.
+func (pt *PolyTree[T]) Nodes(yield func(*PolyTree[T]) bool) {
+	var currentPt *PolyTree[T]
+
+	toYield := make([]*PolyTree[T], 0, 16)
+	yielded := make([]*PolyTree[T], 0, 16)
+
+	// add pt to toYield
+	toYield = append(toYield, pt)
+
+	// for loop: while toYield has values
+	for len(toYield) > 0 {
+
+		// pop poly from toYield
+		currentPt, toYield = toYield[0], toYield[1:]
+
+		// yield poly, return if needed
+		if !yield(currentPt) {
+			return
+		}
+
+		// add poly to yielded
+		yielded = append(yielded, currentPt)
+
+		// add all siblings and children of poly to toYield if not already added, and if not already yielded
+		for _, sibling := range currentPt.siblings {
+			if !slices.Contains(yielded, sibling) && !slices.Contains(toYield, sibling) {
+				toYield = append(toYield, sibling)
+			}
+		}
+		for _, child := range currentPt.children {
+			if !slices.Contains(yielded, child) && !slices.Contains(toYield, child) {
+				toYield = append(toYield, child)
+			}
+		}
+	}
+}
+
 // orderSiblingsAndChildren ensures that the siblings and children of the PolyTree
 // are ordered consistently. The sorting is based on the lowest, leftmost point
 // of their contours.
@@ -1762,18 +2074,280 @@ func (p *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation BooleanO
 // Sorting Criteria:
 //   - The compareLowestLeftmost function is used to compare contours based on their
 //     lowest, leftmost points.
-func (p *PolyTree[T]) orderSiblingsAndChildren() {
+func (pt *PolyTree[T]) orderSiblingsAndChildren() {
 	// Sort siblings by the lowest, leftmost point in their contours
-	slices.SortFunc(p.siblings, func(a, b *PolyTree[T]) int {
+	slices.SortFunc(pt.siblings, func(a, b *PolyTree[T]) int {
 		// Compare contours using their lowest, leftmost points
 		return compareLowestLeftmost(a.contour, b.contour)
 	})
 
-	// Sort children by the lowest, leftmost point in their contours
-	slices.SortFunc(p.children, func(a, b *PolyTree[T]) int {
+	// Sort children by the lowest, leftmost point in their contfours
+	slices.SortFunc(pt.children, func(a, b *PolyTree[T]) int {
 		// Compare contours using their lowest, leftmost points
 		return compareLowestLeftmost(a.contour, b.contour)
 	})
+}
+
+// Parent retrieves the parent of the current PolyTree node.
+//
+// The parent node represents the polygon in the hierarchy that contains the current node.
+// If the current node is the root, this function returns nil.
+//
+// Returns:
+//   - *PolyTree[T]: The parent node of the current PolyTree, or nil if the current node is the root.
+func (pt *PolyTree[T]) Parent() *PolyTree[T] {
+	return pt.parent
+}
+
+// Perimeter calculates the total perimeter of the PolyTree contour.
+//
+// This function computes the sum of the lengths of all edges that make up the PolyTree's contour.
+// The calculation can be customized using the optional parameters.
+//
+// Parameters:
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the calculation.
+//     For example, you can use [WithEpsilon] to adjust precision for floating-point comparisons.
+//
+// Returns:
+//   - float64: The total perimeter of the PolyTree.
+//
+// Notes:
+//   - The perimeter only considers the contour of the PolyTree itself and does not include any child polygons.
+func (pt *PolyTree[T]) Perimeter(opts ...Option) float64 {
+	var length float64
+	for _, edge := range pt.Edges() {
+		length += edge.Length(opts...)
+	}
+	return length
+}
+
+// PolygonType returns the type of the PolyTree's polygon.
+//
+// This function identifies whether the polygon represented by the PolyTree
+// is a solid polygon or a hole, based on the [PolygonType] enumeration.
+//
+// Returns:
+//   - [PolygonType]: The type of the polygon (e.g., [PTSolid] or [PTHole]).
+//
+// Notes:
+//   - A solid polygon ([PTSolid]) represents a filled area.
+//   - A hole polygon ([PTHole]) represents a void inside a parent polygon.
+func (pt *PolyTree[T]) PolygonType() PolygonType {
+	return pt.polygonType
+}
+
+// RelationshipToCircle determines the spatial relationship between a PolyTree and a [Circle].
+//
+// This method evaluates the relationship between the calling PolyTree (pt) and the specified [Circle] (c)
+// for each polygon in the PolyTree. The relationships include containment, intersection, and disjoint.
+//
+// Parameters:
+//   - c ([Circle][T]): The [Circle] to evaluate against the PolyTree.
+//   - opts ([Option]): A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing points and distances,
+//     allowing for robust handling of floating-point precision errors.
+//
+// Behavior:
+//   - For each polygon in the PolyTree, the function determines whether the [Circle] lies within, intersects, or
+//     is disjoint from the polygon.
+//   - The containment relationship is flipped to reflect the PolyTree's relationship to the [Circle].
+//
+// Returns:
+//   - map[*[PolyTree][T]][Relationship]: A map where each key is a polygon in the PolyTree, and the value is the
+//     relationship between the PolyTree and the [Circle].
+//
+// Notes:
+//   - This method assumes that the PolyTree is valid and non-degenerate.
+//   - The flipped containment ensures that the returned relationships describe the PolyTree's relationship
+//     to the [Circle], rather than the Circle's relationship to the PolyTree.
+func (pt *PolyTree[T]) RelationshipToCircle(c Circle[T], opts ...Option) map[*PolyTree[T]]Relationship {
+	output := c.RelationshipToPolyTree(pt, opts...)
+	for k := range output {
+		output[k] = output[k].flipContainment()
+	}
+	return output
+}
+
+// RelationshipToLineSegment determines the spatial relationship between a PolyTree and a [LineSegment].
+//
+// This method evaluates the relationship between the calling PolyTree (pt) and the specified [LineSegment] (l)
+// for each polygon in the PolyTree. The relationships include containment, intersection, and disjoint.
+//
+// Parameters:
+//   - l ([LineSegment][T]): The [LineSegment] to evaluate against the PolyTree.
+//   - opts ([Option]): A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing points and collinearity calculations,
+//     allowing for robust handling of floating-point precision errors.
+//
+// Behavior:
+//   - For each polygon in the PolyTree, the function determines whether the [LineSegment] lies within, intersects, or
+//     is disjoint from the polygon.
+//   - The containment relationship is flipped to reflect the PolyTree's relationship to the [LineSegment].
+//
+// Returns:
+//   - map[*PolyTree[T]][Relationship]: A map where each key is a polygon in the PolyTree, and the value is the
+//     relationship between the PolyTree and the [LineSegment].
+//
+// Notes:
+//   - This method assumes that the PolyTree is valid and non-degenerate.
+//   - The flipped containment ensures that the returned relationships describe the PolyTree's relationship
+//     to the [LineSegment], rather than the LineSegment's relationship to the PolyTree.
+func (pt *PolyTree[T]) RelationshipToLineSegment(l LineSegment[T], opts ...Option) map[*PolyTree[T]]Relationship {
+	output := l.RelationshipToPolyTree(pt, opts...)
+	for k := range output {
+		output[k] = output[k].flipContainment()
+	}
+	return output
+}
+
+// RelationshipToPoint determines the spatial relationship between a PolyTree and a [Point].
+//
+// This method evaluates the relationship between the calling PolyTree (pt) and the specified [Point] (p),
+// for each polygon in the PolyTree. The relationships include containment, intersection (point on edge or vertex),
+// and disjoint.
+//
+// Parameters:
+//   - p ([Point][T]): The point to evaluate against the PolyTree.
+//   - opts ([Option]): A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing points and collinearity calculations,
+//     allowing for robust handling of floating-point precision errors.
+//
+// Behavior:
+//   - For each polygon in the PolyTree, the function determines whether the point lies within, intersects, or is
+//     disjoint from the polygon.
+//   - The containment relationship is flipped so that the relationship reflects the PolyTree's relationship to the point.
+//
+// Returns:
+//   - map[*[PolyTree][T]][Relationship]: A map where each key is a polygon in the PolyTree, and the value is the
+//     relationship between the PolyTree and the point.
+//
+// Notes:
+//   - This method assumes that the PolyTree is valid and non-degenerate.
+//   - The flipped containment ensures that the returned relationships describe the PolyTree's relationship
+//     to the point, rather than the point's relationship to the PolyTree.
+func (pt *PolyTree[T]) RelationshipToPoint(p Point[T], opts ...Option) map[*PolyTree[T]]Relationship {
+	output := p.RelationshipToPolyTree(pt, opts...)
+	for k := range output {
+		output[k] = output[k].flipContainment()
+	}
+	return output
+}
+
+// RelationshipToPolyTree determines the spatial relationship between the polygons in one [PolyTree] (pt)
+// and the polygons in another [PolyTree] (other).
+//
+// This function evaluates pairwise relationships between all polygons in the two PolyTrees
+// and returns a map. Each key in the outer map corresponds to a polygon from the first [PolyTree] (pt),
+// and its value is another map where the keys are polygons from the second [PolyTree] (other) and the values
+// are the relationships between the two polygons.
+//
+// Relationships include:
+//   - [RelationshipEqual]: The two polygons are identical.
+//   - [RelationshipIntersection]: The polygons overlap partially.
+//   - [RelationshipContains]: A polygon in the first [PolyTree] completely encloses a polygon
+//     in the second [PolyTree].
+//   - [RelationshipContainedBy]: A polygon in the first [PolyTree] is completely enclosed
+//     by a polygon in the second [PolyTree].
+//   - [RelationshipDisjoint]: The two polygons have no overlap or containment.
+//
+// Parameters:
+//   - other (*PolyTree[T]): The other [PolyTree] to compare against [PolyTree] pt.
+//   - opts ([Option]): A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing points and collinearity calculations,
+//     allowing for robust handling of floating-point precision errors.
+//
+// Returns:
+//   - map[*[PolyTree][T]]map[*[PolyTree][T]][Relationship]: A nested map where the first key is a polygon from
+//     the first [PolyTree] (pt), the second key is a polygon from the second [PolyTree] (other), and the value
+//     represents their spatial relationship.
+//
+// Notes:
+//   - For efficiency, the function first checks for equality and then evaluates intersection and containment.
+//   - The function assumes that the input PolyTrees have properly formed contours and edges.
+func (pt *PolyTree[T]) RelationshipToPolyTree(other *PolyTree[T], opts ...Option) map[*PolyTree[T]]map[*PolyTree[T]]Relationship {
+	output := make(map[*PolyTree[T]]map[*PolyTree[T]]Relationship, pt.Len())
+
+	for ptPoly := range pt.Nodes {
+		output[ptPoly] = make(map[*PolyTree[T]]Relationship, other.Len())
+
+	RelationshipToPolyTreeOtherIterPolys:
+		for otherPoly := range other.Nodes {
+
+			ptPolyInsideOtherPoly := true
+			otherPolyInsidePtPoly := true
+
+			// check equality
+			if ptPoly.contour.eq(otherPoly.contour) {
+				output[ptPoly][otherPoly] = RelationshipEqual
+				continue RelationshipToPolyTreeOtherIterPolys
+			}
+
+			for ptPolyEdge := range ptPoly.contour.iterEdges {
+				for otherPolyEdge := range otherPoly.contour.iterEdges {
+
+					// check intersection
+					rel := ptPolyEdge.RelationshipToLineSegment(otherPolyEdge, opts...)
+					if rel == RelationshipIntersection || rel == RelationshipEqual {
+						output[ptPoly][otherPoly] = RelationshipIntersection
+						continue RelationshipToPolyTreeOtherIterPolys
+					}
+
+					// check containment: otherPoly inside ptPoly
+					if !ptPoly.contour.isPointInside(otherPolyEdge.start) || !ptPoly.contour.isPointInside(otherPolyEdge.end) {
+						otherPolyInsidePtPoly = false
+					}
+				}
+
+				// check containment: ptPoly inside otherPoly
+				if !otherPoly.contour.isPointInside(ptPolyEdge.start) || !otherPoly.contour.isPointInside(ptPolyEdge.end) {
+					ptPolyInsideOtherPoly = false
+				}
+			}
+
+			// check containment
+			if ptPolyInsideOtherPoly {
+				output[ptPoly][otherPoly] = RelationshipContainedBy
+				continue RelationshipToPolyTreeOtherIterPolys
+			}
+			if otherPolyInsidePtPoly {
+				output[ptPoly][otherPoly] = RelationshipContains
+				continue RelationshipToPolyTreeOtherIterPolys
+			}
+
+			// otherwise disjoint
+			output[ptPoly][otherPoly] = RelationshipDisjoint
+		}
+	}
+	return output
+}
+
+// RelationshipToRectangle computes the relationship between the given [Rectangle] (r) and each polygon in the [PolyTree] (pt).
+//
+// The function evaluates whether the rectangle is disjoint from, intersects with, contains, or is contained by
+// each polygon in the [PolyTree]. It uses [Rectangle.RelationshipToPolyTree] to determine the relationship and
+// flips the containment relationships so that they are expressed from the [PolyTree]'s perspective.
+//
+// Parameters:
+//   - r ([Rectangle][T]): The rectangle to evaluate against the polygons in the [PolyTree].
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for geometric calculations, improving robustness
+//     against floating-point imprecision.
+//
+// Returns:
+//   - map[*[PolyTree][T]][Relationship]: A map where the keys are pointers to the polygons in the [PolyTree],
+//     and the values are the relationships of the rectangle to those polygons, with containment relationships
+//     flipped to reflect the PolyTree's perspective.
+//
+// Notes:
+//   - This method assumes that the [PolyTree] contains valid and non-overlapping polygons.
+//   - The returned relationships are expressed relative to the [PolyTree], meaning containment relationships
+//     are flipped.
+func (pt *PolyTree[T]) RelationshipToRectangle(r Rectangle[T], opts ...Option) map[*PolyTree[T]]Relationship {
+	output := r.RelationshipToPolyTree(pt, opts...)
+	for k := range output {
+		output[k] = output[k].flipContainment()
+	}
+	return output
 }
 
 // resetIntersectionMetadataAndReorder removes intersection-related metadata from the PolyTree
@@ -1786,9 +2360,9 @@ func (p *PolyTree[T]) orderSiblingsAndChildren() {
 //  4. Reorders the contour to start at the lowest, leftmost point.
 //
 // This function is typically used as a preparation step before performing a new Boolean operation or traversal.
-func (p *PolyTree[T]) resetIntersectionMetadataAndReorder() {
+func (pt *PolyTree[T]) resetIntersectionMetadataAndReorder() {
 	// Iterate over all polygons in the PolyTree, including nested ones
-	for poly := range p.iterPolys {
+	for poly := range pt.Nodes {
 
 		// Iterate through the contour points of the polygon
 		for i := 0; i < len(poly.contour); i++ {
@@ -1810,55 +2384,226 @@ func (p *PolyTree[T]) resetIntersectionMetadataAndReorder() {
 	}
 
 	// Reorder the contour to ensure a consistent starting point
-	p.contour.reorder()
+	pt.contour.reorder()
 }
 
-// ContainsPoint determines whether a given point lies inside the convex polygon.
+// Root returns the topmost parent node of the current PolyTree.
+// This is useful for obtaining the root node of a nested PolyTree structure.
 //
-// This method uses a clockwise orientation check for each edge of the polygon to determine
-// if the point is on the "correct" side of all edges. For convex polygons, this is sufficient
-// to verify containment.
-//
-// Parameters:
-//
-//   - point Point[T]: The point to check.
+// Behavior:
+//   - Starts at the current node and traverses upward through the parent chain
+//     until a node with no parent is found.
+//   - If the current node is already the root, it returns the current node.
 //
 // Returns:
+//   - *PolyTree[T]: The root node of the PolyTree.
+func (pt *PolyTree[T]) Root() *PolyTree[T] {
+	// Start with the current node
+	currentPoly := pt
+
+	// Traverse upwards until a node with no parent is found
+	for currentPoly.parent != nil {
+		currentPoly = currentPoly.parent
+	}
+
+	// Return the topmost node
+	return currentPoly
+}
+
+// Rotate rotates all points in the [PolyTree] around a specified pivot [Point] by a given angle in radians,
+// in counter-clockwise direction.
 //
-//   - bool: True if the point lies inside or on the boundary of the convex polygon; false otherwise.
+// This method applies a rotation transformation to all points in the [PolyTree], including its contours and
+// nested child polygons. The rotation is performed relative to the specified pivot point and is expressed
+// in radians.
 //
-// Algorithm:
-//   - Iterate over each edge of the convex polygon, defined by consecutive points in the Points slice.
-//   - For each edge, check the orientation of the given point relative to the edge using the Orientation function.
-//   - If the point is found to be on the "outside" of any edge (i.e., the orientation is clockwise),
-//     it is determined to be outside the polygon, and the method returns false.
-//   - If the point passes all edge checks, it is inside the polygon, and the method returns true.
+// Parameters:
+//   - pivot ([Point][T]): The [Point] around which all points in the [PolyTree] are rotated.
+//   - radians (float64): The angle of rotation in radians. Positive values indicate counter-clockwise rotation.
+//   - opts: A variadic slice of [Option] functions to customize the behavior of the relationship check.
+//     [WithEpsilon](epsilon float64): Specifies a tolerance for geometric calculations, improving robustness
+//     against floating-point imprecision.
+//
+// Returns:
+//   - *[PolyTree][float64]: A new [PolyTree] with points rotated as float64.
+//
+// Panics:
+//   - This function panics if the internal point transformation logic fails.
+func (pt *PolyTree[T]) Rotate(pivot Point[T], radians float64, opts ...Option) *PolyTree[float64] {
+	out, err := ApplyPointTransform(pt, func(p Point[T]) (Point[float64], error) {
+		return p.Rotate(pivot, radians, opts...), nil
+	})
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
+// Scale scales all points in the PolyTree relative to a reference point by a given scaling factor.
+//
+// This method scales all the points of the PolyTree's contours and its children relative to the reference [Point] ref
+// by the scaling factor k. It maintains the relationships between parent and child polygons and adjusts their points
+// proportionally.
+//
+// Parameters:
+//   - ref ([Point][T]): The reference point used as the centre of scaling.
+//   - k (T): The scaling factor. A value greater than 1 enlarges the [PolyTree], a value between 0 and 1 shrinks it,
+//     and a negative value mirrors it.
+//
+// Returns:
+//   - *[PolyTree][T]: A new [PolyTree] where all the points have been scaled relative to ref.
+//
+// Panics:
+//   - This function panics if the internal point transformation logic fails.
+func (pt *PolyTree[T]) Scale(ref Point[T], k T) *PolyTree[T] {
+	out, err := ApplyPointTransform(pt, func(p Point[T]) (Point[T], error) {
+		return p.Scale(ref, k), nil
+	})
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
+// Siblings returns a slice of sibling polygons of the current PolyTree.
+//
+// This function provides access to polygons at the same hierarchical level as the current PolyTree.
+// The siblings are polygons that share the same parent as the current PolyTree.
+//
+// Returns:
+//   - []*PolyTree[T]: A slice of pointers to sibling PolyTrees.
 //
 // Notes:
-//   - This method assumes that the `simpleConvexPolygon` is indeed convex. No validation of convexity
-//     is performed, as this type is intended for internal use and relies on being constructed correctly.
+//   - If the current PolyTree has no siblings, an empty slice is returned.
+//   - The slice does not include the current PolyTree itself.
+func (pt *PolyTree[T]) Siblings() []*PolyTree[T] {
+	return pt.siblings
+}
+
+// String returns a string representation of the PolyTree, displaying its hierarchy,
+// polygon type, and contour points.
 //
-// Example:
+// This method uses the Nodes method to traverse the entire PolyTree
+// and represent each polygon's type, contour points, and relationships.
 //
-//	scp := simpleConvexPolygon{Points: []Point{
-//	    {X: 0, Y: 0}, {X: 4, Y: 0}, {X: 4, Y: 4}, {X: 0, Y: 4},
-//	}}
-//	inside := scp.ContainsPoint(Point{X: 2, Y: 2}) // Returns true
-//	outside := scp.ContainsPoint(Point{X: 5, Y: 5}) // Returns false
+// Returns:
+//   - string: A human-readable representation of the PolyTree.
+func (pt *PolyTree[T]) String() string {
+	var builder strings.Builder
+
+	for poly := range pt.Nodes {
+
+		// Calculate indentation level based on hierarchy depth
+		depth := 0
+		for parent := poly.parent; parent != nil; parent = parent.parent {
+			depth++
+		}
+		indent := strings.Repeat("  ", depth)
+
+		// Write polygon information
+		builder.WriteString(fmt.Sprintf(
+			"%sPolyTree: %s\n%s%s\n",
+			indent,
+			poly.polygonType.String(),
+			indent,
+			poly.contour.String(),
+		))
+	}
+
+	return builder.String()
+}
+
+// Translate moves all points in the [PolyTree] by a specified displacement vector (given as a [Point]).
 //
-// todo: this example only makes sense in the context of this module - users of the module won't be able to do this as simpleConvexPolygon is private. Consider how we address this. Potentially add a ConvexHull method of Polygon?
-func (scp *simpleConvexPolygon[T]) ContainsPoint(point Point[T]) bool {
-	// Loop over each edge, defined by consecutive points
+// This method applies the given delta vector to all points in the [PolyTree], including its contours
+// and any nested child polygons. The displacement vector is added to each point's coordinates.
+//
+// Parameters:
+//   - delta ([Point][T]): The displacement vector to apply to all points.
+//
+// Returns:
+//   - *[PolyTree][T]: A new [PolyTree] where all the points have been translated.
+//
+// Panics:
+//   - This function panics if the internal point transformation logic fails.
+func (pt *PolyTree[T]) Translate(delta Point[T]) *PolyTree[T] {
+	out, err := ApplyPointTransform(pt, func(p Point[T]) (Point[T], error) {
+		return p.Translate(delta), nil
+	})
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
+// containsPoint determines whether a given point lies inside the convex polygon.
+//
+// This method assumes that the `simpleConvexPolygon` is indeed convex. It is intended for internal use
+// and relies on the correct construction of the type.
+func (scp *simpleConvexPolygon[T]) containsPoint(point Point[T]) bool {
 	for i := 0; i < len(scp.Points); i++ {
 		a := scp.Points[i]
-		b := scp.Points[(i+1)%len(scp.Points)] // Wrap to form a closed polygon
-
-		// Check if the point is on the correct side of the edge
+		b := scp.Points[(i+1)%len(scp.Points)]
 		if Orientation(a, b, point) == PointsClockwise {
-			return false // Point is outside
+			return false
 		}
 	}
-	return true // Point is inside
+	return true
+}
+
+// ApplyPointTransform applies a transformation function to each point in a [PolyTree] and produces a new [PolyTree]
+// with points of a different type. It supports transformation between numeric types in the [SignedNumber] constraint.
+//
+// This function allows users to convert the points in a PolyTree using a custom transformation function, for example,
+// rounding float64 coordinates to int or scaling coordinates to another type.
+//
+// Parameters:
+//   - pt (*[PolyTree][T]): The input [PolyTree] with points of type T.
+//   - transformFunc (func([Point][T]) ([Point][N], error)): A user-defined function that transforms a [Point][T] to a [Point][N].
+//     It can return an error if the transformation fails.
+//
+// Returns:
+//   - *[PolyTree][N]: A new [PolyTree] where all points have been transformed to type N.
+//   - error: Returns an error if any point transformation fails or if the new [PolyTree] cannot be created.
+func ApplyPointTransform[T, N SignedNumber](pt *PolyTree[T], transformFunc func(p Point[T]) (Point[N], error)) (*PolyTree[N], error) {
+	var (
+		err   error        // Stores any errors encountered during transformation.
+		ptOut *PolyTree[N] // The resulting PolyTree after transformation.
+	)
+
+	// Prepare a slice of transformed contours (polygons), where each point will be converted.
+	contours := make([][]Point[N], pt.Len())
+
+	// Iterate over each polygon (node) in the PolyTree.
+	i := 0
+	for poly := range pt.Nodes {
+
+		// Prepare a slice for the transformed points of the current contour.
+		polyContour := make([]Point[N], len(poly.contour))
+
+		// Transform each point in the contour using the provided transformation function.
+		for j, point := range poly.contour.toPoints() {
+			polyContour[j], err = transformFunc(point)
+			if err != nil {
+				// Return a descriptive error if the transformation fails for any point.
+				return nil, fmt.Errorf("failed to transform point at poly %d, index %d: %w", i, j, err)
+			}
+		}
+
+		// Store the transformed contour into the output contours slice.
+		contours[i] = polyContour
+		i++
+	}
+
+	// Reconstruct the PolyTree from the transformed contours.
+	ptOut, err = nestPointsToPolyTrees[N](contours)
+	if err != nil {
+		// Return an error if the new PolyTree cannot be created.
+		return nil, fmt.Errorf("failed to nest points into PolyTree: %w", err)
+	}
+
+	// Return the transformed PolyTree.
+	return ptOut, nil
 }
 
 // compareLowestLeftmost compares two contours and determines their relative order
@@ -1869,7 +2614,7 @@ func (scp *simpleConvexPolygon[T]) ContainsPoint(point Point[T]) bool {
 // The comparison is performed as follows:
 //   - The contour with the point that has the smallest y coordinate is considered "smaller".
 //   - If the y coordinates are equal, the contour with the smallest x coordinate is considered "smaller".
-//   - Returns -1 if a should come before b, 1 if b should come before a, or 0 if both contours have the same lowest, leftmost point.
+//   - Returns -1 if a should come before b, 1 if b should come before "a", or 0 if both contours have the same lowest, leftmost point.
 //
 // This function is typically used for sorting contours in a consistent order.
 //
@@ -1906,7 +2651,7 @@ func compareLowestLeftmost[T SignedNumber](a, b contour[T]) int {
 //     are classified as solid islands.
 //
 // Parameters:
-//   - contours: A slice of slices of Points, where each inner slice represents a closed polygon contour.
+//   - contours: A slice of slices of Contour, where each inner slice represents a closed polygon contour.
 //
 // Returns:
 //   - A pointer to the root PolyTree if the nesting is successful.
@@ -1927,62 +2672,95 @@ func compareLowestLeftmost[T SignedNumber](a, b contour[T]) int {
 //	    log.Fatalf("Error: %v", err)
 //	}
 func nestPointsToPolyTrees[T SignedNumber](contours [][]Point[T]) (*PolyTree[T], error) {
+
 	// Sanity check: ensure contours exist
 	if len(contours) == 0 {
 		return nil, fmt.Errorf("no contours provided")
 	}
 
-	// Step 1: Sort polygons by area (ascending order, largest last)
-	slices.SortFunc(contours, func(a, b []Point[T]) int {
-		areaA := SignedArea2X(a)
-		areaB := SignedArea2X(b)
-		switch {
-		case areaA < areaB:
-			return -1
-		case areaA > areaB:
-			return 1
-		default:
-			return 0
-		}
-	})
+	// Step 1: Sort polygons by area
+	slices.SortFunc(contours, sortPointsByAreaDescending)
 
 	// Step 2: Create the root PolyTree from the largest polygon
-	rootTree, err := NewPolyTree(contours[len(contours)-1], PTSolid)
+	rootTree, err := NewPolyTree(contours[0], PTSolid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create root PolyTree: %w", err)
 	}
 
-	// Step 3: Process the remaining polygons in reverse order (smallest first)
-	for i := len(contours) - 2; i >= 0; i-- {
-		// Create a PolyTree for the current contour
-		polyToNest, err := NewPolyTree(contours[i], PTSolid)
+	// Step 3: Process the remaining polygons
+	for i := 1; i < len(contours); i++ {
+
+		// create new poly
+		newPoly, err := NewPolyTree(contours[i], PTSolid)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create PolyTree for contour %d: %w", i, err)
+			return nil, fmt.Errorf("failed to create PolyTree: %w", err)
 		}
 
-		// Step 4: Find the correct parent polygon
-		parent := rootTree.findParentPolygon(polyToNest)
-		if parent == nil {
-			// No parent found: Add as a sibling to the root
-			if err := rootTree.addSibling(polyToNest); err != nil {
-				return nil, fmt.Errorf("failed to add sibling: %w", err)
+		// find where new poly fits
+		var childToPoly *PolyTree[T]
+		for existingPoly := range rootTree.Nodes {
+
+			// if poly fits inside, then set child
+			if existingPoly.contour.isContourInside(newPoly.contour) {
+				childToPoly = existingPoly
 			}
+		}
+
+		// place poly as child
+		if childToPoly != nil {
+			// set newPoly's polygonType
+			switch childToPoly.polygonType {
+			case PTSolid:
+				newPoly.polygonType = PTHole
+				newPoly.contour.ensureClockwise()
+			case PTHole:
+				newPoly.polygonType = PTSolid
+				newPoly.contour.ensureCounterClockwise()
+			}
+
+			// add as sibling to root
+			err := childToPoly.AddChild(newPoly)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create PolyTree relationship: %w", err)
+			}
+
 		} else {
-			// Parent found: Add as a child of the parent
-			// Adjust polygon type based on the parent's type
-			if parent.polygonType == PTSolid {
-				polyToNest.polygonType = PTHole
-			} else {
-				polyToNest.polygonType = PTSolid
-			}
-			if err := parent.addChild(polyToNest); err != nil {
-				return nil, fmt.Errorf("failed to add child to parent polygon: %w", err)
+			// add poly as root sibling
+			newPoly.polygonType = rootTree.polygonType
+			err := rootTree.AddSibling(newPoly)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create PolyTree relationship: %w", err)
 			}
 		}
 	}
 
-	// Step 5: Return the root PolyTree
+	// Step 4: Return the root PolyTree
 	return rootTree, nil
+}
+
+func sortPointsByAreaDescending[T SignedNumber](a, b []Point[T]) int {
+
+	// get signed areas
+	areaA := SignedArea2X(a)
+	areaB := SignedArea2X(b)
+
+	// get absolute values
+	if areaA < 0 {
+		areaA *= -1
+	}
+	if areaB < 0 {
+		areaB *= -1
+	}
+
+	// return expected values to sort by area, descending
+	switch {
+	case areaA > areaB:
+		return -1
+	case areaA < areaB:
+		return 1
+	default:
+		return 0
+	}
 }
 
 // togglePolyTraversalDirection toggles the traversal direction of a polygon between clockwise

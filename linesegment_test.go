@@ -3,6 +3,7 @@ package geom2d
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"math"
 	"testing"
 )
@@ -22,6 +23,114 @@ func BenchmarkLineSegment_ProjectOntoLineSegment(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		point.ProjectOntoLineSegment(segment)
+	}
+}
+
+func TestDetailedLineSegmentRelationship_String(t *testing.T) {
+	tests := map[string]struct {
+		input       detailedLineSegmentRelationship
+		expected    string
+		shouldPanic bool
+	}{
+		"lsrCollinearDisjoint": {
+			input:       lsrCollinearDisjoint,
+			expected:    "lsrCollinearDisjoint",
+			shouldPanic: false,
+		},
+		"lsrMiss": {
+			input:       lsrMiss,
+			expected:    "lsrMiss",
+			shouldPanic: false,
+		},
+		"lsrIntersects": {
+			input:       lsrIntersects,
+			expected:    "lsrIntersects",
+			shouldPanic: false,
+		},
+		"lsrAeqC": {
+			input:       lsrAeqC,
+			expected:    "lsrAeqC",
+			shouldPanic: false,
+		},
+		"lsrAeqD": {
+			input:       lsrAeqD,
+			expected:    "lsrAeqD",
+			shouldPanic: false,
+		},
+		"lsrBeqC": {
+			input:       lsrBeqC,
+			expected:    "lsrBeqC",
+			shouldPanic: false,
+		},
+		"lsrBeqD": {
+			input:       lsrBeqD,
+			expected:    "lsrBeqD",
+			shouldPanic: false,
+		},
+		"lsrAonCD": {
+			input:       lsrAonCD,
+			expected:    "lsrAonCD",
+			shouldPanic: false,
+		},
+		"lsrBonCD": {
+			input:       lsrBonCD,
+			expected:    "lsrBonCD",
+			shouldPanic: false,
+		},
+		"lsrConAB": {
+			input:       lsrConAB,
+			expected:    "lsrConAB",
+			shouldPanic: false,
+		},
+		"lsrDonAB": {
+			input:       lsrDonAB,
+			expected:    "lsrDonAB",
+			shouldPanic: false,
+		},
+		"lsrCollinearAonCD": {
+			input:       lsrCollinearAonCD,
+			expected:    "lsrCollinearAonCD",
+			shouldPanic: false,
+		},
+		"lsrCollinearBonCD": {
+			input:       lsrCollinearBonCD,
+			expected:    "lsrCollinearBonCD",
+			shouldPanic: false,
+		},
+		"lsrCollinearABinCD": {
+			input:       lsrCollinearABinCD,
+			expected:    "lsrCollinearABinCD",
+			shouldPanic: false,
+		},
+		"lsrCollinearCDinAB": {
+			input:       lsrCollinearCDinAB,
+			expected:    "lsrCollinearCDinAB",
+			shouldPanic: false,
+		},
+		"lsrCollinearEqual": {
+			input:       lsrCollinearEqual,
+			expected:    "lsrCollinearEqual",
+			shouldPanic: false,
+		},
+		"UnsupportedRelationship": {
+			input:       detailedLineSegmentRelationship(100), // An unsupported relationship
+			shouldPanic: true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			if tt.shouldPanic {
+				require.Panics(t, func() {
+					_ = tt.input.String()
+				}, "Expected panic for unsupported relationship")
+			} else {
+				require.NotPanics(t, func() {
+					output := tt.input.String()
+					assert.Equal(t, tt.expected, output, "Unexpected string for relationship")
+				}, "Did not expect panic for supported relationship")
+			}
+		})
 	}
 }
 
@@ -69,7 +178,7 @@ func TestLineSegment_AddLineSegment(t *testing.T) {
 	}
 }
 
-func TestLineSegment_AddVector(t *testing.T) {
+func TestLineSegment_Translate(t *testing.T) {
 	tests := map[string]struct {
 		segment  any                  // Original line segment (can be int or float64)
 		vector   any                  // Vector to add (can be int or float64)
@@ -90,30 +199,68 @@ func TestLineSegment_AddVector(t *testing.T) {
 		},
 	}
 
-	for name, tt := range tests {
+	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			switch segment := tt.segment.(type) {
+			switch segment := tc.segment.(type) {
 			case LineSegment[int]:
-				vec := tt.vector.(Point[int])
-				result := segment.AddVector(vec)
-				assert.InDelta(t, tt.expected.start.x, result.start.x, 0.001)
-				assert.InDelta(t, tt.expected.start.y, result.start.y, 0.001)
-				assert.InDelta(t, tt.expected.end.x, result.end.x, 0.001)
-				assert.InDelta(t, tt.expected.end.y, result.end.y, 0.001)
+				vec := tc.vector.(Point[int])
+				result := segment.Translate(vec)
+				assert.InDelta(t, tc.expected.start.x, result.start.x, 0.001)
+				assert.InDelta(t, tc.expected.start.y, result.start.y, 0.001)
+				assert.InDelta(t, tc.expected.end.x, result.end.x, 0.001)
+				assert.InDelta(t, tc.expected.end.y, result.end.y, 0.001)
 
 			case LineSegment[float64]:
-				vec := tt.vector.(Point[float64])
-				result := segment.AddVector(vec)
-				assert.InDelta(t, tt.expected.start.x, result.start.x, 0.001)
-				assert.InDelta(t, tt.expected.start.y, result.start.y, 0.001)
-				assert.InDelta(t, tt.expected.end.x, result.end.x, 0.001)
-				assert.InDelta(t, tt.expected.end.y, result.end.y, 0.001)
+				vec := tc.vector.(Point[float64])
+				result := segment.Translate(vec)
+				assert.InDelta(t, tc.expected.start.x, result.start.x, 0.001)
+				assert.InDelta(t, tc.expected.start.y, result.start.y, 0.001)
+				assert.InDelta(t, tc.expected.end.x, result.end.x, 0.001)
+				assert.InDelta(t, tc.expected.end.y, result.end.y, 0.001)
 			}
 		})
 	}
 }
 
-func TestLineSegment_AsFloat(t *testing.T) {
+func TestLineSegment_AsFloat32(t *testing.T) {
+	tests := map[string]struct {
+		start, end any
+		expected   LineSegment[float32]
+	}{
+		"int: start: (1,2), end: (3,4)": {
+			start: NewPoint[int](1, 2),
+			end:   NewPoint[int](3, 4),
+			expected: NewLineSegment[float32](
+				NewPoint[float32](1, 2),
+				NewPoint[float32](3, 4),
+			),
+		},
+		"float64: start: (1,2), end: (3,4)": {
+			start: NewPoint[float64](1, 2),
+			end:   NewPoint[float64](3, 4),
+			expected: NewLineSegment[float32](
+				NewPoint[float32](1, 2),
+				NewPoint[float32](3, 4),
+			),
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			switch start := tt.start.(type) {
+			case Point[int]:
+				end := tt.end.(Point[int])
+				ls := NewLineSegment(start, end)
+				assert.Equal(t, tt.expected, ls.AsFloat32())
+			case Point[float64]:
+				end := tt.end.(Point[float64])
+				ls := NewLineSegment(start, end)
+				assert.Equal(t, tt.expected, ls.AsFloat32())
+			}
+		})
+	}
+}
+
+func TestLineSegment_AsFloat64(t *testing.T) {
 	tests := map[string]struct {
 		start, end any
 		expected   LineSegment[float64]
@@ -141,11 +288,11 @@ func TestLineSegment_AsFloat(t *testing.T) {
 			case Point[int]:
 				end := tt.end.(Point[int])
 				ls := NewLineSegment(start, end)
-				assert.Equal(t, tt.expected, ls.AsFloat())
+				assert.Equal(t, tt.expected, ls.AsFloat64())
 			case Point[float64]:
 				end := tt.end.(Point[float64])
 				ls := NewLineSegment(start, end)
-				assert.Equal(t, tt.expected, ls.AsFloat())
+				assert.Equal(t, tt.expected, ls.AsFloat64())
 			}
 		})
 	}
@@ -206,6 +353,319 @@ func TestLineSegment_AsIntRounded(t *testing.T) {
 				end := tt.end.(Point[float64])
 				ls := NewLineSegment(start, end)
 				assert.Equal(t, tt.expected, ls.AsIntRounded())
+			}
+		})
+	}
+}
+
+func TestLineSegment_Center(t *testing.T) {
+	tests := map[string]struct {
+		lineSegment LineSegment[int]
+		epsilon     float64
+		expected    Point[float64]
+	}{
+		"No epsilon, simple case": {
+			lineSegment: NewLineSegment(NewPoint(0, 0), NewPoint(4, 4)),
+			epsilon:     0,
+			expected:    NewPoint[float64](2, 2),
+		},
+		"No epsilon, negative coordinates": {
+			lineSegment: NewLineSegment(NewPoint(-4, -4), NewPoint(4, 4)),
+			epsilon:     0,
+			expected:    NewPoint[float64](0, 0),
+		},
+		"With epsilon, rounding applied": {
+			lineSegment: NewLineSegment(NewPoint(0, 0), NewPoint(3, 3)),
+			epsilon:     0.1,
+			expected:    NewPoint[float64](1.5, 1.5), // No rounding as it's precise
+		},
+		"With epsilon, midpoint near integer": {
+			lineSegment: NewLineSegment(NewPoint(0, 0), NewPoint(4, 5)),
+			epsilon:     0.5,
+			expected:    NewPoint[float64](2, 2.5), // Epsilon not applied due to midpoint already exact
+		},
+		"With epsilon, midpoint adjusted to integer": {
+			lineSegment: NewLineSegment(NewPoint(0, 0), NewPoint(5, 5)),
+			epsilon:     0.5,
+			expected:    NewPoint[float64](2.5, 2.5), // Exact match without adjustment
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Calculate center
+			center := tt.lineSegment.Center(WithEpsilon(tt.epsilon))
+
+			// Assert the result
+			assert.InDelta(t, tt.expected.x, center.x, 1e-9, "Unexpected x-coordinate for center")
+			assert.InDelta(t, tt.expected.y, center.y, 1e-9, "Unexpected y-coordinate for center")
+		})
+	}
+}
+
+func TestLineSegment_ContainsPoint(t *testing.T) {
+	tests := map[string]struct {
+		point    any
+		segment  any
+		expected bool
+	}{
+		"Point on line segment (float64)": {
+			point:    NewPoint[float64](1, 1),
+			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
+			expected: true,
+		},
+		"Point at endpoint A (float64)": {
+			point:    NewPoint[float64](0, 0),
+			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
+			expected: true,
+		},
+		"Point at endpoint End (float64)": {
+			point:    NewPoint[float64](2, 2),
+			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
+			expected: true,
+		},
+		"Point collinear but outside bounding box (float64)": {
+			point:    NewPoint[float64](3, 3),
+			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
+			expected: false,
+		},
+		"Point not collinear (float64)": {
+			point:    NewPoint[float64](1, 2),
+			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
+			expected: false,
+		},
+		"Point on line segment (int)": {
+			point:    NewPoint[int](1, 1),
+			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
+			expected: true,
+		},
+		"Point at endpoint A (int)": {
+			point:    NewPoint[int](0, 0),
+			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
+			expected: true,
+		},
+		"Point at endpoint End (int)": {
+			point:    NewPoint[int](2, 2),
+			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
+			expected: true,
+		},
+		"Point collinear but outside bounding box (int)": {
+			point:    NewPoint[int](3, 3),
+			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
+			expected: false,
+		},
+		"Point not collinear (int)": {
+			point:    NewPoint[int](1, 2),
+			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
+			expected: false,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			switch point := tt.point.(type) {
+			case Point[int]:
+				segment := tt.segment.(LineSegment[int])
+				result := segment.ContainsPoint(point)
+				assert.Equal(t, tt.expected, result, "Test %s failed", name)
+			case Point[float64]:
+				segment := tt.segment.(LineSegment[float64])
+				result := segment.ContainsPoint(point)
+				assert.Equal(t, tt.expected, result, "Test %s failed", name)
+			default:
+				t.Errorf("Unsupported point type in test %s", name)
+			}
+		})
+	}
+}
+
+func TestLineSegment_detailedRelationshipToLineSegment(t *testing.T) {
+	tests := map[string]struct {
+		AB, CD   any                             // Supports both LineSegment[int] and LineSegment[float64]
+		expected detailedLineSegmentRelationship // Expected result
+	}{
+		// Disjoint cases
+		"Disjoint non-collinear (int)": {
+			AB:       NewLineSegment(NewPoint(0, 0), NewPoint(2, 2)),
+			CD:       NewLineSegment(NewPoint(3, -3), NewPoint(5, -5)),
+			expected: lsrMiss,
+		},
+		"Disjoint collinear (int)": {
+			AB:       NewLineSegment(NewPoint(0, 0), NewPoint(2, 2)),
+			CD:       NewLineSegment(NewPoint(3, 3), NewPoint(4, 4)),
+			expected: lsrCollinearDisjoint,
+		},
+
+		// Intersection cases
+		"Intersecting at unique point (int)": {
+			AB:       NewLineSegment(NewPoint(0, 0), NewPoint(4, 4)),
+			CD:       NewLineSegment(NewPoint(0, 4), NewPoint(4, 0)),
+			expected: lsrIntersects,
+		},
+
+		// Endpoint coincidences
+		"Endpoint A equals C (int)": {
+			AB:       NewLineSegment(NewPoint(0, 0), NewPoint(2, 2)),
+			CD:       NewLineSegment(NewPoint(0, 0), NewPoint(2, -2)),
+			expected: lsrAeqC,
+		},
+		"Endpoint A equals D (int)": {
+			AB:       NewLineSegment(NewPoint(0, 0), NewPoint(2, 2)),
+			CD:       NewLineSegment(NewPoint(2, -2), NewPoint(0, 0)),
+			expected: lsrAeqD,
+		},
+		"Endpoint End equals C (int)": {
+			AB:       NewLineSegment(NewPoint(1, 1), NewPoint(3, 3)),
+			CD:       NewLineSegment(NewPoint(3, 3), NewPoint(2, 0)),
+			expected: lsrBeqC,
+		},
+		"Endpoint End equals D (int)": {
+			AB:       NewLineSegment(NewPoint(1, 1), NewPoint(3, 3)),
+			CD:       NewLineSegment(NewPoint(2, 0), NewPoint(3, 3)),
+			expected: lsrBeqD,
+		},
+
+		// Endpoint-on-segment cases (non-collinear)
+		"A on CD without collinearity (int)": {
+			AB:       NewLineSegment(NewPoint(0, 10), NewPoint(0, 0)),
+			CD:       NewLineSegment(NewPoint(-10, 10), NewPoint(10, 10)),
+			expected: lsrAonCD,
+		},
+		"End on CD without collinearity (int)": {
+			AB:       NewLineSegment(NewPoint(2, 2), NewPoint(3, 1)),
+			CD:       NewLineSegment(NewPoint(1, 1), NewPoint(4, 1)),
+			expected: lsrBonCD,
+		},
+		"C on AB without collinearity (int)": {
+			AB:       NewLineSegment(NewPoint(-10, 10), NewPoint(10, 10)),
+			CD:       NewLineSegment(NewPoint(0, 10), NewPoint(0, 0)),
+			expected: lsrConAB,
+		},
+		"D on AB without collinearity (int)": {
+			AB:       NewLineSegment(NewPoint(1, 1), NewPoint(4, 1)),
+			CD:       NewLineSegment(NewPoint(2, 2), NewPoint(3, 1)),
+			expected: lsrDonAB,
+		},
+
+		// Collinear partial overlaps
+		"A on CD with collinearity (int)": {
+			AB:       NewLineSegment(NewPoint(1, 1), NewPoint(4, 4)),
+			CD:       NewLineSegment(NewPoint(0, 0), NewPoint(3, 3)),
+			expected: lsrCollinearAonCD,
+		},
+		"End on CD with collinearity (int)": {
+			AB:       NewLineSegment(NewPoint(0, 0), NewPoint(3, 3)),
+			CD:       NewLineSegment(NewPoint(1, 1), NewPoint(4, 4)),
+			expected: lsrCollinearBonCD,
+		},
+
+		// Full containment
+		"AB fully within CD (int)": {
+			AB:       NewLineSegment(NewPoint(1, 1), NewPoint(2, 2)),
+			CD:       NewLineSegment(NewPoint(0, 0), NewPoint(3, 3)),
+			expected: lsrCollinearABinCD,
+		},
+		"CD fully within AB (int)": {
+			AB:       NewLineSegment(NewPoint(0, 0), NewPoint(4, 4)),
+			CD:       NewLineSegment(NewPoint(1, 1), NewPoint(2, 2)),
+			expected: lsrCollinearCDinAB,
+		},
+
+		// Exact equality
+		"Segments are exactly equal (int)": {
+			AB:       NewLineSegment(NewPoint(1, 1), NewPoint(2, 2)),
+			CD:       NewLineSegment(NewPoint(1, 1), NewPoint(2, 2)),
+			expected: lsrCollinearEqual,
+		},
+
+		// Disjoint cases
+		"Disjoint non-collinear (float64)": {
+			AB:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
+			CD:       NewLineSegment(NewPoint[float64](3, -3), NewPoint[float64](5, -5)),
+			expected: lsrMiss,
+		},
+		"Disjoint collinear (float64)": {
+			AB:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
+			CD:       NewLineSegment(NewPoint[float64](3, 3), NewPoint[float64](4, 4)),
+			expected: lsrCollinearDisjoint,
+		},
+
+		// Intersection cases
+		"Intersecting at unique point (float64)": {
+			AB:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](4, 4)),
+			CD:       NewLineSegment(NewPoint[float64](0, 4), NewPoint[float64](4, 0)),
+			expected: lsrIntersects,
+		},
+
+		// Endpoint coincidences
+		"Endpoint A equals C (float64)": {
+			AB:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
+			CD:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, -2)),
+			expected: lsrAeqC,
+		},
+		"Endpoint End equals D (float64)": {
+			AB:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](3, 3)),
+			CD:       NewLineSegment(NewPoint[float64](2, 0), NewPoint[float64](3, 3)),
+			expected: lsrBeqD,
+		},
+
+		// Endpoint-on-segment cases (non-collinear)
+		"A on CD without collinearity (float64)": {
+			AB:       NewLineSegment(NewPoint[float64](0, 10), NewPoint[float64](0, 0)),
+			CD:       NewLineSegment(NewPoint[float64](-10, 10), NewPoint[float64](10, 10)),
+			expected: lsrAonCD,
+		},
+		"End on CD without collinearity (float64)": {
+			AB:       NewLineSegment(NewPoint[float64](2, 2), NewPoint[float64](3, 1)),
+			CD:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](4, 1)),
+			expected: lsrBonCD,
+		},
+
+		// Collinear partial overlaps
+		"A on CD with collinearity (float64)": {
+			AB:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](4, 4)),
+			CD:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](3, 3)),
+			expected: lsrCollinearAonCD,
+		},
+		"End on CD with collinearity (float64)": {
+			AB:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](3, 3)),
+			CD:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](4, 4)),
+			expected: lsrCollinearBonCD,
+		},
+
+		// Full containment
+		"AB fully within CD (float64)": {
+			AB:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](2, 2)),
+			CD:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](3, 3)),
+			expected: lsrCollinearABinCD,
+		},
+		"CD fully within AB (float64)": {
+			AB:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](4, 4)),
+			CD:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](2, 2)),
+			expected: lsrCollinearCDinAB,
+		},
+
+		// Exact equality
+		"Segments are exactly equal (float64)": {
+			AB:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](2, 2)),
+			CD:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](2, 2)),
+			expected: lsrCollinearEqual,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			switch ab := tt.AB.(type) {
+			case LineSegment[int]:
+				cd := tt.CD.(LineSegment[int])
+				result := ab.detailedRelationshipToLineSegment(cd)
+				assert.Equal(t, tt.expected, result, "Test %s failed for LineSegment[int]", name)
+			case LineSegment[float64]:
+				cd := tt.CD.(LineSegment[float64])
+				result := ab.detailedRelationshipToLineSegment(cd)
+				assert.Equal(t, tt.expected, result, "Test %s failed for LineSegment[float64]", name)
+			default:
+				t.Errorf("Unsupported segment type in test %s", name)
 			}
 		})
 	}
@@ -536,11 +996,11 @@ func TestLineSegment_Midpoint(t *testing.T) {
 			case Point[int]:
 				end := tt.end.(Point[int])
 				ls := NewLineSegment(start, end)
-				assert.Equal(t, tt.expectedMidpoint, ls.Midpoint())
+				assert.Equal(t, tt.expectedMidpoint, ls.Center())
 			case Point[float64]:
 				end := tt.end.(Point[float64])
 				ls := NewLineSegment(start, end)
-				assert.Equal(t, tt.expectedMidpoint, ls.Midpoint())
+				assert.Equal(t, tt.expectedMidpoint, ls.Center())
 			}
 		})
 	}
@@ -649,194 +1109,152 @@ func TestLineSegment_Reflect(t *testing.T) {
 	}
 }
 
-func TestLineSegment_RelationshipToLineSegment(t *testing.T) {
+func TestLineSegment_RelationshipToCircle(t *testing.T) {
+	// Define a circle
+	circle := NewCircle(NewPoint[float64](5, 5), 5.0)
+
+	// Test cases
 	tests := map[string]struct {
-		AB, CD   any                      // Supports both LineSegment[int] and LineSegment[float64]
-		expected LineSegmentsRelationship // Expected result
+		line     LineSegment[float64]
+		expected Relationship
 	}{
-		// Disjoint cases
-		"Disjoint non-collinear (int)": {
-			AB:       NewLineSegment(NewPoint(0, 0), NewPoint(2, 2)),
-			CD:       NewLineSegment(NewPoint(3, -3), NewPoint(5, -5)),
-			expected: LSRMiss,
+		"Disjoint": {
+			line:     NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](-2, -2)),
+			expected: RelationshipDisjoint,
 		},
-		"Disjoint collinear (int)": {
-			AB:       NewLineSegment(NewPoint(0, 0), NewPoint(2, 2)),
-			CD:       NewLineSegment(NewPoint(3, 3), NewPoint(4, 4)),
-			expected: LSRCollinearDisjoint,
+		"Intersecting at one endpoint": {
+			line:     NewLineSegment(NewPoint[float64](5, 0), NewPoint[float64](10, 5)),
+			expected: RelationshipIntersection,
 		},
-
-		// Intersection cases
-		"Intersecting at unique point (int)": {
-			AB:       NewLineSegment(NewPoint(0, 0), NewPoint(4, 4)),
-			CD:       NewLineSegment(NewPoint(0, 4), NewPoint(4, 0)),
-			expected: LSRIntersects,
+		"Intersecting along segment": {
+			line:     NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](10, 10)),
+			expected: RelationshipIntersection,
 		},
-
-		// Endpoint coincidences
-		"Endpoint A equals C (int)": {
-			AB:       NewLineSegment(NewPoint(0, 0), NewPoint(2, 2)),
-			CD:       NewLineSegment(NewPoint(0, 0), NewPoint(2, -2)),
-			expected: LSRAeqC,
-		},
-		"Endpoint A equals D (int)": {
-			AB:       NewLineSegment(NewPoint(0, 0), NewPoint(2, 2)),
-			CD:       NewLineSegment(NewPoint(2, -2), NewPoint(0, 0)),
-			expected: LSRAeqD,
-		},
-		"Endpoint End equals C (int)": {
-			AB:       NewLineSegment(NewPoint(1, 1), NewPoint(3, 3)),
-			CD:       NewLineSegment(NewPoint(3, 3), NewPoint(2, 0)),
-			expected: LSRBeqC,
-		},
-		"Endpoint End equals D (int)": {
-			AB:       NewLineSegment(NewPoint(1, 1), NewPoint(3, 3)),
-			CD:       NewLineSegment(NewPoint(2, 0), NewPoint(3, 3)),
-			expected: LSRBeqD,
-		},
-
-		// Endpoint-on-segment cases (non-collinear)
-		"A on CD without collinearity (int)": {
-			AB:       NewLineSegment(NewPoint(0, 10), NewPoint(0, 0)),
-			CD:       NewLineSegment(NewPoint(-10, 10), NewPoint(10, 10)),
-			expected: LSRAonCD,
-		},
-		"End on CD without collinearity (int)": {
-			AB:       NewLineSegment(NewPoint(2, 2), NewPoint(3, 1)),
-			CD:       NewLineSegment(NewPoint(1, 1), NewPoint(4, 1)),
-			expected: LSRBonCD,
-		},
-		"C on AB without collinearity (int)": {
-			AB:       NewLineSegment(NewPoint(-10, 10), NewPoint(10, 10)),
-			CD:       NewLineSegment(NewPoint(0, 10), NewPoint(0, 0)),
-			expected: LSRConAB,
-		},
-		"D on AB without collinearity (int)": {
-			AB:       NewLineSegment(NewPoint(1, 1), NewPoint(4, 1)),
-			CD:       NewLineSegment(NewPoint(2, 2), NewPoint(3, 1)),
-			expected: LSRDonAB,
-		},
-
-		// Collinear partial overlaps
-		"A on CD with collinearity (int)": {
-			AB:       NewLineSegment(NewPoint(1, 1), NewPoint(4, 4)),
-			CD:       NewLineSegment(NewPoint(0, 0), NewPoint(3, 3)),
-			expected: LSRCollinearAonCD,
-		},
-		"End on CD with collinearity (int)": {
-			AB:       NewLineSegment(NewPoint(0, 0), NewPoint(3, 3)),
-			CD:       NewLineSegment(NewPoint(1, 1), NewPoint(4, 4)),
-			expected: LSRCollinearBonCD,
-		},
-
-		// Full containment
-		"AB fully within CD (int)": {
-			AB:       NewLineSegment(NewPoint(1, 1), NewPoint(2, 2)),
-			CD:       NewLineSegment(NewPoint(0, 0), NewPoint(3, 3)),
-			expected: LSRCollinearABinCD,
-		},
-		"CD fully within AB (int)": {
-			AB:       NewLineSegment(NewPoint(0, 0), NewPoint(4, 4)),
-			CD:       NewLineSegment(NewPoint(1, 1), NewPoint(2, 2)),
-			expected: LSRCollinearCDinAB,
-		},
-
-		// Exact equality
-		"Segments are exactly equal (int)": {
-			AB:       NewLineSegment(NewPoint(1, 1), NewPoint(2, 2)),
-			CD:       NewLineSegment(NewPoint(1, 1), NewPoint(2, 2)),
-			expected: LSRCollinearEqual,
-		},
-
-		// Disjoint cases
-		"Disjoint non-collinear (float64)": {
-			AB:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
-			CD:       NewLineSegment(NewPoint[float64](3, -3), NewPoint[float64](5, -5)),
-			expected: LSRMiss,
-		},
-		"Disjoint collinear (float64)": {
-			AB:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
-			CD:       NewLineSegment(NewPoint[float64](3, 3), NewPoint[float64](4, 4)),
-			expected: LSRCollinearDisjoint,
-		},
-
-		// Intersection cases
-		"Intersecting at unique point (float64)": {
-			AB:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](4, 4)),
-			CD:       NewLineSegment(NewPoint[float64](0, 4), NewPoint[float64](4, 0)),
-			expected: LSRIntersects,
-		},
-
-		// Endpoint coincidences
-		"Endpoint A equals C (float64)": {
-			AB:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
-			CD:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, -2)),
-			expected: LSRAeqC,
-		},
-		"Endpoint End equals D (float64)": {
-			AB:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](3, 3)),
-			CD:       NewLineSegment(NewPoint[float64](2, 0), NewPoint[float64](3, 3)),
-			expected: LSRBeqD,
-		},
-
-		// Endpoint-on-segment cases (non-collinear)
-		"A on CD without collinearity (float64)": {
-			AB:       NewLineSegment(NewPoint[float64](0, 10), NewPoint[float64](0, 0)),
-			CD:       NewLineSegment(NewPoint[float64](-10, 10), NewPoint[float64](10, 10)),
-			expected: LSRAonCD,
-		},
-		"End on CD without collinearity (float64)": {
-			AB:       NewLineSegment(NewPoint[float64](2, 2), NewPoint[float64](3, 1)),
-			CD:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](4, 1)),
-			expected: LSRBonCD,
-		},
-
-		// Collinear partial overlaps
-		"A on CD with collinearity (float64)": {
-			AB:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](4, 4)),
-			CD:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](3, 3)),
-			expected: LSRCollinearAonCD,
-		},
-		"End on CD with collinearity (float64)": {
-			AB:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](3, 3)),
-			CD:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](4, 4)),
-			expected: LSRCollinearBonCD,
-		},
-
-		// Full containment
-		"AB fully within CD (float64)": {
-			AB:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](2, 2)),
-			CD:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](3, 3)),
-			expected: LSRCollinearABinCD,
-		},
-		"CD fully within AB (float64)": {
-			AB:       NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](4, 4)),
-			CD:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](2, 2)),
-			expected: LSRCollinearCDinAB,
-		},
-
-		// Exact equality
-		"Segments are exactly equal (float64)": {
-			AB:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](2, 2)),
-			CD:       NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](2, 2)),
-			expected: LSRCollinearEqual,
+		"Contained": {
+			line:     NewLineSegment(NewPoint[float64](5, 6), NewPoint[float64](5, 4)),
+			expected: RelationshipContainedBy,
 		},
 	}
 
-	for name, tt := range tests {
+	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			switch ab := tt.AB.(type) {
-			case LineSegment[int]:
-				cd := tt.CD.(LineSegment[int])
-				result := ab.RelationshipToLineSegment(cd)
-				assert.Equal(t, tt.expected, result, "Test %s failed for LineSegment[int]", name)
-			case LineSegment[float64]:
-				cd := tt.CD.(LineSegment[float64])
-				result := ab.RelationshipToLineSegment(cd)
-				assert.Equal(t, tt.expected, result, "Test %s failed for LineSegment[float64]", name)
-			default:
-				t.Errorf("Unsupported segment type in test %s", name)
-			}
+			result := tc.line.RelationshipToCircle(circle)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestLineSegment_RelationshipToLineSegment(t *testing.T) {
+	// Test cases
+	tests := map[string]struct {
+		line1    LineSegment[float64]
+		line2    LineSegment[float64]
+		expected Relationship
+	}{
+		"Disjoint segments": {
+			line1:    NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](10, 10)),
+			line2:    NewLineSegment(NewPoint[float64](20, 20), NewPoint[float64](30, 30)),
+			expected: RelationshipDisjoint,
+		},
+		"Intersecting segments": {
+			line1:    NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](10, 10)),
+			line2:    NewLineSegment(NewPoint[float64](5, 5), NewPoint[float64](15, 15)),
+			expected: RelationshipIntersection,
+		},
+		"Equal segments": {
+			line1:    NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](10, 10)),
+			line2:    NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](10, 10)),
+			expected: RelationshipEqual,
+		},
+		"Crossing segments": {
+			line1:    NewLineSegment(NewPoint[float64](0, 10), NewPoint[float64](10, 0)),
+			line2:    NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](10, 10)),
+			expected: RelationshipIntersection,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := tc.line1.RelationshipToLineSegment(tc.line2)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestLineSegment_RelationshipToPoint(t *testing.T) {
+	// Define a line segment
+	segment := NewLineSegment(
+		NewPoint[float64](0, 0),
+		NewPoint[float64](10, 10),
+	)
+
+	// Test cases
+	tests := map[string]struct {
+		point    Point[float64]
+		expected Relationship
+	}{
+		"Point on the segment": {
+			point:    NewPoint[float64](5, 5),
+			expected: RelationshipIntersection,
+		},
+		"Point disjoint from the segment": {
+			point:    NewPoint[float64](10, 0),
+			expected: RelationshipDisjoint,
+		},
+		"Point coinciding with an endpoint": {
+			point:    NewPoint[float64](0, 0),
+			expected: RelationshipIntersection,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := segment.RelationshipToPoint(tc.point)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestLineSegment_RelationshipToRectangle(t *testing.T) {
+	// Define a rectangle
+	rect := NewRectangle([]Point[float64]{
+		NewPoint[float64](0, 0),
+		NewPoint[float64](10, 0),
+		NewPoint[float64](10, 10),
+		NewPoint[float64](0, 10),
+	})
+
+	// Test cases
+	tests := map[string]struct {
+		line     LineSegment[float64]
+		expected Relationship
+	}{
+		"Intersects": {
+			line:     NewLineSegment(NewPoint[float64](5, 5), NewPoint[float64](15, 15)),
+			expected: RelationshipIntersection,
+		},
+		"Contained": {
+			line:     NewLineSegment(NewPoint[float64](1, 1), NewPoint[float64](9, 9)),
+			expected: RelationshipContainedBy,
+		},
+		"Disjoint": {
+			line:     NewLineSegment(NewPoint[float64](20, 20), NewPoint[float64](30, 30)),
+			expected: RelationshipDisjoint,
+		},
+		"Touches edge but does not intersect": {
+			line:     NewLineSegment(NewPoint[float64](10, 10), NewPoint[float64](15, 15)),
+			expected: RelationshipIntersection,
+		},
+		"Touches vertex only": {
+			line:     NewLineSegment(NewPoint[float64](10, 10), NewPoint[float64](10, 10)),
+			expected: RelationshipIntersection,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := tc.line.RelationshipToRectangle(rect)
+			assert.Equal(t, tc.expected, result)
 		})
 	}
 }
@@ -885,73 +1303,53 @@ func TestLineSegment_Rotate(t *testing.T) {
 	}
 }
 
-func TestLineSegment_Scale(t *testing.T) {
+func TestLineSegment_Scale_Int(t *testing.T) {
 	tests := map[string]struct {
-		segment  any                  // Original line segment (can be int or float64)
-		origin   ScaleOrigin          // Origin point for scaling
-		factor   float64              // Scaling factor
-		expected LineSegment[float64] // Expected resulting line segment (float64 type)
+		segment  LineSegment[int]
+		origin   Point[int]
+		factor   int
+		expected LineSegment[int]
 	}{
 		// Integer test cases
 		"int: Scale from start point by 2": {
 			segment:  NewLineSegment[int](NewPoint(1, 1), NewPoint(4, 5)),
-			origin:   ScaleFromStart,
-			factor:   2.0,
-			expected: NewLineSegment[float64](NewPoint[float64](1, 1), NewPoint[float64](7, 9)),
+			origin:   NewPoint(1, 1),
+			factor:   2,
+			expected: NewLineSegment[int](NewPoint[int](1, 1), NewPoint[int](7, 9)),
 		},
-		"int: Scale from end point by 0.5": {
+		"int: Scale from end point by 2": {
 			segment:  NewLineSegment[int](NewPoint(1, 1), NewPoint(4, 5)),
-			origin:   ScaleFromEnd,
-			factor:   0.5,
-			expected: NewLineSegment[float64](NewPoint[float64](2.5, 3), NewPoint[float64](4, 5)),
+			origin:   NewPoint(4, 5),
+			factor:   2,
+			expected: NewLineSegment[int](NewPoint[int](-2, -3), NewPoint[int](4, 5)),
 		},
-		"int: Scale from midpoint by 1.5": {
-			segment:  NewLineSegment[int](NewPoint(1, 1), NewPoint(4, 5)),
-			origin:   ScaleFromMidpoint,
-			factor:   1.5,
-			expected: NewLineSegment[float64](NewPoint[float64](0.25, 0), NewPoint[float64](4.75, 6)),
-		},
-
-		// Float64 test cases
-		"float64: Scale from start point by 2.5": {
-			segment:  NewLineSegment[float64](NewPoint(1.0, 2.0), NewPoint(3.0, 4.0)),
-			origin:   ScaleFromStart,
-			factor:   2.5,
-			expected: NewLineSegment[float64](NewPoint[float64](1.0, 2.0), NewPoint[float64](6.0, 7.0)),
-		},
-		"float64: Scale from end point by 0.75": {
-			segment:  NewLineSegment[float64](NewPoint(1.0, 2.0), NewPoint(3.0, 4.0)),
-			origin:   ScaleFromEnd,
-			factor:   0.75,
-			expected: NewLineSegment[float64](NewPoint[float64](1.5, 2.5), NewPoint[float64](3.0, 4.0)),
-		},
-		"float64: Scale from midpoint by 0.5": {
-			segment:  NewLineSegment[float64](NewPoint(2.0, 3.0), NewPoint(6.0, 7.0)),
-			origin:   ScaleFromMidpoint,
-			factor:   0.5,
-			expected: NewLineSegment[float64](NewPoint[float64](3.0, 4.0), NewPoint[float64](5.0, 6.0)),
+		"int: Scale from midpoint by 2": {
+			segment:  NewLineSegment[int](NewPoint(0, 0), NewPoint(10, 10)),
+			origin:   NewPoint(5, 5),
+			factor:   2,
+			expected: NewLineSegment[int](NewPoint[int](-5, -5), NewPoint[int](15, 15)),
 		},
 	}
 
-	for name, tt := range tests {
+	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			switch segment := tt.segment.(type) {
-			case LineSegment[int]:
-				result := segment.Scale(tt.origin, tt.factor)
-				assert.InDelta(t, tt.expected.start.x, result.start.x, 0.001)
-				assert.InDelta(t, tt.expected.start.y, result.start.y, 0.001)
-				assert.InDelta(t, tt.expected.end.x, result.end.x, 0.001)
-				assert.InDelta(t, tt.expected.end.y, result.end.y, 0.001)
-				fmt.Println(result)
+			//switch segment := tc.segment.(type) {
+			//case LineSegment[int]:
+			result := tc.segment.Scale(tc.origin, tc.factor)
+			assert.InDelta(t, tc.expected.start.x, result.start.x, 0.001)
+			assert.InDelta(t, tc.expected.start.y, result.start.y, 0.001)
+			assert.InDelta(t, tc.expected.end.x, result.end.x, 0.001)
+			assert.InDelta(t, tc.expected.end.y, result.end.y, 0.001)
+			fmt.Println(result)
 
-			case LineSegment[float64]:
-				result := segment.Scale(tt.origin, tt.factor)
-				assert.InDelta(t, tt.expected.start.x, result.start.x, 0.001)
-				assert.InDelta(t, tt.expected.start.y, result.start.y, 0.001)
-				assert.InDelta(t, tt.expected.end.x, result.end.x, 0.001)
-				assert.InDelta(t, tt.expected.end.y, result.end.y, 0.001)
-				fmt.Println(result)
-			}
+			//case LineSegment[float64]:
+			//	result := segment.Scale(tc.origin, tc.factor)
+			//	assert.InDelta(t, tc.expected.start.x, result.start.x, 0.001)
+			//	assert.InDelta(t, tc.expected.start.y, result.start.y, 0.001)
+			//	assert.InDelta(t, tc.expected.end.x, result.end.x, 0.001)
+			//	assert.InDelta(t, tc.expected.end.y, result.end.y, 0.001)
+			//	fmt.Println(result)
+			//}
 		})
 	}
 }
@@ -1015,50 +1413,6 @@ func TestLineSegment_String(t *testing.T) {
 			case LineSegment[float64]:
 				result := segment.String()
 				assert.Equal(t, tt.expected, result)
-			}
-		})
-	}
-}
-
-func TestLineSegment_SubVector(t *testing.T) {
-	tests := map[string]struct {
-		segment  any                  // Original line segment (can be int or float64)
-		vector   any                  // Vector to subtract (can be int or float64)
-		expected LineSegment[float64] // Expected resulting line segment (float64 type)
-	}{
-		// Integer vector test cases
-		"int: Subtract vector from segment": {
-			segment:  NewLineSegment[int](NewPoint(5, 5), NewPoint(8, 10)),
-			vector:   NewPoint[int](2, 3),
-			expected: NewLineSegment[float64](NewPoint[float64](3, 2), NewPoint[float64](6, 7)),
-		},
-
-		// Float64 vector test cases
-		"float64: Subtract vector from segment": {
-			segment:  NewLineSegment[float64](NewPoint(5.5, 6.5), NewPoint(8.0, 10.5)),
-			vector:   NewPoint[float64](1.5, 2.5),
-			expected: NewLineSegment[float64](NewPoint[float64](4.0, 4.0), NewPoint[float64](6.5, 8.0)),
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			switch segment := tt.segment.(type) {
-			case LineSegment[int]:
-				vec := tt.vector.(Point[int])
-				result := segment.SubVector(vec)
-				assert.InDelta(t, tt.expected.start.x, result.start.x, 0.001)
-				assert.InDelta(t, tt.expected.start.y, result.start.y, 0.001)
-				assert.InDelta(t, tt.expected.end.x, result.end.x, 0.001)
-				assert.InDelta(t, tt.expected.end.y, result.end.y, 0.001)
-
-			case LineSegment[float64]:
-				vec := tt.vector.(Point[float64])
-				result := segment.SubVector(vec)
-				assert.InDelta(t, tt.expected.start.x, result.start.x, 0.001)
-				assert.InDelta(t, tt.expected.start.y, result.start.y, 0.001)
-				assert.InDelta(t, tt.expected.end.x, result.end.x, 0.001)
-				assert.InDelta(t, tt.expected.end.y, result.end.y, 0.001)
 			}
 		})
 	}

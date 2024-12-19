@@ -25,61 +25,40 @@ func BenchmarkConvexHull(b *testing.B) {
 	}
 }
 
-func TestPoint_Add(t *testing.T) {
+func TestPoint_AsFloat32(t *testing.T) {
+	// Define test cases with various point types
 	tests := []struct {
 		name     string
-		p, q     any // Use 'any' to support different Point types
-		expected any
+		point    Point[int]     // The point to convert
+		expected Point[float32] // The expected result after conversion
 	}{
-		// Integer points
 		{
-			name:     "int: (1,2)+(3,4)",
-			p:        NewPoint(1, 2),
-			q:        NewPoint(3, 4),
-			expected: NewPoint(4, 6),
+			name:     "Integer point conversion",
+			point:    NewPoint(3, 4),
+			expected: Point[float32]{3.0, 4.0},
 		},
 		{
-			name:     "int: (-1,-2)+(3,4)",
-			p:        NewPoint(-1, -2),
-			q:        NewPoint(3, 4),
-			expected: NewPoint(2, 2),
-		},
-
-		// Float64 points
-		{
-			name:     "float64: (1.0,2.0)+(3.0,4.0)",
-			p:        NewPoint(1.0, 2.0),
-			q:        NewPoint(3.0, 4.0),
-			expected: NewPoint(4.0, 6.0),
+			name:     "Negative integer point conversion",
+			point:    NewPoint(-7, -5),
+			expected: Point[float32]{-7.0, -5.0},
 		},
 		{
-			name:     "float64: (-1.5,-2.5)+(3.5,4.5)",
-			p:        NewPoint(-1.5, -2.5),
-			q:        NewPoint(3.5, 4.5),
-			expected: NewPoint(2.0, 2.0),
+			name:     "Zero point conversion",
+			point:    NewPoint(0, 0),
+			expected: Point[float32]{0.0, 0.0},
 		},
 	}
 
+	// Run test cases
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			switch p := tt.p.(type) {
-			case Point[int]:
-				q := tt.q.(Point[int])
-				expected := tt.expected.(Point[int])
-				actual := p.Add(q)
-				assert.Equal(t, expected, actual)
-
-			case Point[float64]:
-				q := tt.q.(Point[float64])
-				expected := tt.expected.(Point[float64])
-				actual := p.Add(q)
-				assert.Equal(t, expected, actual)
-			}
+			result := tt.point.AsFloat32()
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
-func TestPoint_AsFloat(t *testing.T) {
+func TestPoint_AsFloat64(t *testing.T) {
 	// Define test cases with various point types
 	tests := []struct {
 		name     string
@@ -106,7 +85,7 @@ func TestPoint_AsFloat(t *testing.T) {
 	// Run test cases
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.point.AsFloat()
+			result := tt.point.AsFloat64()
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -382,59 +361,6 @@ func TestPoint_DistanceToPoint(t *testing.T) {
 	}
 }
 
-func TestPoint_Div(t *testing.T) {
-	tests := []struct {
-		name     string
-		p        any            // Use `any` to handle different Point types
-		k        any            // The divisor, which can be int or float64
-		expected Point[float64] // Expected result as a Point[float64] since division produces float results
-	}{
-		// Integer division cases
-		{
-			name:     "int: (2,3)/2",
-			p:        NewPoint(2, 3),
-			k:        2,
-			expected: NewPoint(1.0, 1.5),
-		},
-		{
-			name:     "int: (4,6)/2",
-			p:        NewPoint(4, 6),
-			k:        2,
-			expected: NewPoint(2.0, 3.0),
-		},
-
-		// Float64 division cases
-		{
-			name:     "float64: (2.0,3.0)/2.0",
-			p:        NewPoint(2.0, 3.0),
-			k:        2.0,
-			expected: NewPoint(1.0, 1.5),
-		},
-		{
-			name:     "float64: (4.5,6.0)/1.5",
-			p:        NewPoint(4.5, 6.0),
-			k:        1.5,
-			expected: NewPoint(3.0, 4.0),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			switch p := tt.p.(type) {
-			case Point[int]:
-				k := tt.k.(int)
-				actual := p.Div(k)
-				assert.Equal(t, tt.expected, actual)
-
-			case Point[float64]:
-				k := tt.k.(float64)
-				actual := p.Div(k)
-				assert.Equal(t, tt.expected, actual)
-			}
-		})
-	}
-}
-
 func TestPoint_DotProduct(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -541,78 +467,28 @@ func TestPoint_Eq(t *testing.T) {
 	}
 }
 
-func TestPoint_IsOnLineSegment(t *testing.T) {
+func TestPointOrientation_String(t *testing.T) {
 	tests := map[string]struct {
-		point    any
-		segment  any
-		expected bool
+		input          PointOrientation
+		expectedOutput string
 	}{
-		"Point on line segment (float64)": {
-			point:    NewPoint[float64](1, 1),
-			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
-			expected: true,
+		"PointsCollinear": {
+			input:          PointsCollinear,
+			expectedOutput: "PointsCollinear",
 		},
-		"Point at endpoint A (float64)": {
-			point:    NewPoint[float64](0, 0),
-			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
-			expected: true,
+		"PointsClockwise": {
+			input:          PointsClockwise,
+			expectedOutput: "PointsClockwise",
 		},
-		"Point at endpoint End (float64)": {
-			point:    NewPoint[float64](2, 2),
-			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
-			expected: true,
-		},
-		"Point collinear but outside bounding box (float64)": {
-			point:    NewPoint[float64](3, 3),
-			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
-			expected: false,
-		},
-		"Point not collinear (float64)": {
-			point:    NewPoint[float64](1, 2),
-			segment:  NewLineSegment(NewPoint[float64](0, 0), NewPoint[float64](2, 2)),
-			expected: false,
-		},
-		"Point on line segment (int)": {
-			point:    NewPoint[int](1, 1),
-			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
-			expected: true,
-		},
-		"Point at endpoint A (int)": {
-			point:    NewPoint[int](0, 0),
-			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
-			expected: true,
-		},
-		"Point at endpoint End (int)": {
-			point:    NewPoint[int](2, 2),
-			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
-			expected: true,
-		},
-		"Point collinear but outside bounding box (int)": {
-			point:    NewPoint[int](3, 3),
-			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
-			expected: false,
-		},
-		"Point not collinear (int)": {
-			point:    NewPoint[int](1, 2),
-			segment:  NewLineSegment(NewPoint[int](0, 0), NewPoint[int](2, 2)),
-			expected: false,
+		"PointsCounterClockwise": {
+			input:          PointsCounterClockwise,
+			expectedOutput: "PointsCounterClockwise",
 		},
 	}
 
-	for name, tt := range tests {
+	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			switch point := tt.point.(type) {
-			case Point[int]:
-				segment := tt.segment.(LineSegment[int])
-				result := point.IsOnLineSegment(segment)
-				assert.Equal(t, tt.expected, result, "Test %s failed", name)
-			case Point[float64]:
-				segment := tt.segment.(LineSegment[float64])
-				result := point.IsOnLineSegment(segment)
-				assert.Equal(t, tt.expected, result, "Test %s failed", name)
-			default:
-				t.Errorf("Unsupported point type in test %s", name)
-			}
+			assert.Equal(t, tc.expectedOutput, tc.input.String())
 		})
 	}
 }
@@ -763,6 +639,136 @@ func TestPoint_Reflect(t *testing.T) {
 	})
 }
 
+func TestPoint_RelationshipToCircle(t *testing.T) {
+	testCases := map[string]struct {
+		point       Point[float64]
+		circle      Circle[float64]
+		expectedRel Relationship
+	}{
+		"Point inside circle": {
+			point:       NewPoint[float64](2, 2),
+			circle:      NewCircle(NewPoint[float64](0, 0), 5),
+			expectedRel: RelationshipContainedBy,
+		},
+		"Point on circle boundary": {
+			point:       NewPoint[float64](3, 4),
+			circle:      NewCircle(NewPoint[float64](0, 0), 5),
+			expectedRel: RelationshipIntersection,
+		},
+		"Point outside circle": {
+			point:       NewPoint[float64](6, 8),
+			circle:      NewCircle(NewPoint[float64](0, 0), 5),
+			expectedRel: RelationshipDisjoint,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := tc.point.RelationshipToCircle(tc.circle, WithEpsilon(1e-10))
+			assert.Equal(t, tc.expectedRel, result, "unexpected relationship")
+		})
+	}
+}
+
+func TestPoint_RelationshipToLineSegment(t *testing.T) {
+	segment := NewLineSegment(
+		NewPoint(0, 0),
+		NewPoint(10, 0),
+	)
+
+	tests := map[string]struct {
+		point       Point[int]
+		expectedRel Relationship
+	}{
+		"Point lies on the segment": {
+			point:       NewPoint(5, 0),
+			expectedRel: RelationshipIntersection,
+		},
+		"Point lies on the segment start": {
+			point:       NewPoint(0, 0),
+			expectedRel: RelationshipIntersection,
+		},
+		"Point lies on the segment end": {
+			point:       NewPoint(10, 0),
+			expectedRel: RelationshipIntersection,
+		},
+		"Point lies outside the segment": {
+			point:       NewPoint(15, 0),
+			expectedRel: RelationshipDisjoint,
+		},
+		"Point lies above the segment": {
+			point:       NewPoint(5, 2),
+			expectedRel: RelationshipDisjoint,
+		},
+		"Point lies below the segment": {
+			point:       NewPoint(5, -2),
+			expectedRel: RelationshipDisjoint,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			rel := tt.point.RelationshipToLineSegment(segment, WithEpsilon(1e-10))
+			assert.Equal(t, tt.expectedRel, rel, "unexpected relationship")
+		})
+	}
+}
+
+func TestPoint_RelationshipToPoint(t *testing.T) {
+	tests := map[string]struct {
+		pointA      Point[int]
+		pointB      Point[int]
+		expectedRel Relationship
+	}{
+		"Points are equal": {
+			pointA:      NewPoint(5, 5),
+			pointB:      NewPoint(5, 5),
+			expectedRel: RelationshipEqual,
+		},
+		"Points are disjoint": {
+			pointA:      NewPoint(5, 5),
+			pointB:      NewPoint(10, 10),
+			expectedRel: RelationshipDisjoint,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			rel := tt.pointA.RelationshipToPoint(tt.pointB, WithEpsilon(1e-10))
+			assert.Equal(t, tt.expectedRel, rel, "unexpected relationship")
+		})
+	}
+}
+
+func TestPoint_RelationshipToRectangle(t *testing.T) {
+	rect := newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 10))
+
+	tests := map[string]struct {
+		point       Point[int]
+		expectedRel Relationship
+	}{
+		"Point inside rectangle": {
+			point:       NewPoint(5, 5),
+			expectedRel: RelationshipContainedBy,
+		},
+		"Point on rectangle edge": {
+			point:       NewPoint(10, 5),
+			expectedRel: RelationshipIntersection,
+		},
+		"Point outside rectangle": {
+			point:       NewPoint(15, 5),
+			expectedRel: RelationshipDisjoint,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			rel := tt.point.RelationshipToRectangle(rect, WithEpsilon(1e-10))
+			assert.Equal(t, tt.expectedRel, rel, "unexpected relationship")
+		})
+	}
+}
+
 func TestPoint_Rotate(t *testing.T) {
 	tests := map[string]struct {
 		point    Point[float64] // The point to rotate
@@ -806,61 +812,6 @@ func TestPoint_Rotate(t *testing.T) {
 }
 
 func TestPoint_Scale(t *testing.T) {
-	tests := []struct {
-		name     string
-		p        any // Supports different Point types with `any`
-		k        any // Scale factor, either int or float64
-		expected any // Expected scaled result as either int or float64
-	}{
-		// Integer points
-		{
-			name:     "int: (2,3) * 2",
-			p:        NewPoint(2, 3),
-			k:        2,
-			expected: NewPoint(4, 6),
-		},
-		{
-			name:     "int: (3,4) * -1",
-			p:        NewPoint(3, 4),
-			k:        -1,
-			expected: NewPoint(-3, -4),
-		},
-
-		// Float64 points
-		{
-			name:     "float64: (2.0,3.0) * 2.0",
-			p:        NewPoint(2.0, 3.0),
-			k:        2.0,
-			expected: NewPoint(4.0, 6.0),
-		},
-		{
-			name:     "float64: (1.5,2.5) * 0.5",
-			p:        NewPoint(1.5, 2.5),
-			k:        0.5,
-			expected: NewPoint(0.75, 1.25),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			switch p := tt.p.(type) {
-			case Point[int]:
-				k := tt.k.(int)
-				expected := tt.expected.(Point[int])
-				actual := p.Scale(k)
-				assert.Equal(t, expected, actual)
-
-			case Point[float64]:
-				k := tt.k.(float64)
-				expected := tt.expected.(Point[float64])
-				actual := p.Scale(k)
-				assert.Equal(t, expected, actual)
-			}
-		})
-	}
-}
-
-func TestPoint_ScaleFrom(t *testing.T) {
 	tests := map[string]struct {
 		point    any            // Point to be scaled (can be int or float64)
 		refPoint any            // Reference point for scaling (can be int or float64)
@@ -901,13 +852,13 @@ func TestPoint_ScaleFrom(t *testing.T) {
 			switch point := tt.point.(type) {
 			case Point[int]:
 				ref := tt.refPoint.(Point[int])
-				result := point.AsFloat().ScaleFrom(ref.AsFloat(), tt.scale)
+				result := point.AsFloat64().Scale(ref.AsFloat64(), tt.scale)
 				assert.InDelta(t, tt.expected.x, result.x, 0.001)
 				assert.InDelta(t, tt.expected.y, result.y, 0.001)
 
 			case Point[float64]:
 				ref := tt.refPoint.(Point[float64])
-				result := point.ScaleFrom(ref, tt.scale)
+				result := point.Scale(ref, tt.scale)
 				assert.InDelta(t, tt.expected.x, result.x, 0.001)
 				assert.InDelta(t, tt.expected.y, result.y, 0.001)
 			}
@@ -961,54 +912,60 @@ func TestPoint_String(t *testing.T) {
 	}
 }
 
-func TestPoint_Sub(t *testing.T) {
+func TestPoint_Translate(t *testing.T) {
 	tests := []struct {
 		name     string
-		p, q     any // Supports different Point types with `any`
-		expected any // Expected result after subtraction
+		p, q     any // Use 'any' to support different Point types
+		expected any
 	}{
 		// Integer points
 		{
-			name:     "int: (1,2) - (3,4)",
+			name:     "int: (1,2)+(0,0)",
 			p:        NewPoint(1, 2),
-			q:        NewPoint(3, 4),
-			expected: NewPoint(-2, -2),
+			q:        NewPoint(0, 0),
+			expected: NewPoint(1, 2),
 		},
 		{
-			name:     "int: (5,5) - (2,3)",
-			p:        NewPoint(5, 5),
-			q:        NewPoint(2, 3),
-			expected: NewPoint(3, 2),
+			name:     "int: (1,2)+(3,4)",
+			p:        NewPoint(1, 2),
+			q:        NewPoint(3, 4),
+			expected: NewPoint(4, 6),
+		},
+		{
+			name:     "int: (-1,-2)+(3,4)",
+			p:        NewPoint(-1, -2),
+			q:        NewPoint(3, 4),
+			expected: NewPoint(2, 2),
 		},
 
 		// Float64 points
 		{
-			name:     "float64: (1.0,2.0) - (3.0,4.0)",
+			name:     "float64: (1.0,2.0)+(3.0,4.0)",
 			p:        NewPoint(1.0, 2.0),
 			q:        NewPoint(3.0, 4.0),
-			expected: NewPoint(-2.0, -2.0),
+			expected: NewPoint(4.0, 6.0),
 		},
 		{
-			name:     "float64: (5.5,5.5) - (2.0,3.0)",
-			p:        NewPoint(5.5, 5.5),
-			q:        NewPoint(2.0, 3.0),
-			expected: NewPoint(3.5, 2.5),
+			name:     "float64: (-1.5,-2.5)+(3.5,4.5)",
+			p:        NewPoint(-1.5, -2.5),
+			q:        NewPoint(3.5, 4.5),
+			expected: NewPoint(2.0, 2.0),
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			switch p := tt.p.(type) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			switch p := tc.p.(type) {
 			case Point[int]:
-				q := tt.q.(Point[int])
-				expected := tt.expected.(Point[int])
-				actual := p.Sub(q)
+				q := tc.q.(Point[int])
+				expected := tc.expected.(Point[int])
+				actual := p.Translate(q)
 				assert.Equal(t, expected, actual)
 
 			case Point[float64]:
-				q := tt.q.(Point[float64])
-				expected := tt.expected.(Point[float64])
-				actual := p.Sub(q)
+				q := tc.q.(Point[float64])
+				expected := tc.expected.(Point[float64])
+				actual := p.Translate(q)
 				assert.Equal(t, expected, actual)
 			}
 		})

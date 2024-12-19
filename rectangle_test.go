@@ -2,6 +2,7 @@ package geom2d
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"image"
 	"testing"
 )
@@ -12,19 +13,19 @@ func TestRectangle_Area(t *testing.T) {
 		expected int
 	}{
 		"standard rectangle": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			expected: 200,
 		},
 		"rectangle with swapped corners": {
-			rect:     NewRectangleByPoints(NewPoint(10, 20), NewPoint(0, 0)),
+			rect:     newRectangleByOppositeCorners(NewPoint(10, 20), NewPoint(0, 0)),
 			expected: 200,
 		},
 		"degenerate rectangle (zero width)": {
-			rect:     NewRectangleByPoints(NewPoint(5, 5), NewPoint(5, 15)),
+			rect:     newRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(5, 15)),
 			expected: 0,
 		},
 		"degenerate rectangle (zero height)": {
-			rect:     NewRectangleByPoints(NewPoint(5, 5), NewPoint(15, 5)),
+			rect:     newRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(15, 5)),
 			expected: 0,
 		},
 	}
@@ -37,21 +38,27 @@ func TestRectangle_Area(t *testing.T) {
 	}
 }
 
-func TestRectangle_AsFloat(t *testing.T) {
-	rect := NewRectangleByPoints(NewPoint[int](1, 2), NewPoint[int](10, 20))
-	expected := NewRectangleByPoints(NewPoint[float64](1.0, 2.0), NewPoint[float64](10.0, 20.0))
-	assert.Equal(t, expected, rect.AsFloat())
+func TestRectangle_AsFloat32(t *testing.T) {
+	rect := newRectangleByOppositeCorners(NewPoint[int](1, 2), NewPoint[int](10, 20))
+	expected := newRectangleByOppositeCorners(NewPoint[float32](1.0, 2.0), NewPoint[float32](10.0, 20.0))
+	assert.Equal(t, expected, rect.AsFloat32())
+}
+
+func TestRectangle_AsFloat64(t *testing.T) {
+	rect := newRectangleByOppositeCorners(NewPoint[int](1, 2), NewPoint[int](10, 20))
+	expected := newRectangleByOppositeCorners(NewPoint[float64](1.0, 2.0), NewPoint[float64](10.0, 20.0))
+	assert.Equal(t, expected, rect.AsFloat64())
 }
 
 func TestRectangle_AsInt(t *testing.T) {
-	rect := NewRectangleByPoints(NewPoint[float64](1.7, 2.9), NewPoint[float64](10.5, 20.3))
-	expected := NewRectangleByPoints(NewPoint(1, 2), NewPoint(10, 20))
+	rect := newRectangleByOppositeCorners(NewPoint[float64](1.7, 2.9), NewPoint[float64](10.5, 20.3))
+	expected := newRectangleByOppositeCorners(NewPoint(1, 2), NewPoint(10, 20))
 	assert.Equal(t, expected, rect.AsInt())
 }
 
 func TestRectangle_AsIntRounded(t *testing.T) {
-	rect := NewRectangleByPoints(NewPoint[float64](1.7, 2.9), NewPoint[float64](10.5, 20.3))
-	expected := NewRectangleByPoints(NewPoint(2, 3), NewPoint(11, 20))
+	rect := newRectangleByOppositeCorners(NewPoint[float64](1.7, 2.9), NewPoint[float64](10.5, 20.3))
+	expected := newRectangleByOppositeCorners(NewPoint(2, 3), NewPoint(11, 20))
 	assert.Equal(t, expected, rect.AsIntRounded())
 }
 
@@ -62,32 +69,32 @@ func TestRectangle_ContainsPoint(t *testing.T) {
 		expected bool
 	}{
 		"point inside rectangle": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(5, 10),
 			expected: true,
 		},
 		"point on rectangle boundary (top-left corner)": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(0, 0),
 			expected: true,
 		},
 		"point on rectangle boundary (bottom-right corner)": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(10, 20),
 			expected: true,
 		},
 		"point outside rectangle": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(15, 10),
 			expected: false,
 		},
 		"point on boundary (horizontal edge)": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(5, 0),
 			expected: true,
 		},
 		"point on boundary (vertical edge)": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(10, 5),
 			expected: true,
 		},
@@ -107,15 +114,15 @@ func TestRectangle_Height(t *testing.T) {
 		expected int
 	}{
 		"positive height": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			expected: 20,
 		},
 		"negative height": {
-			rect:     NewRectangleByPoints(NewPoint(0, 20), NewPoint(10, 0)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 20), NewPoint(10, 0)),
 			expected: 20,
 		},
 		"zero height": {
-			rect:     NewRectangleByPoints(NewPoint(5, 5), NewPoint(15, 5)),
+			rect:     newRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(15, 5)),
 			expected: 0,
 		},
 	}
@@ -128,219 +135,25 @@ func TestRectangle_Height(t *testing.T) {
 	}
 }
 
-func TestRectangle_IsLineSegmentOnEdgeWithEndTouchingVertex(t *testing.T) {
-	tests := map[string]struct {
-		rect     Rectangle[int]
-		segment  LineSegment[int]
-		expected bool
-	}{
-		"segment on top edge touching top-left vertex": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(0, 0), NewPoint(5, 0)),
-			expected: true,
-		},
-		"segment on bottom edge touching bottom-right vertex": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(10, 10), NewPoint(5, 10)),
-			expected: true,
-		},
-		"segment on left edge not touching a vertex": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(0, 3), NewPoint(0, 7)),
-			expected: false,
-		},
-		"segment on right edge touching top-right vertex": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(10, 0), NewPoint(10, 5)),
-			expected: true,
-		},
-		"segment entirely inside rectangle": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(3, 3), NewPoint(7, 7)),
-			expected: false,
-		},
-		"segment completely outside rectangle": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(15, 15), NewPoint(20, 20)),
-			expected: false,
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			actual := tt.rect.IsLineSegmentOnEdgeWithEndTouchingVertex(tt.segment)
-			assert.Equal(t, tt.expected, actual)
-		})
-	}
-}
-
-func TestRectangle_LineSegmentEntersAndExits(t *testing.T) {
-	tests := map[string]struct {
-		rect     Rectangle[int]
-		segment  LineSegment[int]
-		expected bool
-	}{
-		"segment entering through top and exiting through bottom": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(5, -5), NewPoint(5, 15)),
-			expected: true,
-		},
-		"segment entering through left and exiting through right": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(-5, 5), NewPoint(15, 5)),
-			expected: true,
-		},
-		"segment entirely outside": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(15, 15), NewPoint(20, 20)),
-			expected: false,
-		},
-		"segment touching but not entering and exiting": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(0, 5), NewPoint(10, 5)), // Lies on the top edge without entering or exiting
-			expected: false,
-		},
-		"segment entering through one edge but not exiting": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(5, -5), NewPoint(5, 5)), // Enters but does not exit
-			expected: false,
-		},
-		"segment intersecting through two edges diagonally": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(-5, -5), NewPoint(15, 15)),
-			expected: true,
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			actual := tt.rect.LineSegmentEntersAndExits(tt.segment)
-			assert.Equal(t, tt.expected, actual)
-		})
-	}
-}
-
-func TestRectangle_LineSegmentIntersectsEdges(t *testing.T) {
-	tests := map[string]struct {
-		rect     Rectangle[int]
-		segment  LineSegment[int]
-		expected bool
-	}{
-		"segment intersects top and bottom edges": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(5, -5), NewPoint(5, 15)),
-			expected: true,
-		},
-		"segment intersects left and right edges": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(-5, 5), NewPoint(15, 5)),
-			expected: true,
-		},
-		"segment does not intersect any edge": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(15, 15), NewPoint(20, 20)),
-			expected: false,
-		},
-		"segment touches top edge at a point": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(5, 0), NewPoint(5, 0)), // Degenerate line touching top edge
-			expected: false,
-		},
-		"segment lies on the top edge without intersecting": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(0, 0), NewPoint(10, 0)),
-			expected: false,
-		},
-		"segment intersects at one vertex": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(-5, -5), NewPoint(0, 0)), // Intersects at top-left vertex
-			expected: false,
-		},
-		"diagonal segment intersects two edges": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 10)),
-			segment:  NewLineSegment(NewPoint(-5, -5), NewPoint(15, 15)),
-			expected: true,
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			actual := tt.rect.LineSegmentIntersectsEdges(tt.segment)
-			assert.Equal(t, tt.expected, actual)
-		})
-	}
-}
-
-func TestRectangle_Operations(t *testing.T) {
-	tests := map[string]struct {
-		rect     Rectangle[int]
-		op       string
-		value    any
-		expected Rectangle[float64]
-	}{
-		"Add vector": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
-			op:       "Add",
-			value:    NewPoint(5, 5),
-			expected: NewRectangleByPoints(NewPoint(5.0, 5.0), NewPoint(15.0, 25.0)),
-		},
-		"Sub vector": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
-			op:       "Sub",
-			value:    NewPoint(5, 5),
-			expected: NewRectangleByPoints(NewPoint(-5.0, -5.0), NewPoint(5.0, 15.0)),
-		},
-		"Scale by factor 2": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
-			op:       "Scale",
-			value:    2.0,
-			expected: NewRectangleByPoints(NewPoint(0.0, 0.0), NewPoint(20.0, 40.0)),
-		},
-		"Div by factor 2": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
-			op:       "Div",
-			value:    2.0,
-			expected: NewRectangleByPoints(NewPoint(0.0, 0.0), NewPoint(5.0, 10.0)),
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			var result Rectangle[float64]
-			switch tt.op {
-			case "Add":
-				result = tt.rect.Add(tt.value.(Point[int])).AsFloat()
-			case "Sub":
-				result = tt.rect.Sub(tt.value.(Point[int])).AsFloat()
-			case "Scale":
-				result = tt.rect.Scale(tt.value.(float64))
-			case "Div":
-				result = tt.rect.Div(tt.value.(float64))
-			}
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestRectangle_Perimeter(t *testing.T) {
 	tests := map[string]struct {
 		rect     Rectangle[int]
 		expected int
 	}{
 		"standard rectangle": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			expected: 60,
 		},
 		"rectangle with swapped corners": {
-			rect:     NewRectangleByPoints(NewPoint(10, 20), NewPoint(0, 0)),
+			rect:     newRectangleByOppositeCorners(NewPoint(10, 20), NewPoint(0, 0)),
 			expected: 60,
 		},
 		"degenerate rectangle (zero width)": {
-			rect:     NewRectangleByPoints(NewPoint(5, 5), NewPoint(5, 15)),
+			rect:     newRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(5, 15)),
 			expected: 20,
 		},
 		"degenerate rectangle (zero height)": {
-			rect:     NewRectangleByPoints(NewPoint(5, 5), NewPoint(15, 5)),
+			rect:     newRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(15, 5)),
 			expected: 20,
 		},
 	}
@@ -359,7 +172,7 @@ func TestRectangle_Points(t *testing.T) {
 		expected []Point[int]
 	}{
 		"rectangle with positive coordinates": {
-			rect: NewRectangleByPoints(NewPoint(2, 3), NewPoint(8, 6)),
+			rect: newRectangleByOppositeCorners(NewPoint(2, 3), NewPoint(8, 6)),
 			expected: []Point[int]{
 				NewPoint(2, 3), // top-left
 				NewPoint(8, 3), // top-right
@@ -368,7 +181,7 @@ func TestRectangle_Points(t *testing.T) {
 			},
 		},
 		"rectangle with negative coordinates": {
-			rect: NewRectangleByPoints(NewPoint(-5, -5), NewPoint(0, 0)),
+			rect: newRectangleByOppositeCorners(NewPoint(-5, -5), NewPoint(0, 0)),
 			expected: []Point[int]{
 				NewPoint(-5, -5), // top-left
 				NewPoint(0, -5),  // top-right
@@ -377,7 +190,7 @@ func TestRectangle_Points(t *testing.T) {
 			},
 		},
 		"rectangle with zero-width or height": {
-			rect: NewRectangleByPoints(NewPoint(1, 1), NewPoint(1, 4)),
+			rect: newRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(1, 4)),
 			expected: []Point[int]{
 				NewPoint(1, 1), // top-left
 				NewPoint(1, 1), // top-right (overlapping)
@@ -387,174 +200,361 @@ func TestRectangle_Points(t *testing.T) {
 		},
 	}
 
-	for name, tt := range tests {
+	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			actual := tt.rect.Points()
-			for i, expectedPoint := range tt.expected {
-				assert.Equal(t, expectedPoint, actual[i], "Point mismatch at index %d", i)
+			actual := tc.rect.Contour()
+			assert.Len(t, actual, 4)
+			for _, expectedPoint := range tc.expected {
+				assert.Contains(t, actual, expectedPoint)
 			}
 		})
 	}
 }
 
-func TestRectangle_RelationshipToLineSegment(t *testing.T) {
+func TestRectangle_RelationshipToCircle(t *testing.T) {
+	// Define a rectangle
+	rect := NewRectangle([]Point[int]{
+		NewPoint[int](0, 0),
+		NewPoint[int](100, 0),
+		NewPoint[int](100, 100),
+		NewPoint[int](0, 100),
+	})
+
 	tests := map[string]struct {
-		rect     Rectangle[int]
-		segment  LineSegment[int]
-		expected RectangleLineSegmentRelationship
+		circle      Circle[int]
+		expectedRel Relationship
 	}{
-		"segment completely outside": {
-			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
-			segment:  NewLineSegment(NewPoint(6, 6), NewPoint(7, 7)),
-			expected: RLROutside,
+		"Circle inside rectangle": {
+			circle:      NewCircle(NewPoint[int](50, 50), 10),
+			expectedRel: RelationshipContains,
 		},
-		"segment outside with one end touching edge": {
-			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
-			segment:  NewLineSegment(NewPoint(0, 3), NewPoint(1, 3)),
-			expected: RLROutsideEndTouchesEdge,
+		"Circle intersecting rectangle": {
+			circle:      NewCircle(NewPoint[int](50, 50), 60),
+			expectedRel: RelationshipIntersection,
 		},
-		"segment outside with one end touching vertex": {
-			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
-			segment:  NewLineSegment(NewPoint(0, 0), NewPoint(1, 1)),
-			expected: RLROutsideEndTouchesVertex,
-		},
-		"segment completely inside": {
-			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
-			segment:  NewLineSegment(NewPoint(2, 2), NewPoint(3, 3)),
-			expected: RLRInside,
-		},
-		"segment inside with one end touching edge": {
-			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
-			segment:  NewLineSegment(NewPoint(2, 2), NewPoint(1, 3)),
-			expected: RLRInsideEndTouchesEdge,
-		},
-		"segment inside with one end touching vertex": {
-			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
-			segment:  NewLineSegment(NewPoint(3, 3), NewPoint(1, 1)),
-			expected: RLRInsideEndTouchesVertex,
-		},
-		"segment lying on edge": {
-			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
-			segment:  NewLineSegment(NewPoint(2, 1), NewPoint(4, 1)),
-			expected: RLROnEdge,
-		},
-		"segment on edge with end touching vertex": {
-			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
-			segment:  NewLineSegment(NewPoint(1, 1), NewPoint(1, 5)),
-			expected: RLROnEdgeEndTouchesVertex,
-		},
-		"segment intersecting through one edge diagonally": {
-			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
-			segment:  NewLineSegment(NewPoint(0, 0), NewPoint(3, 3)),
-			expected: RLRIntersects,
-		},
-		"segment entering through edge": {
-			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
-			segment:  NewLineSegment(NewPoint(0, 3), NewPoint(3, 3)),
-			expected: RLRIntersects,
-		},
-		"segment intersecting through two edges diagonally": {
-			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
-			segment:  NewLineSegment(NewPoint(0, 0), NewPoint(6, 6)),
-			expected: RLREntersAndExits,
-		},
-		"segment entering and exiting through different edges": {
-			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
-			segment:  NewLineSegment(NewPoint(0, 3), NewPoint(6, 3)),
-			expected: RLREntersAndExits,
-		},
-		"degenerate segment on vertex": {
-			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
-			segment:  NewLineSegment(NewPoint(1, 1), NewPoint(1, 1)),
-			expected: RLROutsideEndTouchesVertex,
-		},
-		"segment through opposite vertices": {
-			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
-			segment:  NewLineSegment(NewPoint(1, 1), NewPoint(5, 5)),
-			expected: RLRInsideEndTouchesVertex,
-		},
-		"partially collinear segment on one edge": {
-			rect:     NewRectangleByPoints(NewPoint(1, 1), NewPoint(5, 5)),
-			segment:  NewLineSegment(NewPoint(1, 2), NewPoint(1, 0)),
-			expected: RLROutsideEndTouchesEdge,
+		"Circle outside rectangle": {
+			circle:      NewCircle(NewPoint[int](200, 200), 20),
+			expectedRel: RelationshipDisjoint,
 		},
 	}
 
-	for name, tt := range tests {
+	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			result := tt.rect.RelationshipToLineSegment(tt.segment)
-			assert.Equal(t, tt.expected, result)
+			rel := rect.RelationshipToCircle(test.circle)
+			assert.Equal(t, test.expectedRel, rel)
+		})
+	}
+}
 
-			// flip line segment, should yield same result
-			segFlipped := NewLineSegment(tt.segment.End(), tt.segment.Start())
-			result = tt.rect.RelationshipToLineSegment(segFlipped)
-			assert.Equal(t, tt.expected, result)
+func TestRectangle_RelationshipToLineSegment(t *testing.T) {
+	// Define a rectangle
+	rect := NewRectangle([]Point[int]{
+		NewPoint[int](0, 0),
+		NewPoint[int](100, 0),
+		NewPoint[int](100, 100),
+		NewPoint[int](0, 100),
+	})
+
+	tests := map[string]struct {
+		segment     LineSegment[int]
+		expectedRel Relationship
+	}{
+		"Segment inside rectangle": {
+			segment:     NewLineSegment(NewPoint[int](10, 10), NewPoint[int](90, 90)),
+			expectedRel: RelationshipContains,
+		},
+		"Segment intersecting rectangle": {
+			segment:     NewLineSegment(NewPoint[int](-10, 50), NewPoint[int](110, 50)),
+			expectedRel: RelationshipIntersection,
+		},
+		"Segment outside rectangle": {
+			segment:     NewLineSegment(NewPoint[int](200, 200), NewPoint[int](300, 300)),
+			expectedRel: RelationshipDisjoint,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			rel := rect.RelationshipToLineSegment(test.segment)
+			assert.Equal(t, test.expectedRel, rel)
 		})
 	}
 }
 
 func TestRectangle_RelationshipToPoint(t *testing.T) {
+	// Define a rectangle
+	rect := NewRectangle([]Point[int]{
+		NewPoint[int](0, 0),
+		NewPoint[int](100, 0),
+		NewPoint[int](100, 100),
+		NewPoint[int](0, 100),
+	})
+
 	tests := map[string]struct {
-		rect     Rectangle[int]
-		point    Point[int]
-		expected PointRectangleRelationship
+		point       Point[int]
+		expectedRel Relationship
 	}{
-		"point inside rectangle": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
-			point:    NewPoint(5, 10),
-			expected: PRRInside,
+		"Point inside rectangle": {
+			point:       NewPoint[int](50, 50),
+			expectedRel: RelationshipContains,
 		},
-		"point outside rectangle": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
-			point:    NewPoint(15, 10),
-			expected: PRROutside,
+		"Point on rectangle edge": {
+			point:       NewPoint[int](0, 50),
+			expectedRel: RelationshipIntersection,
 		},
-		"point on top-left vertex": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
-			point:    NewPoint(0, 0),
-			expected: PRROnVertex,
+		"Point on rectangle vertex": {
+			point:       NewPoint[int](0, 0),
+			expectedRel: RelationshipIntersection,
 		},
-		"point on bottom-right vertex": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
-			point:    NewPoint(10, 20),
-			expected: PRROnVertex,
-		},
-		"point on bottom-left vertex": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
-			point:    NewPoint(0, 20),
-			expected: PRROnVertex,
-		},
-		"point on top-right vertex": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
-			point:    NewPoint(10, 0),
-			expected: PRROnVertex,
-		},
-		"point on top edge": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
-			point:    NewPoint(5, 0),
-			expected: PRROnEdge,
-		},
-		"point on left edge": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
-			point:    NewPoint(0, 10),
-			expected: PRROnEdge,
-		},
-		"point on bottom edge": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
-			point:    NewPoint(5, 20),
-			expected: PRROnEdge,
-		},
-		"point on right edge": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
-			point:    NewPoint(10, 10),
-			expected: PRROnEdge,
+		"Point outside rectangle": {
+			point:       NewPoint[int](200, 200),
+			expectedRel: RelationshipDisjoint,
 		},
 	}
 
-	for name, tt := range tests {
+	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			actual := tt.rect.RelationshipToPoint(tt.point)
-			assert.Equal(t, tt.expected, actual)
+			rel := rect.RelationshipToPoint(test.point, WithEpsilon(1e-10))
+			assert.Equal(t, test.expectedRel, rel)
+		})
+	}
+}
+
+func TestRectangle_RelationshipToPolyTree(t *testing.T) {
+	// Create a PolyTree
+	root, err := NewPolyTree([]Point[int]{
+		NewPoint(5, 5),
+		NewPoint(5, 15),
+		NewPoint(15, 15),
+		NewPoint(15, 5),
+	}, PTSolid)
+	require.NoError(t, err, "error creating root polygon")
+
+	hole, err := NewPolyTree([]Point[int]{
+		NewPoint(6, 6),
+		NewPoint(6, 9),
+		NewPoint(9, 9),
+		NewPoint(9, 6),
+	}, PTHole)
+	require.NoError(t, err, "error creating hole polygon")
+	require.NoError(t, root.AddChild(hole), "error adding hole to root polygon")
+
+	// Define test cases
+	tests := []struct {
+		name                     string
+		rect                     Rectangle[int]
+		pt                       *PolyTree[int]
+		expectedRootRelationship Relationship
+		expectedHoleRelationship Relationship
+	}{
+		{
+			name: "Disjoint relationship",
+			rect: NewRectangle([]Point[int]{
+				NewPoint(20, 20),
+				NewPoint(30, 20),
+				NewPoint(30, 30),
+				NewPoint(20, 30),
+			}),
+			pt:                       root,
+			expectedRootRelationship: RelationshipDisjoint,
+			expectedHoleRelationship: RelationshipDisjoint,
+		},
+		{
+			name: "Intersection relationship",
+			rect: NewRectangle([]Point[int]{
+				NewPoint(13, 13),
+				NewPoint(20, 13),
+				NewPoint(20, 20),
+				NewPoint(13, 20),
+			}),
+			pt:                       root,
+			expectedRootRelationship: RelationshipIntersection,
+			expectedHoleRelationship: RelationshipDisjoint,
+		},
+		{
+			name: "Containment relationship",
+			rect: NewRectangle([]Point[int]{
+				NewPoint(4, 4),
+				NewPoint(16, 4),
+				NewPoint(16, 16),
+				NewPoint(4, 16),
+			}),
+			pt:                       root,
+			expectedRootRelationship: RelationshipContains,
+			expectedHoleRelationship: RelationshipContains,
+		},
+		{
+			name: "Contains relationship",
+			rect: NewRectangle([]Point[int]{
+				NewPoint(0, 0),
+				NewPoint(20, 0),
+				NewPoint(20, 20),
+				NewPoint(0, 20),
+			}),
+			pt:                       root,
+			expectedRootRelationship: RelationshipContains,
+			expectedHoleRelationship: RelationshipContains,
+		},
+		{
+			name: "ContainedBy relationship",
+			rect: NewRectangle([]Point[int]{
+				NewPoint(6, 6),
+				NewPoint(14, 6),
+				NewPoint(14, 14),
+				NewPoint(6, 14),
+			}),
+			pt:                       root,
+			expectedRootRelationship: RelationshipContainedBy,
+			expectedHoleRelationship: RelationshipIntersection,
+		},
+	}
+
+	// Run test cases
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rels := tt.rect.RelationshipToPolyTree(tt.pt, WithEpsilon(1e-10))
+			assert.Equal(t, tt.expectedRootRelationship, rels[root], "unexpected root relationship")
+			assert.Equal(t, tt.expectedHoleRelationship, rels[hole], "unexpected hole relationship")
+		})
+	}
+}
+
+func TestRectangle_RelationshipToRectangle(t *testing.T) {
+	// Define test rectangles
+	r1 := NewRectangle([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(10, 0),
+		NewPoint(10, 10),
+		NewPoint(0, 10),
+	})
+	r2 := NewRectangle([]Point[int]{
+		NewPoint(5, 5),
+		NewPoint(15, 5),
+		NewPoint(15, 15),
+		NewPoint(5, 15),
+	})
+	r3 := NewRectangle([]Point[int]{
+		NewPoint(2, 2),
+		NewPoint(8, 2),
+		NewPoint(8, 8),
+		NewPoint(2, 8),
+	})
+	r4 := NewRectangle([]Point[int]{
+		NewPoint(10, 10),
+		NewPoint(20, 10),
+		NewPoint(20, 20),
+		NewPoint(10, 20),
+	}) // Touching at a vertex
+	r5 := NewRectangle([]Point[int]{
+		NewPoint(20, 20),
+		NewPoint(30, 20),
+		NewPoint(30, 30),
+		NewPoint(20, 30),
+	}) // Disjoint
+
+	tests := []struct {
+		name        string
+		r1, r2      Rectangle[int]
+		expectedRel Relationship
+	}{
+		{
+			name: "RelationshipEqual",
+			r1:   r1,
+			r2: NewRectangle([]Point[int]{
+				NewPoint(0, 0),
+				NewPoint(10, 0),
+				NewPoint(10, 10),
+				NewPoint(0, 10),
+			}),
+			expectedRel: RelationshipEqual,
+		},
+		{
+			name:        "RelationshipIntersection",
+			r1:          r1,
+			r2:          r2,
+			expectedRel: RelationshipIntersection,
+		},
+		{
+			name:        "RelationshipContains",
+			r1:          r1,
+			r2:          r3,
+			expectedRel: RelationshipContains,
+		},
+		{
+			name:        "RelationshipContainedBy",
+			r1:          r3,
+			r2:          r1,
+			expectedRel: RelationshipContainedBy,
+		},
+		{
+			name:        "RelationshipDisjoint",
+			r1:          r1,
+			r2:          r5,
+			expectedRel: RelationshipDisjoint,
+		},
+		{
+			name:        "Touching Vertex",
+			r1:          r1,
+			r2:          r4,
+			expectedRel: RelationshipIntersection,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rel := tt.r1.RelationshipToRectangle(tt.r2, WithEpsilon(1e-10))
+			assert.Equal(t, tt.expectedRel, rel, "unexpected relationship")
+		})
+	}
+}
+
+func TestRectangle_Scale(t *testing.T) {
+	tests := map[string]struct {
+		rect     Rectangle[float64]
+		ref      Point[float64]
+		k        float64
+		expected Rectangle[float64]
+	}{
+		"scale by 2 from origin": {
+			rect: NewRectangle([]Point[float64]{
+				NewPoint[float64](0, 10),
+				NewPoint[float64](10, 10),
+				NewPoint[float64](0, 0),
+				NewPoint[float64](10, 0),
+			}),
+			ref: NewPoint[float64](0, 0),
+			k:   2,
+			expected: NewRectangle([]Point[float64]{
+				NewPoint[float64](0, 20),
+				NewPoint[float64](20, 20),
+				NewPoint[float64](0, 0),
+				NewPoint[float64](20, 0),
+			}),
+		},
+		"scale by 0.5 from center": {
+			rect: NewRectangle([]Point[float64]{
+				NewPoint[float64](-10, 10),
+				NewPoint[float64](10, 10),
+				NewPoint[float64](-10, -10),
+				NewPoint[float64](10, -10),
+			}),
+			ref: NewPoint[float64](0, 0),
+			k:   0.5,
+			expected: NewRectangle([]Point[float64]{
+				NewPoint[float64](-5, -5),
+				NewPoint[float64](5, -5),
+				NewPoint[float64](5, 5),
+				NewPoint[float64](-5, 5),
+			}),
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			scaled := test.rect.Scale(test.ref, test.k)
+			if !scaled.Eq(test.expected) {
+				t.Errorf("expected %v, got %v", test.expected, scaled)
+			}
 		})
 	}
 }
@@ -568,21 +568,21 @@ func TestRectangle_ScaleWidthHeight(t *testing.T) {
 		expectedHeight float64
 	}{
 		"scale both dimensions": {
-			rect:           NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:           newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			scaleWidth:     1.5,
 			scaleHeight:    0.5,
 			expectedWidth:  15.0,
 			expectedHeight: 10.0,
 		},
 		"scale width only": {
-			rect:           NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:           newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			scaleWidth:     2.0,
 			scaleHeight:    1.0,
 			expectedWidth:  20.0,
 			expectedHeight: 20.0,
 		},
 		"scale height only": {
-			rect:           NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:           newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			scaleWidth:     1.0,
 			scaleHeight:    2.0,
 			expectedWidth:  10.0,
@@ -602,9 +602,72 @@ func TestRectangle_ScaleWidthHeight(t *testing.T) {
 }
 
 func TestRectangle_ToImageRect(t *testing.T) {
-	rect := NewRectangleByPoints(NewPoint(0, 0), NewPoint(100, 200))
+	rect := newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(100, 200))
 	expected := image.Rect(0, 0, 100, 200)
 	assert.Equal(t, expected, rect.ToImageRect())
+}
+
+func TestRectangle_Translate(t *testing.T) {
+	tests := map[string]struct {
+		inputRect    Rectangle[int]
+		translateBy  Point[int]
+		expectedRect Rectangle[int]
+	}{
+		"translate up and right": {
+			inputRect: NewRectangle([]Point[int]{
+				NewPoint(0, 10),
+				NewPoint(10, 10),
+				NewPoint(0, 0),
+				NewPoint(10, 0),
+			}),
+			translateBy: NewPoint(5, 5),
+			expectedRect: NewRectangle([]Point[int]{
+				NewPoint(5, 15),
+				NewPoint(15, 15),
+				NewPoint(5, 5),
+				NewPoint(15, 5),
+			}),
+		},
+		"translate down and left": {
+			inputRect: NewRectangle([]Point[int]{
+				NewPoint(0, 10),
+				NewPoint(10, 10),
+				NewPoint(0, 0),
+				NewPoint(10, 0),
+			}),
+			translateBy: NewPoint(-5, -5),
+			expectedRect: NewRectangle([]Point[int]{
+				NewPoint(-5, 5),
+				NewPoint(5, 5),
+				NewPoint(-5, -5),
+				NewPoint(5, -5),
+			}),
+		},
+		"translate by zero": {
+			inputRect: NewRectangle([]Point[int]{
+				NewPoint(0, 10),
+				NewPoint(10, 10),
+				NewPoint(0, 0),
+				NewPoint(10, 0),
+			}),
+			translateBy: NewPoint(0, 0),
+			expectedRect: NewRectangle([]Point[int]{
+				NewPoint(0, 10),
+				NewPoint(10, 10),
+				NewPoint(0, 0),
+				NewPoint(10, 0),
+			}),
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			actual := test.inputRect.Translate(test.translateBy)
+			if !actual.Eq(test.expectedRect) {
+				t.Errorf("expected %v, got %v", test.expectedRect, actual)
+			}
+		})
+	}
 }
 
 func TestRectangle_Width(t *testing.T) {
@@ -613,15 +676,15 @@ func TestRectangle_Width(t *testing.T) {
 		expected int
 	}{
 		"positive width": {
-			rect:     NewRectangleByPoints(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			expected: 10,
 		},
 		"negative width": {
-			rect:     NewRectangleByPoints(NewPoint(10, 0), NewPoint(0, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(10, 0), NewPoint(0, 20)),
 			expected: 10,
 		},
 		"zero width": {
-			rect:     NewRectangleByPoints(NewPoint(5, 5), NewPoint(5, 15)),
+			rect:     newRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(5, 15)),
 			expected: 0,
 		},
 	}
@@ -634,86 +697,51 @@ func TestRectangle_Width(t *testing.T) {
 	}
 }
 
-func TestNewRectangleByDimensions(t *testing.T) {
-	tests := map[string]struct {
-		topLeft  Point[int]
-		width    int
-		height   int
-		expected Rectangle[int]
-	}{
-		"positive width and height": {
-			topLeft: NewPoint(0, 0),
-			width:   10,
-			height:  10,
-			expected: Rectangle[int]{
-				topLeft:     NewPoint(0, 0),
-				bottomRight: NewPoint(10, 10),
-			},
-		},
-		"negative width and height": {
-			topLeft: NewPoint(5, 5),
-			width:   -10,
-			height:  -10,
-			expected: Rectangle[int]{
-				topLeft:     NewPoint(5, 5),
-				bottomRight: NewPoint(-5, -5),
-			},
-		},
-		"zero width and height": {
-			topLeft: NewPoint(3, 3),
-			width:   0,
-			height:  0,
-			expected: Rectangle[int]{
-				topLeft:     NewPoint(3, 3),
-				bottomRight: NewPoint(3, 3),
-			},
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			actual := NewRectangleByDimensions(tt.topLeft, tt.width, tt.height)
-			assert.Equal(t, tt.expected, actual)
-		})
-	}
-}
-
 func TestNewRectangleByPoints(t *testing.T) {
 	tests := map[string]struct {
-		topLeft     Point[int]
-		bottomRight Point[int]
-		expected    Rectangle[int]
+		corner              Point[int]
+		oppositeCorner      Point[int]
+		expectedTopLeft     Point[int]
+		expectedBottomRight Point[int]
 	}{
-		"positive coordinates": {
-			topLeft:     NewPoint(0, 0),
-			bottomRight: NewPoint(10, 10),
-			expected: Rectangle[int]{
-				topLeft:     NewPoint(0, 0),
-				bottomRight: NewPoint(10, 10),
-			},
+		"Standard case with top-left first": {
+			corner:              NewPoint(0, 10),
+			oppositeCorner:      NewPoint(10, 0),
+			expectedTopLeft:     NewPoint(0, 10),
+			expectedBottomRight: NewPoint(10, 0),
 		},
-		"negative coordinates": {
-			topLeft:     NewPoint(-10, -10),
-			bottomRight: NewPoint(0, 0),
-			expected: Rectangle[int]{
-				topLeft:     NewPoint(-10, -10),
-				bottomRight: NewPoint(0, 0),
-			},
+		"Standard case with bottom-right first": {
+			corner:              NewPoint(10, 0),
+			oppositeCorner:      NewPoint(0, 10),
+			expectedTopLeft:     NewPoint(0, 10),
+			expectedBottomRight: NewPoint(10, 0),
 		},
-		"mixed coordinates": {
-			topLeft:     NewPoint(-5, 5),
-			bottomRight: NewPoint(5, -5),
-			expected: Rectangle[int]{
-				topLeft:     NewPoint(-5, 5),
-				bottomRight: NewPoint(5, -5),
-			},
+		"Negative coordinates": {
+			corner:              NewPoint(-10, -10),
+			oppositeCorner:      NewPoint(-5, -5),
+			expectedTopLeft:     NewPoint(-10, -5),
+			expectedBottomRight: NewPoint(-5, -10),
+		},
+		"Mixed positive and negative coordinates": {
+			corner:              NewPoint(-10, 10),
+			oppositeCorner:      NewPoint(5, -5),
+			expectedTopLeft:     NewPoint(-10, 10),
+			expectedBottomRight: NewPoint(5, -5),
+		},
+		"Single point rectangle": {
+			corner:              NewPoint(5, 5),
+			oppositeCorner:      NewPoint(5, 5),
+			expectedTopLeft:     NewPoint(5, 5),
+			expectedBottomRight: NewPoint(5, 5),
 		},
 	}
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			actual := NewRectangleByPoints(tt.topLeft, tt.bottomRight)
-			assert.Equal(t, tt.expected, actual)
+			rect := newRectangleByOppositeCorners(tt.corner, tt.oppositeCorner)
+
+			assert.Equal(t, tt.expectedTopLeft, rect.topLeft, "Top-left corner mismatch")
+			assert.Equal(t, tt.expectedBottomRight, rect.bottomRight, "Bottom-right corner mismatch")
 		})
 	}
 }
@@ -721,35 +749,43 @@ func TestNewRectangleByPoints(t *testing.T) {
 func TestNewRectangleFromImageRect(t *testing.T) {
 	tests := map[string]struct {
 		imgRect  image.Rectangle
-		expected Rectangle[int]
+		expected []Point[int]
 	}{
 		"standard image rectangle": {
 			imgRect: image.Rect(0, 0, 100, 200),
-			expected: Rectangle[int]{
-				topLeft:     NewPoint(0, 0),
-				bottomRight: NewPoint(100, 200),
+			expected: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(0, 200),
+				NewPoint(100, 200),
+				NewPoint(100, 0),
 			},
 		},
 		"negative coordinates": {
 			imgRect: image.Rect(-50, -50, 50, 50),
-			expected: Rectangle[int]{
-				topLeft:     NewPoint(-50, -50),
-				bottomRight: NewPoint(50, 50),
+			expected: []Point[int]{
+				NewPoint(-50, -50),
+				NewPoint(-50, 50),
+				NewPoint(50, 50),
+				NewPoint(50, -50),
 			},
 		},
 		"degenerate rectangle": {
 			imgRect: image.Rect(10, 10, 10, 10),
-			expected: Rectangle[int]{
-				topLeft:     NewPoint(10, 10),
-				bottomRight: NewPoint(10, 10),
+			expected: []Point[int]{
+				NewPoint(10, 10),
+				NewPoint(10, 10),
+				NewPoint(10, 10),
+				NewPoint(10, 10),
 			},
 		},
 	}
 
-	for name, tt := range tests {
+	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			actual := NewRectangleFromImageRect(tt.imgRect)
-			assert.Equal(t, tt.expected, actual)
+			actual := NewRectangleFromImageRect(tc.imgRect)
+			for _, p := range actual.Contour() {
+				assert.Contains(t, tc.expected, p)
+			}
 		})
 	}
 }
