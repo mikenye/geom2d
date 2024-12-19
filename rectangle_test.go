@@ -13,19 +13,19 @@ func TestRectangle_Area(t *testing.T) {
 		expected int
 	}{
 		"standard rectangle": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			expected: 200,
 		},
 		"rectangle with swapped corners": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(10, 20), NewPoint(0, 0)),
+			rect:     newRectangleByOppositeCorners(NewPoint(10, 20), NewPoint(0, 0)),
 			expected: 200,
 		},
 		"degenerate rectangle (zero width)": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(5, 15)),
+			rect:     newRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(5, 15)),
 			expected: 0,
 		},
 		"degenerate rectangle (zero height)": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(15, 5)),
+			rect:     newRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(15, 5)),
 			expected: 0,
 		},
 	}
@@ -39,26 +39,26 @@ func TestRectangle_Area(t *testing.T) {
 }
 
 func TestRectangle_AsFloat32(t *testing.T) {
-	rect := NewRectangleByOppositeCorners(NewPoint[int](1, 2), NewPoint[int](10, 20))
-	expected := NewRectangleByOppositeCorners(NewPoint[float32](1.0, 2.0), NewPoint[float32](10.0, 20.0))
+	rect := newRectangleByOppositeCorners(NewPoint[int](1, 2), NewPoint[int](10, 20))
+	expected := newRectangleByOppositeCorners(NewPoint[float32](1.0, 2.0), NewPoint[float32](10.0, 20.0))
 	assert.Equal(t, expected, rect.AsFloat32())
 }
 
 func TestRectangle_AsFloat64(t *testing.T) {
-	rect := NewRectangleByOppositeCorners(NewPoint[int](1, 2), NewPoint[int](10, 20))
-	expected := NewRectangleByOppositeCorners(NewPoint[float64](1.0, 2.0), NewPoint[float64](10.0, 20.0))
+	rect := newRectangleByOppositeCorners(NewPoint[int](1, 2), NewPoint[int](10, 20))
+	expected := newRectangleByOppositeCorners(NewPoint[float64](1.0, 2.0), NewPoint[float64](10.0, 20.0))
 	assert.Equal(t, expected, rect.AsFloat64())
 }
 
 func TestRectangle_AsInt(t *testing.T) {
-	rect := NewRectangleByOppositeCorners(NewPoint[float64](1.7, 2.9), NewPoint[float64](10.5, 20.3))
-	expected := NewRectangleByOppositeCorners(NewPoint(1, 2), NewPoint(10, 20))
+	rect := newRectangleByOppositeCorners(NewPoint[float64](1.7, 2.9), NewPoint[float64](10.5, 20.3))
+	expected := newRectangleByOppositeCorners(NewPoint(1, 2), NewPoint(10, 20))
 	assert.Equal(t, expected, rect.AsInt())
 }
 
 func TestRectangle_AsIntRounded(t *testing.T) {
-	rect := NewRectangleByOppositeCorners(NewPoint[float64](1.7, 2.9), NewPoint[float64](10.5, 20.3))
-	expected := NewRectangleByOppositeCorners(NewPoint(2, 3), NewPoint(11, 20))
+	rect := newRectangleByOppositeCorners(NewPoint[float64](1.7, 2.9), NewPoint[float64](10.5, 20.3))
+	expected := newRectangleByOppositeCorners(NewPoint(2, 3), NewPoint(11, 20))
 	assert.Equal(t, expected, rect.AsIntRounded())
 }
 
@@ -69,32 +69,32 @@ func TestRectangle_ContainsPoint(t *testing.T) {
 		expected bool
 	}{
 		"point inside rectangle": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(5, 10),
 			expected: true,
 		},
 		"point on rectangle boundary (top-left corner)": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(0, 0),
 			expected: true,
 		},
 		"point on rectangle boundary (bottom-right corner)": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(10, 20),
 			expected: true,
 		},
 		"point outside rectangle": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(15, 10),
 			expected: false,
 		},
 		"point on boundary (horizontal edge)": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(5, 0),
 			expected: true,
 		},
 		"point on boundary (vertical edge)": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			point:    NewPoint(10, 5),
 			expected: true,
 		},
@@ -114,15 +114,15 @@ func TestRectangle_Height(t *testing.T) {
 		expected int
 	}{
 		"positive height": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			expected: 20,
 		},
 		"negative height": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(0, 20), NewPoint(10, 0)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 20), NewPoint(10, 0)),
 			expected: 20,
 		},
 		"zero height": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(15, 5)),
+			rect:     newRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(15, 5)),
 			expected: 0,
 		},
 	}
@@ -141,19 +141,19 @@ func TestRectangle_Perimeter(t *testing.T) {
 		expected int
 	}{
 		"standard rectangle": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			expected: 60,
 		},
 		"rectangle with swapped corners": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(10, 20), NewPoint(0, 0)),
+			rect:     newRectangleByOppositeCorners(NewPoint(10, 20), NewPoint(0, 0)),
 			expected: 60,
 		},
 		"degenerate rectangle (zero width)": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(5, 15)),
+			rect:     newRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(5, 15)),
 			expected: 20,
 		},
 		"degenerate rectangle (zero height)": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(15, 5)),
+			rect:     newRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(15, 5)),
 			expected: 20,
 		},
 	}
@@ -172,7 +172,7 @@ func TestRectangle_Points(t *testing.T) {
 		expected []Point[int]
 	}{
 		"rectangle with positive coordinates": {
-			rect: NewRectangleByOppositeCorners(NewPoint(2, 3), NewPoint(8, 6)),
+			rect: newRectangleByOppositeCorners(NewPoint(2, 3), NewPoint(8, 6)),
 			expected: []Point[int]{
 				NewPoint(2, 3), // top-left
 				NewPoint(8, 3), // top-right
@@ -181,7 +181,7 @@ func TestRectangle_Points(t *testing.T) {
 			},
 		},
 		"rectangle with negative coordinates": {
-			rect: NewRectangleByOppositeCorners(NewPoint(-5, -5), NewPoint(0, 0)),
+			rect: newRectangleByOppositeCorners(NewPoint(-5, -5), NewPoint(0, 0)),
 			expected: []Point[int]{
 				NewPoint(-5, -5), // top-left
 				NewPoint(0, -5),  // top-right
@@ -190,7 +190,7 @@ func TestRectangle_Points(t *testing.T) {
 			},
 		},
 		"rectangle with zero-width or height": {
-			rect: NewRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(1, 4)),
+			rect: newRectangleByOppositeCorners(NewPoint(1, 1), NewPoint(1, 4)),
 			expected: []Point[int]{
 				NewPoint(1, 1), // top-left
 				NewPoint(1, 1), // top-right (overlapping)
@@ -508,6 +508,57 @@ func TestRectangle_RelationshipToRectangle(t *testing.T) {
 	}
 }
 
+func TestRectangle_Scale(t *testing.T) {
+	tests := map[string]struct {
+		rect     Rectangle[float64]
+		ref      Point[float64]
+		k        float64
+		expected Rectangle[float64]
+	}{
+		"scale by 2 from origin": {
+			rect: NewRectangle([]Point[float64]{
+				NewPoint[float64](0, 10),
+				NewPoint[float64](10, 10),
+				NewPoint[float64](0, 0),
+				NewPoint[float64](10, 0),
+			}),
+			ref: NewPoint[float64](0, 0),
+			k:   2,
+			expected: NewRectangle([]Point[float64]{
+				NewPoint[float64](0, 20),
+				NewPoint[float64](20, 20),
+				NewPoint[float64](0, 0),
+				NewPoint[float64](20, 0),
+			}),
+		},
+		"scale by 0.5 from center": {
+			rect: NewRectangle([]Point[float64]{
+				NewPoint[float64](-10, 10),
+				NewPoint[float64](10, 10),
+				NewPoint[float64](-10, -10),
+				NewPoint[float64](10, -10),
+			}),
+			ref: NewPoint[float64](0, 0),
+			k:   0.5,
+			expected: NewRectangle([]Point[float64]{
+				NewPoint[float64](-5, -5),
+				NewPoint[float64](5, -5),
+				NewPoint[float64](5, 5),
+				NewPoint[float64](-5, 5),
+			}),
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			scaled := test.rect.Scale(test.ref, test.k)
+			if !scaled.Eq(test.expected) {
+				t.Errorf("expected %v, got %v", test.expected, scaled)
+			}
+		})
+	}
+}
+
 func TestRectangle_ScaleWidthHeight(t *testing.T) {
 	tests := map[string]struct {
 		rect           Rectangle[int]
@@ -517,21 +568,21 @@ func TestRectangle_ScaleWidthHeight(t *testing.T) {
 		expectedHeight float64
 	}{
 		"scale both dimensions": {
-			rect:           NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:           newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			scaleWidth:     1.5,
 			scaleHeight:    0.5,
 			expectedWidth:  15.0,
 			expectedHeight: 10.0,
 		},
 		"scale width only": {
-			rect:           NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:           newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			scaleWidth:     2.0,
 			scaleHeight:    1.0,
 			expectedWidth:  20.0,
 			expectedHeight: 20.0,
 		},
 		"scale height only": {
-			rect:           NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:           newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			scaleWidth:     1.0,
 			scaleHeight:    2.0,
 			expectedWidth:  10.0,
@@ -551,9 +602,72 @@ func TestRectangle_ScaleWidthHeight(t *testing.T) {
 }
 
 func TestRectangle_ToImageRect(t *testing.T) {
-	rect := NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(100, 200))
+	rect := newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(100, 200))
 	expected := image.Rect(0, 0, 100, 200)
 	assert.Equal(t, expected, rect.ToImageRect())
+}
+
+func TestRectangle_Translate(t *testing.T) {
+	tests := map[string]struct {
+		inputRect    Rectangle[int]
+		translateBy  Point[int]
+		expectedRect Rectangle[int]
+	}{
+		"translate up and right": {
+			inputRect: NewRectangle([]Point[int]{
+				NewPoint(0, 10),
+				NewPoint(10, 10),
+				NewPoint(0, 0),
+				NewPoint(10, 0),
+			}),
+			translateBy: NewPoint(5, 5),
+			expectedRect: NewRectangle([]Point[int]{
+				NewPoint(5, 15),
+				NewPoint(15, 15),
+				NewPoint(5, 5),
+				NewPoint(15, 5),
+			}),
+		},
+		"translate down and left": {
+			inputRect: NewRectangle([]Point[int]{
+				NewPoint(0, 10),
+				NewPoint(10, 10),
+				NewPoint(0, 0),
+				NewPoint(10, 0),
+			}),
+			translateBy: NewPoint(-5, -5),
+			expectedRect: NewRectangle([]Point[int]{
+				NewPoint(-5, 5),
+				NewPoint(5, 5),
+				NewPoint(-5, -5),
+				NewPoint(5, -5),
+			}),
+		},
+		"translate by zero": {
+			inputRect: NewRectangle([]Point[int]{
+				NewPoint(0, 10),
+				NewPoint(10, 10),
+				NewPoint(0, 0),
+				NewPoint(10, 0),
+			}),
+			translateBy: NewPoint(0, 0),
+			expectedRect: NewRectangle([]Point[int]{
+				NewPoint(0, 10),
+				NewPoint(10, 10),
+				NewPoint(0, 0),
+				NewPoint(10, 0),
+			}),
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			actual := test.inputRect.Translate(test.translateBy)
+			if !actual.Eq(test.expectedRect) {
+				t.Errorf("expected %v, got %v", test.expectedRect, actual)
+			}
+		})
+	}
 }
 
 func TestRectangle_Width(t *testing.T) {
@@ -562,15 +676,15 @@ func TestRectangle_Width(t *testing.T) {
 		expected int
 	}{
 		"positive width": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 20)),
 			expected: 10,
 		},
 		"negative width": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(10, 0), NewPoint(0, 20)),
+			rect:     newRectangleByOppositeCorners(NewPoint(10, 0), NewPoint(0, 20)),
 			expected: 10,
 		},
 		"zero width": {
-			rect:     NewRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(5, 15)),
+			rect:     newRectangleByOppositeCorners(NewPoint(5, 5), NewPoint(5, 15)),
 			expected: 0,
 		},
 	}
@@ -624,7 +738,7 @@ func TestNewRectangleByPoints(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			rect := NewRectangleByOppositeCorners(tt.corner, tt.oppositeCorner)
+			rect := newRectangleByOppositeCorners(tt.corner, tt.oppositeCorner)
 
 			assert.Equal(t, tt.expectedTopLeft, rect.topLeft, "Top-left corner mismatch")
 			assert.Equal(t, tt.expectedBottomRight, rect.bottomRight, "Bottom-right corner mismatch")

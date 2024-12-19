@@ -741,7 +741,7 @@ func TestPoint_RelationshipToPoint(t *testing.T) {
 }
 
 func TestPoint_RelationshipToRectangle(t *testing.T) {
-	rect := NewRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 10))
+	rect := newRectangleByOppositeCorners(NewPoint(0, 0), NewPoint(10, 10))
 
 	tests := map[string]struct {
 		point       Point[int]

@@ -125,7 +125,7 @@ type LineSegment[T SignedNumber] struct {
 
 // NewLineSegment creates a new line segment from two endpoints, a start [Point] and end [Point].
 //
-// This constructor function initializes a LineSegment with the specified starting and ending points.
+// This constructor function initializes a [LineSegment] with the specified starting and ending points.
 // The generic type parameter "T" must satisfy the [SignedNumber] constraint, allowing various numeric types
 // (such as int or float64) to be used for the segment’s coordinates.
 //
@@ -512,7 +512,7 @@ func (l LineSegment[T]) End() Point[T] {
 // Equality can be evaluated either exactly (default) or approximately using an epsilon threshold.
 //
 // Parameters:
-//   - other (LineSegment[T]): - The line segment to compare with the current line segment.
+//   - other (LineSegment[T]): The line segment to compare with the current line segment.
 //   - opts: A variadic slice of [Option] functions to customize the equality check.
 //     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the start and end
 //     points of the line segments. If the absolute difference between the coordinates of

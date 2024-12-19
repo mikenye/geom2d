@@ -1193,6 +1193,7 @@ func TestPolyTree_BooleanOperation(t *testing.T) {
 			require.NoError(t, err, "error returned from nestPointsToPolyTrees(tc.poly1) when none was expected")
 			poly2, err := nestPointsToPolyTrees(tc.poly2)
 			require.NoError(t, err, "error returned from nestPointsToPolyTrees(tc.poly2) when none was expected")
+
 			result, err := poly1.BooleanOperation(poly2, tc.operation)
 
 			if tc.wantErr {
@@ -1495,6 +1496,54 @@ func TestPolyTree_Children(t *testing.T) {
 	assert.Empty(t, child.Children(), "Expected no children for child PolyTree")
 }
 
+func TestPolyTree_Contour(t *testing.T) {
+	tests := map[string]struct {
+		points          []Point[int]
+		expectedContour []Point[int]
+	}{
+		"Square Polygon": {
+			points: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(100, 0),
+				NewPoint(100, 100),
+				NewPoint(0, 100),
+			},
+			expectedContour: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(100, 0),
+				NewPoint(100, 100),
+				NewPoint(0, 100),
+			},
+		},
+		"Triangle Polygon": {
+			points: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(50, 100),
+				NewPoint(100, 0),
+			},
+			expectedContour: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(100, 0),
+				NewPoint(50, 100),
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Create a PolyTree with the given points
+			pt, err := NewPolyTree(tt.points, PTSolid)
+			require.NoError(t, err, "failed to create PolyTree")
+
+			// Get the contour
+			actualContour := pt.Contour()
+
+			// Check the contour
+			assert.Equal(t, tt.expectedContour, actualContour, "expected contour did not match")
+		})
+	}
+}
+
 func TestPolyTree_Edges(t *testing.T) {
 	// Create a PolyTree
 	contour := []Point[int]{
@@ -1651,6 +1700,41 @@ func TestPolyTree_IsRoot(t *testing.T) {
 
 	// Validate child
 	assert.False(t, child.IsRoot(), "Expected child not to be identified as root")
+}
+
+func TestPolyTree_Len(t *testing.T) {
+	// Create root/parent polygon - large square
+	root, _ := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(100, 0),
+		NewPoint(100, 100),
+		NewPoint(0, 100),
+	}, PTSolid)
+
+	// Create hole polygon - slightly smaller square
+	hole, _ := NewPolyTree([]Point[int]{
+		NewPoint(20, 20),
+		NewPoint(80, 20),
+		NewPoint(80, 80),
+		NewPoint(20, 80),
+	}, PTHole)
+
+	// Create island polygon - even slightly smaller square
+	island, _ := NewPolyTree([]Point[int]{
+		NewPoint(40, 40),
+		NewPoint(60, 40),
+		NewPoint(60, 60),
+		NewPoint(40, 60),
+	}, PTSolid)
+
+	// Establish relationships
+	_ = hole.AddChild(island)
+	_ = root.AddChild(hole)
+
+	// Test the Len method
+	assert.Equal(t, 3, root.Len(), "expected total PolyTree nodes to be 3")
+	assert.Equal(t, 2, hole.Len(), "expected total PolyTree nodes to be 2 for hole")
+	assert.Equal(t, 1, island.Len(), "expected total PolyTree nodes to be 1 for island")
 }
 
 func TestPolyTree_OrderConsistency(t *testing.T) {

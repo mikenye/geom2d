@@ -435,10 +435,12 @@ func ExamplePoint_RelationshipToPolyTree() {
 
 func ExamplePoint_RelationshipToRectangle() {
 	// Define a rectangle
-	rect := geom2d.NewRectangleByOppositeCorners(
+	rect := geom2d.NewRectangle([]geom2d.Point[int]{
 		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(10, 0),
 		geom2d.NewPoint(10, 10),
-	)
+		geom2d.NewPoint(0, 10),
+	})
 
 	// Define points
 	pointA := geom2d.NewPoint(5, 5)  // Inside

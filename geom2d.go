@@ -173,11 +173,11 @@ func (r Relationship) flipContainment() Relationship {
 // for debugging and logging purposes.
 //
 // Supported [Relationship] values:
-//   - RelationshipDisjoint: The objects are disjoint and do not touch or intersect.
-//   - RelationshipIntersection: The objects intersect or overlap at some point.
-//   - RelationshipContainedBy: The object is fully contained within another object.
-//   - RelationshipContains: The object fully contains another object.
-//   - RelationshipEqual: The objects are identical in size, shape, and position.
+//   - [RelationshipDisjoint]: The objects are disjoint and do not touch or intersect.
+//   - [RelationshipIntersection]: The objects intersect or overlap at some point.
+//   - [RelationshipContainedBy]: The object is fully contained within another object.
+//   - [RelationshipContains]: The object fully contains another object.
+//   - [RelationshipEqual]: The objects are identical in size, shape, and position.
 //
 // Returns:
 //   - string: The string representation of the [Relationship].

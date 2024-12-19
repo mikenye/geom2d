@@ -429,6 +429,31 @@ func ExamplePolyTree_Children() {
 	// Child 1 area: 2500.00
 }
 
+func ExamplePolyTree_Contour() {
+	// Create a PolyTree representing a square
+	pt, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(0, 100),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(100, 0),
+	}, geom2d.PTSolid)
+
+	// Get the contour of the PolyTree
+	contour := pt.Contour()
+
+	// Print the contour points
+	fmt.Println("Contour Points:")
+	for _, point := range contour {
+		fmt.Println(point)
+	}
+	// Output:
+	// Contour Points:
+	// Point[(0, 0)]
+	// Point[(100, 0)]
+	// Point[(100, 100)]
+	// Point[(0, 100)]
+}
+
 func ExamplePolyTree_Edges() {
 	// Create a PolyTree
 	contour := []geom2d.Point[int]{
@@ -457,6 +482,69 @@ func ExamplePolyTree_Edges() {
 	// Edge 4: Start Point[(0, 100)], End Point[(0, 0)]
 }
 
+func ExamplePolyTree_Eq() {
+	// Create the first PolyTree (root with one child and one sibling)
+	root1, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(100, 0),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(0, 100),
+	}, geom2d.PTSolid)
+
+	child1, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(20, 20),
+		geom2d.NewPoint(80, 20),
+		geom2d.NewPoint(80, 80),
+		geom2d.NewPoint(20, 80),
+	}, geom2d.PTHole)
+
+	sibling1, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(200, 200),
+		geom2d.NewPoint(300, 200),
+		geom2d.NewPoint(300, 300),
+		geom2d.NewPoint(200, 300),
+	}, geom2d.PTSolid)
+
+	_ = root1.AddChild(child1)
+	_ = root1.AddSibling(sibling1)
+
+	// Create the second PolyTree with identical structure and geometry
+	root2, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(100, 0),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(0, 100),
+	}, geom2d.PTSolid)
+
+	child2, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(20, 20),
+		geom2d.NewPoint(80, 20),
+		geom2d.NewPoint(80, 80),
+		geom2d.NewPoint(20, 80),
+	}, geom2d.PTHole)
+
+	sibling2, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(200, 200),
+		geom2d.NewPoint(300, 200),
+		geom2d.NewPoint(300, 300),
+		geom2d.NewPoint(200, 300),
+	}, geom2d.PTSolid)
+
+	_ = root2.AddChild(child2)
+	_ = root2.AddSibling(sibling2)
+
+	// Compare the two PolyTrees
+	equal, mismatches := root1.Eq(root2)
+
+	// Print the results
+	fmt.Printf("Are the PolyTrees equal? %v\n", equal)
+	fmt.Printf("Mismatch bitmask: %v\n", mismatches)
+
+	// Output:
+	// Are the PolyTrees equal? true
+	// Mismatch bitmask: 0
+}
+
 func ExamplePolyTree_Hull() {
 	// Create a PolyTree with a triangular contour
 	contour := []geom2d.Point[int]{
@@ -482,6 +570,42 @@ func ExamplePolyTree_Hull() {
 	// Point: Point[(0, 0)]
 	// Point: Point[(100, 0)]
 	// Point: Point[(50, 100)]
+}
+
+func ExamplePolyTree_Intersects() {
+	// Create the first PolyTree - a square
+	root1, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(100, 0),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(0, 100),
+	}, geom2d.PTSolid)
+
+	// Create the second PolyTree - a smaller square inside the first
+	root2, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(20, 20),
+		geom2d.NewPoint(80, 20),
+		geom2d.NewPoint(80, 80),
+		geom2d.NewPoint(20, 80),
+	}, geom2d.PTSolid)
+
+	// Create a third PolyTree - disjoint from the first two
+	root3, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(200, 200),
+		geom2d.NewPoint(300, 200),
+		geom2d.NewPoint(300, 300),
+		geom2d.NewPoint(200, 300),
+	}, geom2d.PTSolid)
+
+	// Check intersections
+	fmt.Printf("Root1 intersects Root2: %v\n", root1.Intersects(root2)) // Expect true
+	fmt.Printf("Root1 intersects Root3: %v\n", root1.Intersects(root3)) // Expect false
+	fmt.Printf("Root2 intersects Root3: %v\n", root2.Intersects(root3)) // Expect false
+
+	// Output:
+	// Root1 intersects Root2: true
+	// Root1 intersects Root3: false
+	// Root2 intersects Root3: false
 }
 
 func ExamplePolyTree_IsRoot() {
@@ -522,6 +646,92 @@ func ExamplePolyTree_IsRoot() {
 	// Output:
 	// Is the root a root? true
 	// Is the child a root? false
+}
+
+func ExamplePolyTree_Len() {
+	// Create root/parent polygon - large square
+	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(100, 0),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(0, 100),
+	}, geom2d.PTSolid)
+
+	// Create hole polygon - slightly smaller square
+	hole, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(20, 20),
+		geom2d.NewPoint(80, 20),
+		geom2d.NewPoint(80, 80),
+		geom2d.NewPoint(20, 80),
+	}, geom2d.PTHole)
+
+	// Create island polygon - even slightly smaller square
+	island, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(40, 40),
+		geom2d.NewPoint(60, 40),
+		geom2d.NewPoint(60, 60),
+		geom2d.NewPoint(40, 60),
+	}, geom2d.PTSolid)
+
+	// Establish relationships
+	_ = hole.AddChild(island)
+	_ = root.AddChild(hole)
+
+	// Output the total number of PolyTree nodes
+	fmt.Printf("Total nodes in root: %d\n", root.Len())
+	fmt.Printf("Total nodes in hole: %d\n", hole.Len())
+	fmt.Printf("Total nodes in island: %d\n", island.Len())
+
+	// Output:
+	// Total nodes in root: 3
+	// Total nodes in hole: 2
+	// Total nodes in island: 1
+}
+
+func ExamplePolyTree_Nodes() {
+	// Create root/parent polygon - large square
+	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(100, 0),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(0, 100),
+	}, geom2d.PTSolid)
+
+	// Create hole polygon - slightly smaller square
+	hole, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(20, 20),
+		geom2d.NewPoint(80, 20),
+		geom2d.NewPoint(80, 80),
+		geom2d.NewPoint(20, 80),
+	}, geom2d.PTHole)
+
+	// Create island polygon - even slightly smaller square
+	island, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(40, 40),
+		geom2d.NewPoint(60, 40),
+		geom2d.NewPoint(60, 60),
+		geom2d.NewPoint(40, 60),
+	}, geom2d.PTSolid)
+
+	// Establish relationships
+	_ = hole.AddChild(island)
+	_ = root.AddChild(hole)
+
+	// Use Nodes to iterate over all polygons in the PolyTree
+	fmt.Println("Iterating over all nodes in the PolyTree:")
+	for node := range root.Nodes {
+		fmt.Printf("Polygon Type: %s\n", node.PolygonType())
+		fmt.Printf("Contour: %v\n", node.Contour())
+	}
+
+	// Output:
+	// Iterating over all nodes in the PolyTree:
+	// Polygon Type: PTSolid
+	// Contour: [Point[(0, 0)] Point[(100, 0)] Point[(100, 100)] Point[(0, 100)]]
+	// Polygon Type: PTHole
+	// Contour: [Point[(20, 20)] Point[(20, 80)] Point[(80, 80)] Point[(80, 20)]]
+	// Polygon Type: PTSolid
+	// Contour: [Point[(40, 40)] Point[(60, 40)] Point[(60, 60)] Point[(40, 60)]]
 }
 
 func ExamplePolyTree_Parent() {
@@ -667,7 +877,7 @@ func ExamplePolyTree_RelationshipToCircle() {
 	// production code to ensure robustness and reliability.
 
 	// Define a Circle
-	circle := geom2d.NewCircle(geom2d.NewPoint(50, 50), 10)
+	circle := geom2d.NewCircle(geom2d.NewPoint(50, 50), 40)
 
 	// Determine relationships
 	relationships := root.RelationshipToCircle(circle, geom2d.WithEpsilon(1e-10))
@@ -677,7 +887,7 @@ func ExamplePolyTree_RelationshipToCircle() {
 	fmt.Printf("Hole polygon relationship: %v\n", relationships[hole])
 	// Output:
 	// Root polygon relationship: RelationshipContains
-	// Hole polygon relationship: RelationshipContains
+	// Hole polygon relationship: RelationshipIntersection
 }
 
 func ExamplePolyTree_RelationshipToLineSegment() {
@@ -820,6 +1030,42 @@ func ExamplePolyTree_RelationshipToRectangle() {
 	// Output:
 	// Root polygon relationship: RelationshipContains
 	// Hole polygon relationship: RelationshipContainedBy
+}
+
+func ExamplePolyTree_Root() {
+	// Create a root/parent polygon
+	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(100, 0),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(0, 100),
+	}, geom2d.PTSolid)
+
+	// Create a child polygon
+	child, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(20, 20),
+		geom2d.NewPoint(80, 20),
+		geom2d.NewPoint(80, 80),
+		geom2d.NewPoint(20, 80),
+	}, geom2d.PTHole)
+
+	// Create a grandchild polygon
+	grandchild, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(40, 40),
+		geom2d.NewPoint(60, 40),
+		geom2d.NewPoint(60, 60),
+		geom2d.NewPoint(40, 60),
+	}, geom2d.PTSolid)
+
+	// Establish relationships
+	_ = child.AddChild(grandchild)
+	_ = root.AddChild(child)
+
+	// Retrieve the root node from the grandchild
+	fmt.Println(grandchild.Root() == root) // true
+
+	// Output:
+	// true
 }
 
 func ExamplePolyTree_Rotate() {
