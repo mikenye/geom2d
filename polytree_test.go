@@ -2818,3 +2818,23 @@ func TestWithSiblings(t *testing.T) {
 		require.Contains(t, sibling.Siblings(), root3)
 	}
 }
+
+func TestWithSiblings_error(t *testing.T) {
+
+	invalidSibling, err := NewPolyTree([]Point[int]{
+		NewPoint(5, 5),
+		NewPoint(15, 5),
+		NewPoint(15, 15),
+		NewPoint(5, 15),
+	}, PTHole)
+	require.NoError(t, err, "expected no error when creating invalidSibling polytree")
+
+	_, err = NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(10, 0),
+		NewPoint(10, 10),
+		NewPoint(0, 10),
+	}, PTSolid, WithSiblings(invalidSibling))
+	require.Error(t, err, "expected error when creating root polytree")
+
+}
