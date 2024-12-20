@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # Update GitHub Actions workflows
+  - package-ecosystem: "github-actions"
+    directory: ".github/workflows/" # Location of your GitHub Actions workflows
+    schedule:
+      interval: "weekly"
+
+  # Update Go modules
+  - package-ecosystem: "gomod"
+    directory: "/" # Root directory containing go.mod
+    schedule:
+      interval: "weekly"
