@@ -1890,10 +1890,7 @@ func (pt *PolyTree[T]) Intersects(other *PolyTree[T]) bool {
 //   - bool: true if the PolyTree node is the root (has no parent),
 //     false otherwise.
 func (pt *PolyTree[T]) IsRoot() bool {
-	if pt.parent == nil {
-		return true
-	}
-	return false
+	return pt.parent == nil
 }
 
 // Len returns the total number of PolyTree nodes in the current PolyTree structure,

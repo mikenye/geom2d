@@ -601,10 +601,7 @@ func (l LineSegment[T]) IntersectionPoint(other LineSegment[T]) (Point[float64],
 // Returns:
 //   - bool: Returns true if l and other intersect, overlap, or share any form of intersecting relationship, and false if they are completely disjoint.
 func (l LineSegment[T]) IntersectsLineSegment(other LineSegment[T]) bool {
-	if l.detailedRelationshipToLineSegment(other) > lsrMiss {
-		return true
-	}
-	return false
+	return l.detailedRelationshipToLineSegment(other) > lsrMiss
 }
 
 // Length calculates the length of the line segment, optionally using an epsilon threshold
