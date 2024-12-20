@@ -21,9 +21,9 @@ jobs:
         uses: actions/setup-go@v5
         with:
           cache: 'true'
-          cache-dependency-path: /go.sum
+          cache-dependency-path: ./go.sum
           check-latest: 'true'
-          go-version-file: /go.mod
+          go-version-file: ./go.mod
 
       - name: Run go vet
         run: |
@@ -45,10 +45,9 @@ jobs:
         uses: actions/setup-go@v5
         with:
           cache: 'true'
-          cache-dependency-path: |
-            /go.sum
+          cache-dependency-path: ./go.sum
           check-latest: 'true'
-          go-version-file: /go.mod
+          go-version-file: ./go.mod
 
       # Install gotestfmt
       - name: Set up gotestfmt
@@ -92,10 +91,9 @@ jobs:
         uses: actions/setup-go@v5
         with:
           cache: 'true'
-          cache-dependency-path: |
-            /go.sum
+          cache-dependency-path: ./go.sum
           check-latest: 'true'
-          go-version-file: /go.mod
+          go-version-file: ./go.mod
 
       # Build
       - name: Run tests
