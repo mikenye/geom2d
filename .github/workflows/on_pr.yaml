@@ -1,0 +1,103 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  govet:
+    name: go vet
+    runs-on: ubuntu-24.04
+    steps:
+
+      # Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Setup Go with caching
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          cache: 'true'
+          cache-dependency-path: /go.sum
+          check-latest: 'true'
+          go-version-file: /go.mod
+
+      - name: Run go vet
+        run: |
+          go vet ./...
+
+  gotest:
+    needs: [govet]
+    name: go test
+    runs-on: ubuntu-24.04
+
+    steps:
+
+      # Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Setup Go with caching
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          cache: 'true'
+          cache-dependency-path: |
+            /go.sum
+          check-latest: 'true'
+          go-version-file: /go.mod
+
+      # Install gotestfmt
+      - name: Set up gotestfmt
+        run: go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest
+
+      # Run tests with nice formatting. Save the original log in /tmp/gotest.log
+      - name: Run tests
+        run: |
+          set -euo pipefail
+          go test -json -v ./... 2>&1 | tee /tmp/gotest.log | gotestfmt
+
+      # Annotate tests
+      - name: Annotate tests
+        if: always()
+        uses: guyarb/golang-test-annotations@v0.5.1
+        with:
+          test-results: /tmp/gotest.log
+
+      # Upload the original go test log as an artifact for later review.
+      - name: Upload test log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-log
+          path: /tmp/gotest.log
+          if-no-files-found: error
+
+  gobuild:
+    needs: [govet, gotest]
+    name: go build
+    runs-on: ubuntu-24.04
+
+    steps:
+
+      # Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Setup Go with caching
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          cache: 'true'
+          cache-dependency-path: |
+            /go.sum
+          check-latest: 'true'
+          go-version-file: /go.mod
+
+      # Build
+      - name: Run tests
+        run: |
+          go build ./...
