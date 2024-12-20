@@ -602,22 +602,6 @@ func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPo
 		}
 	}
 
-	// Sanity check: Ensure all children have the opposite PolygonType.
-	for _, c := range p.children {
-		switch p.polygonType {
-		case PTSolid:
-			// Solid polygons can only have hole children.
-			if c.polygonType != PTHole {
-				return nil, fmt.Errorf("expected all children to have PolygonType PTHole")
-			}
-		case PTHole:
-			// Hole polygons can only have solid children.
-			if c.polygonType != PTSolid {
-				return nil, fmt.Errorf("expected all children to have PolygonType PTSolid")
-			}
-		}
-	}
-
 	// Return the constructed PolyTree.
 	return p, nil
 }
