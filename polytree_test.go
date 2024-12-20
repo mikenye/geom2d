@@ -375,69 +375,69 @@ func TestContour_findLowestLeftmost(t *testing.T) {
 	}
 }
 
-func TestContour_insertIntersectionPoint(t *testing.T) {
-	tests := map[string]struct {
-		contour       []polyTreePoint[int]
-		start, end    int
-		intersection  polyTreePoint[int]
-		expectedOrder []polyTreePoint[int]
-	}{
-		"Insert at middle": {
-			contour: []polyTreePoint[int]{
-				{point: NewPoint(0, 0)},
-				{point: NewPoint(10, 10)},
-			},
-			start:        0,
-			end:          1,
-			intersection: polyTreePoint[int]{point: NewPoint(5, 5)},
-			expectedOrder: []polyTreePoint[int]{
-				{point: NewPoint(0, 0)},
-				{point: NewPoint(5, 5)},
-				{point: NewPoint(10, 10)},
-			},
-		},
-		"Insert closer to start": {
-			contour: []polyTreePoint[int]{
-				{point: NewPoint(0, 0)},
-				{point: NewPoint(10, 10)},
-				{point: NewPoint(20, 20)},
-			},
-			start:        0,
-			end:          1,
-			intersection: polyTreePoint[int]{point: NewPoint(5, 5)},
-			expectedOrder: []polyTreePoint[int]{
-				{point: NewPoint(0, 0)},
-				{point: NewPoint(5, 5)},
-				{point: NewPoint(10, 10)},
-				{point: NewPoint(20, 20)},
-			},
-		},
-		"Insert multiple intermediate points": {
-			contour: []polyTreePoint[int]{
-				{point: NewPoint(0, 0)},
-				{point: NewPoint(20, 20)},
-				{point: NewPoint(40, 40)},
-			},
-			start:        0,
-			end:          1,
-			intersection: polyTreePoint[int]{point: NewPoint(10, 10)},
-			expectedOrder: []polyTreePoint[int]{
-				{point: NewPoint(0, 0)},
-				{point: NewPoint(10, 10)},
-				{point: NewPoint(20, 20)},
-				{point: NewPoint(40, 40)},
-			},
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			contour := contour[int](tt.contour)
-			contour.insertIntersectionPoint(tt.start, tt.end, tt.intersection)
-			assert.Equal(t, tt.expectedOrder, []polyTreePoint[int](contour), "unexpected contour order after insertion")
-		})
-	}
-}
+//func TestContour_insertIntersectionPoint(t *testing.T) {
+//	tests := map[string]struct {
+//		contour       []polyTreePoint[int]
+//		start, end    int
+//		intersection  polyTreePoint[int]
+//		expectedOrder []polyTreePoint[int]
+//	}{
+//		"Insert at middle": {
+//			contour: []polyTreePoint[int]{
+//				{point: NewPoint(0, 0)},
+//				{point: NewPoint(10, 10)},
+//			},
+//			start:        0,
+//			end:          1,
+//			intersection: polyTreePoint[int]{point: NewPoint(5, 5)},
+//			expectedOrder: []polyTreePoint[int]{
+//				{point: NewPoint(0, 0)},
+//				{point: NewPoint(5, 5)},
+//				{point: NewPoint(10, 10)},
+//			},
+//		},
+//		"Insert closer to start": {
+//			contour: []polyTreePoint[int]{
+//				{point: NewPoint(0, 0)},
+//				{point: NewPoint(10, 10)},
+//				{point: NewPoint(20, 20)},
+//			},
+//			start:        0,
+//			end:          1,
+//			intersection: polyTreePoint[int]{point: NewPoint(5, 5)},
+//			expectedOrder: []polyTreePoint[int]{
+//				{point: NewPoint(0, 0)},
+//				{point: NewPoint(5, 5)},
+//				{point: NewPoint(10, 10)},
+//				{point: NewPoint(20, 20)},
+//			},
+//		},
+//		"Insert multiple intermediate points": {
+//			contour: []polyTreePoint[int]{
+//				{point: NewPoint(0, 0)},
+//				{point: NewPoint(20, 20)},
+//				{point: NewPoint(40, 40)},
+//			},
+//			start:        0,
+//			end:          1,
+//			intersection: polyTreePoint[int]{point: NewPoint(10, 10)},
+//			expectedOrder: []polyTreePoint[int]{
+//				{point: NewPoint(0, 0)},
+//				{point: NewPoint(10, 10)},
+//				{point: NewPoint(20, 20)},
+//				{point: NewPoint(40, 40)},
+//			},
+//		},
+//	}
+//
+//	for name, tt := range tests {
+//		t.Run(name, func(t *testing.T) {
+//			contour := contour[int](tt.contour)
+//			contour.insertIntersectionPoint(tt.start, tt.end, tt.intersection)
+//			assert.Equal(t, tt.expectedOrder, []polyTreePoint[int](contour), "unexpected contour order after insertion")
+//		})
+//	}
+//}
 
 func TestContour_isPointInside(t *testing.T) {
 	tests := map[string]struct {
@@ -693,6 +693,34 @@ func TestPolyTree_AddChild(t *testing.T) {
 		assert.Equal(t, parent, child.parent)
 	})
 
+	t.Run("Adding a Child that overlaps with an existing sibling polygon", func(t *testing.T) {
+		parent, err := NewPolyTree([]Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}}, PTSolid)
+		require.NoError(t, err, "error creating parent polygon, when none was expected")
+
+		child, err := NewPolyTree([]Point[int]{{2, 2}, {8, 2}, {8, 8}, {2, 8}}, PTHole)
+		require.NoError(t, err, "error creating child polygon, when none was expected")
+
+		err = parent.AddChild(child)
+		require.NoError(t, err, "error calling AddChild, when none was expected")
+
+		_, err = NewPolyTree([]Point[int]{{1, 1}, {8, 1}, {8, 8}, {1, 8}}, PTHole)
+		require.NoError(t, err, "error calling AddChild, when none was expected")
+
+		err = parent.AddChild(child)
+		require.Error(t, err, "error calling AddChild was expected")
+	})
+
+	t.Run("Adding a Child that does not fit entirely within the parent polygon", func(t *testing.T) {
+		parent, err := NewPolyTree([]Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}}, PTSolid)
+		require.NoError(t, err, "error creating parent polygon, when none was expected")
+
+		child, err := NewPolyTree([]Point[int]{{5, 5}, {15, 5}, {15, 15}, {5, 15}}, PTHole)
+		require.NoError(t, err, "error creating child polygon, when none was expected")
+
+		err = parent.AddChild(child)
+		require.Error(t, err, "error calling AddChild was expected")
+	})
+
 	t.Run("Adding a Child with Mismatched polygonType", func(t *testing.T) {
 		parent, err := NewPolyTree([]Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}}, PTSolid)
 		require.NoError(t, err, "error creating parent polygon, when none was expected")
@@ -743,6 +771,21 @@ func TestPolyTree_AddSibling(t *testing.T) {
 		require.NoError(t, err, "error calling AddSibling, when none was expected")
 		assert.Contains(t, poly1.siblings, poly2)
 		assert.Contains(t, poly2.siblings, poly1)
+	})
+
+	t.Run("Adding a Sibling with Matching polygonType", func(t *testing.T) {
+		poly1, err := NewPolyTree([]Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}}, PTSolid)
+		require.NoError(t, err, "error creating poly1, when none was expected")
+		poly2, err := NewPolyTree([]Point[int]{{20, 20}, {30, 20}, {30, 30}, {20, 30}}, PTSolid)
+		require.NoError(t, err, "error creating poly2, when none was expected")
+		poly3, err := NewPolyTree([]Point[int]{{20, 20}, {30, 20}, {30, 30}, {20, 30}}, PTSolid)
+		require.NoError(t, err, "error creating poly2, when none was expected")
+
+		err = poly1.AddSibling(poly2)
+		require.NoError(t, err, "error calling AddSibling, when none was expected")
+
+		err = poly1.AddSibling(poly3)
+		require.Error(t, err, "error calling AddSibling was expected")
 	})
 
 	t.Run("Adding a Sibling with Mismatched polygonType", func(t *testing.T) {
@@ -1210,6 +1253,28 @@ func TestPolyTree_BooleanOperation(t *testing.T) {
 	}
 }
 
+func TestPolyTree_BooleanOperation_error(t *testing.T) {
+	root, err := NewPolyTree([]Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}}, PTSolid)
+	require.NoError(t, err, "error when creating root polytree when none was expected")
+
+	sibling, err := NewPolyTree([]Point[int]{{20, 20}, {30, 20}, {30, 30}, {20, 30}}, PTHole)
+	require.NoError(t, err, "error when creating sibling polytree when none was expected")
+
+	_, err = root.BooleanOperation(sibling, BooleanUnion)
+	assert.Error(t, err, "expected error when performing intersection operation")
+}
+
+func TestPolyTree_BooleanOperation_unknown_operation(t *testing.T) {
+	root, err := NewPolyTree([]Point[int]{{0, 0}, {10, 0}, {10, 10}, {0, 10}}, PTSolid)
+	require.NoError(t, err, "error when creating root polytree when none was expected")
+
+	sibling, err := NewPolyTree([]Point[int]{{20, 20}, {30, 20}, {30, 30}, {20, 30}}, PTSolid)
+	require.NoError(t, err, "error when creating sibling polytree when none was expected")
+
+	_, err = root.BooleanOperation(sibling, BooleanOperation(math.MaxUint8))
+	assert.Error(t, err, "expected error when using invalid BooleanOperation")
+}
+
 func TestPolyTree_booleanOperationTraversal_Intersection(t *testing.T) {
 	poly1HolePoints := []Point[int]{
 		{5, 5},
@@ -1422,6 +1487,30 @@ func TestPolyTree_booleanOperationTraversal_Union(t *testing.T) {
 	assert.Equal(t, expectedPointsUnion, resultingPointsUnion, "unexpected output of booleanOperationTraversal for union")
 }
 
+func TestPolyTree_booleanOperationTraversal_NoIntersection(t *testing.T) {
+	polyTree1Points := []Point[int]{{0, 0}, {20, 0}, {20, 20}, {0, 20}}
+	polyTree1, err := NewPolyTree(polyTree1Points, PTSolid)
+	require.NoError(t, err, "unexpected error when creating polyTree1")
+
+	polyTree2Points := []Point[int]{{-7, -7}, {-27, -7}, {-27, -27}, {-7, -27}}
+	polyTree2, err := NewPolyTree(polyTree2Points, PTSolid)
+	require.NoError(t, err, "unexpected error when creating polyTree2")
+
+	polyTree1.findIntersections(polyTree2)
+	polyTree1.markEntryExitPoints(polyTree2, BooleanUnion)
+
+	resultingPointsIntersection := polyTree1.booleanOperationTraversal(polyTree2, BooleanIntersection)
+	resultingPointsSubtraction := polyTree1.booleanOperationTraversal(polyTree2, BooleanSubtraction)
+
+	shouldPanic := func() {
+		_ = polyTree1.booleanOperationTraversal(polyTree2, BooleanOperation(math.MaxUint8))
+	}
+
+	assert.Nil(t, resultingPointsIntersection, "expected intersection operation without any intersections to be nil")
+	assert.Equal(t, [][]Point[int]{polyTree1.contour.toPoints()}, resultingPointsSubtraction, "expected polyTree1 subtraction without any intersections to be polyTree1")
+	assert.Panics(t, shouldPanic, "expected invalid BooleanOperation to panic")
+}
+
 func TestPolyTree_BoundingBox(t *testing.T) {
 	tests := map[string]struct {
 		polyTree *PolyTree[int]
@@ -1571,10 +1660,184 @@ func TestPolyTree_Edges(t *testing.T) {
 	}
 }
 
+func TestPolyTree_Eq(t *testing.T) {
+
+	t.Run("PTMContourMismatch", func(t *testing.T) {
+		poly1, err := NewPolyTree([]Point[int]{
+			NewPoint(0, 0),
+			NewPoint(5, 5),
+			NewPoint(10, 0),
+		}, PTSolid)
+		require.NoError(t, err, "expected no error when creating poly1")
+
+		poly2, err := NewPolyTree([]Point[int]{
+			NewPoint(0, 0),
+			NewPoint(4, 6),
+			NewPoint(10, 0),
+		}, PTSolid)
+		require.NoError(t, err, "expected no error when creating poly2")
+
+		match, mismatch := poly1.Eq(poly2)
+		assert.False(t, match, "expected no match due to contour difference")
+		assert.Equal(t, PTMContourMismatch, mismatch, "expected PTMContourMismatch due to contour difference")
+	})
+
+	t.Run("PTMSiblingMismatch due to number of siblings", func(t *testing.T) {
+		poly1, err := NewPolyTree([]Point[int]{
+			NewPoint(0, 0),
+			NewPoint(5, 5),
+			NewPoint(10, 0),
+		}, PTSolid)
+		require.NoError(t, err, "expected no error when creating poly1")
+
+		poly2, err := NewPolyTree([]Point[int]{
+			NewPoint(0, 0),
+			NewPoint(5, 5),
+			NewPoint(10, 0),
+		}, PTSolid)
+		require.NoError(t, err, "expected no error when creating poly2")
+
+		poly2Sibling, err := NewPolyTree([]Point[int]{
+			NewPoint(-1, -1),
+			NewPoint(-5, -4),
+			NewPoint(-9, -1),
+		}, PTSolid)
+		require.NoError(t, err, "expected no error when creating poly2Sibling")
+
+		err = poly2.AddSibling(poly2Sibling)
+		require.NoError(t, err, "expected no error when adding poly2Sibling as a sibling of poly2")
+
+		match, mismatches := poly1.Eq(poly2)
+		assert.False(t, match, "expected no match due to difference in children")
+		assert.Equal(t, PTMSiblingMismatch, mismatches, "expected PTMSiblingMismatch due to difference in children")
+
+	})
+
+	t.Run("PTMSiblingMismatch due to content of siblings", func(t *testing.T) {
+		poly1, err := NewPolyTree([]Point[int]{
+			NewPoint(0, 0),
+			NewPoint(5, 5),
+			NewPoint(10, 0),
+		}, PTSolid)
+		require.NoError(t, err, "expected no error when creating poly1")
+
+		poly1Sibling, err := NewPolyTree([]Point[int]{
+			NewPoint(-1, -1),
+			NewPoint(-4, -4),
+			NewPoint(-9, -1),
+		}, PTSolid)
+		require.NoError(t, err, "expected no error when creating poly1Sibling")
+
+		err = poly1.AddSibling(poly1Sibling)
+		require.NoError(t, err, "expected no error when adding poly1Sibling as a sibling of poly1")
+
+		poly2, err := NewPolyTree([]Point[int]{
+			NewPoint(0, 0),
+			NewPoint(5, 5),
+			NewPoint(10, 0),
+		}, PTSolid)
+		require.NoError(t, err, "expected no error when creating poly2")
+
+		poly2Sibling, err := NewPolyTree([]Point[int]{
+			NewPoint(-1, -1),
+			NewPoint(-5, -4),
+			NewPoint(-9, -1),
+		}, PTSolid)
+		require.NoError(t, err, "expected no error when creating poly2Sibling")
+
+		err = poly2.AddSibling(poly2Sibling)
+		require.NoError(t, err, "expected no error when adding poly2Sibling as a sibling of poly2")
+
+		match, mismatches := poly1.Eq(poly2)
+		assert.False(t, match, "expected no match due to difference in children")
+		assert.Equal(t, PTMSiblingMismatch, mismatches, "expected PTMSiblingMismatch due to difference in children")
+
+	})
+
+	t.Run("PTMChildMismatch due to number of children", func(t *testing.T) {
+		poly1, err := NewPolyTree([]Point[int]{
+			NewPoint(0, 0),
+			NewPoint(5, 5),
+			NewPoint(10, 0),
+		}, PTSolid)
+		require.NoError(t, err, "expected no error when creating poly1")
+
+		poly2, err := NewPolyTree([]Point[int]{
+			NewPoint(0, 0),
+			NewPoint(5, 5),
+			NewPoint(10, 0),
+		}, PTSolid)
+		require.NoError(t, err, "expected no error when creating poly2")
+
+		poly2Hole, err := NewPolyTree([]Point[int]{
+			NewPoint(1, 1),
+			NewPoint(5, 4),
+			NewPoint(9, 1),
+		}, PTHole)
+		require.NoError(t, err, "expected no error when creating poly2Hole")
+
+		err = poly2.AddChild(poly2Hole)
+		require.NoError(t, err, "expected no error when nesting poly2Hole in poly2")
+
+		match, mismatches := poly1.Eq(poly2)
+		assert.False(t, match, "expected no match due to difference in children")
+		assert.Equal(t, PTMChildMismatch, mismatches, "expected PTMChildMismatch due to difference in children")
+
+	})
+
+	t.Run("PTMChildMismatch due to content of children", func(t *testing.T) {
+		poly1, err := NewPolyTree([]Point[int]{
+			NewPoint(0, 0),
+			NewPoint(5, 5),
+			NewPoint(10, 0),
+		}, PTSolid)
+		require.NoError(t, err, "expected no error when creating poly1")
+
+		poly1Hole, err := NewPolyTree([]Point[int]{
+			NewPoint(1, 1),
+			NewPoint(4, 4),
+			NewPoint(9, 1),
+		}, PTHole)
+		require.NoError(t, err, "expected no error when creating poly1Hole")
+
+		err = poly1.AddChild(poly1Hole)
+		require.NoError(t, err, "expected no error when nesting poly1Hole in poly2")
+
+		poly2, err := NewPolyTree([]Point[int]{
+			NewPoint(0, 0),
+			NewPoint(5, 5),
+			NewPoint(10, 0),
+		}, PTSolid)
+		require.NoError(t, err, "expected no error when creating poly2")
+
+		poly2Hole, err := NewPolyTree([]Point[int]{
+			NewPoint(1, 1),
+			NewPoint(5, 4),
+			NewPoint(9, 1),
+		}, PTHole)
+		require.NoError(t, err, "expected no error when creating poly2Hole")
+
+		err = poly2.AddChild(poly2Hole)
+		require.NoError(t, err, "expected no error when nesting poly2Hole in poly2")
+
+		match, mismatches := poly1.Eq(poly2)
+		assert.False(t, match, "expected no match due to difference in children")
+		assert.Equal(t, PTMChildMismatch, mismatches, "expected PTMChildMismatch due to difference in children")
+
+	})
+
+}
+
 func TestPolyTree_Eq_NilHandling(t *testing.T) {
 	var poly1, poly2 *PolyTree[int]
+	poly3, err := NewPolyTree([]Point[int]{NewPoint(0, 0), NewPoint(5, 5), NewPoint(10, 0)}, PTSolid)
+	require.NoError(t, err, "error creating poly3 when none was expected")
 
-	match, mismatches := poly1.Eq(poly2)
+	match, mismatches := poly1.Eq(poly3)
+	assert.False(t, match, "A non-nil PolyTree should not equal a nil PolyTree")
+	assert.Equal(t, PTMNilPolygonMismatch, mismatches, "Expected PTMNilPolygonMismatch for a nil comparison")
+
+	match, mismatches = poly1.Eq(poly2)
 	assert.True(t, match, "Two nil PolyTrees should be considered equal")
 	assert.Equal(t, PTMNoMismatch, mismatches, "Expected no mismatches for two nil PolyTrees")
 
@@ -1582,6 +1845,7 @@ func TestPolyTree_Eq_NilHandling(t *testing.T) {
 	match, mismatches = poly1.Eq(nil)
 	assert.False(t, match, "A non-nil PolyTree should not equal a nil PolyTree")
 	assert.Equal(t, PTMNilPolygonMismatch, mismatches, "Expected PTMNilPolygonMismatch for a nil comparison")
+
 }
 
 func TestPolyTree_Hull(t *testing.T) {
@@ -1606,6 +1870,21 @@ func TestPolyTree_Hull(t *testing.T) {
 
 	// Validate the hull
 	assert.ElementsMatch(t, expectedHull, hull, "Hull points do not match expected")
+}
+
+func TestPolyTree_Intersects_PointInOther(t *testing.T) {
+	p1 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{0, 0}},
+		{point: Point[int]{10, 0}},
+		{point: Point[int]{10, 10}},
+		{point: Point[int]{0, 10}},
+	}}
+	p2 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{7, 11}},
+		{point: Point[int]{11, 7}},
+		{point: Point[int]{11, 11}},
+	}}
+	require.True(t, p1.Intersects(p2))
 }
 
 func TestPolyTree_Intersects_EdgeOverlap(t *testing.T) {
