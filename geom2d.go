@@ -326,3 +326,11 @@ func applyEpsilon(value, epsilon float64) float64 {
 	// Otherwise, return the original value
 	return value
 }
+
+// todo: doc comments & unit tests
+func abs[T SignedNumber](n T) T {
+	if n < 0 {
+		return -n
+	}
+	return n
+}

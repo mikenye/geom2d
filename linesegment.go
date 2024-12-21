@@ -1013,3 +1013,53 @@ func (l LineSegment[T]) Translate(delta Point[T]) LineSegment[T] {
 		l.end.Translate(delta),
 	)
 }
+
+// Bresenham's Line Algorithm
+// todo: doc comments, unit test, example func
+func (l LineSegment[int]) Bresenham(yield func(Point[int]) bool) {
+
+	var x1, x2, y1, y2, dx, dy, sx, sy int
+
+	x1 = l.start.x
+	x2 = l.end.x
+	y1 = l.start.y
+	y2 = l.end.y
+
+	// Calculate absolute deltas
+	dx = abs(x2 - x1)
+	dy = abs(y2 - y1)
+
+	// Determine the direction of the increments
+	sx = 1
+	if x1 > x2 {
+		sx = -1
+	}
+	sy = 1
+	if y1 > y2 {
+		sy = -1
+	}
+
+	// Bresenham's algorithm
+	err := dx - dy
+	for {
+		if !yield(NewPoint(x1, y1)) {
+			return
+		}
+
+		// Break the loop if we've reached the end point
+		if x1 == x2 && y1 == y2 {
+			return
+		}
+
+		// Calculate the error
+		e2 := 2 * err
+		if e2 > -dy {
+			err -= dy
+			x1 += sx
+		}
+		if e2 < dx {
+			err += dx
+			y1 += sy
+		}
+	}
+}

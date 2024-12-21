@@ -464,3 +464,59 @@ func (c Circle[T]) String() string {
 func (c Circle[T]) Translate(v Point[T]) Circle[T] {
 	return Circle[T]{center: c.center.Translate(v), radius: c.radius}
 }
+
+// todo: doc comments, unit tests & example function
+func (c Circle[int]) Bresenham(yield func(Point[int]) bool) {
+	var xc, yc, r, x, y, p int
+
+	xc = c.center.x
+	yc = c.center.y
+	r = c.radius
+
+	// Starting at the top of the circle
+	x = 0
+	y = r
+	p = 1 - r // Initial decision parameter
+
+	// Yield the initial points for all octants
+	for _, point := range reflectAcrossCircleOctants(xc, yc, x, y) {
+		if !yield(point) {
+			return
+		}
+	}
+
+	// Loop until x meets y
+	for x < y {
+		x++
+		if p < 0 {
+			// Midpoint is inside the circle
+			p += 2*x + 1
+		} else {
+			// Midpoint is outside or on the circle
+			y--
+			p += 2*(x-y) + 1
+		}
+
+		// Yield the points for the current x, y
+		for _, point := range reflectAcrossCircleOctants(xc, yc, x, y) {
+			if !yield(point) {
+				return
+			}
+		}
+	}
+}
+
+// Reflect across all octants
+// todo: doc comments, unit tests
+func reflectAcrossCircleOctants[T SignedNumber](xc, yc, x, y T) []Point[T] {
+	return []Point[T]{
+		NewPoint[T](xc+x, yc+y), // Octant 1
+		NewPoint[T](xc-x, yc+y), // Octant 2
+		NewPoint[T](xc+x, yc-y), // Octant 8
+		NewPoint[T](xc-x, yc-y), // Octant 7
+		NewPoint[T](xc+y, yc+x), // Octant 3
+		NewPoint[T](xc-y, yc+x), // Octant 4
+		NewPoint[T](xc+y, yc-x), // Octant 6
+		NewPoint[T](xc-y, yc-x), // Octant 5
+	}
+}
