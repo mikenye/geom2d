@@ -31,6 +31,9 @@ jobs:
           check-latest: 'true'
           go-version-file: ./go.mod
 
+      - name: go mod tidy
+        run: go mod tidy
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
