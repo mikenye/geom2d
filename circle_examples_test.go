@@ -67,6 +67,43 @@ func ExampleCircle_BoundingBox() {
 	// Bounding box: Rectangle[(5, 5), (15, 5), (15, 15), (5, 15)]
 }
 
+func ExampleCircle_Bresenham() {
+	// Define a circle with center (5, 5) and radius 3.
+	c := geom2d.NewCircle(geom2d.NewPoint(5, 5), 3)
+
+	// Generate the points on the circle's perimeter.
+	c.Bresenham(func(p geom2d.Point[int]) bool {
+		fmt.Println(p)
+		return true // Continue generating points
+	})
+
+	// Output:
+	// Point[(5, 8)]
+	// Point[(5, 8)]
+	// Point[(5, 2)]
+	// Point[(5, 2)]
+	// Point[(8, 5)]
+	// Point[(2, 5)]
+	// Point[(8, 5)]
+	// Point[(2, 5)]
+	// Point[(6, 8)]
+	// Point[(4, 8)]
+	// Point[(6, 2)]
+	// Point[(4, 2)]
+	// Point[(8, 6)]
+	// Point[(2, 6)]
+	// Point[(8, 4)]
+	// Point[(2, 4)]
+	// Point[(7, 7)]
+	// Point[(3, 7)]
+	// Point[(7, 3)]
+	// Point[(3, 3)]
+	// Point[(7, 7)]
+	// Point[(3, 7)]
+	// Point[(7, 3)]
+	// Point[(3, 3)]
+}
+
 func ExampleCircle_Center() {
 	circle := geom2d.NewCircle(geom2d.NewPoint(3, 4), 5)
 	center := circle.Center()
