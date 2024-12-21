@@ -1,5 +1,7 @@
 # Geom2D
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/mikenye/geom2d.svg)](https://pkg.go.dev/github.com/mikenye/geom2d)
+
 Geom2D is a computational geometry library for Go, designed for 2D polygon operations and other fundamental geometric types, and is currently reaching its release candidate phase, nearing production readiness.
 
 ## Table of Contents
