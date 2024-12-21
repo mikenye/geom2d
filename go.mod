@@ -1,4 +1,4 @@
-module geom2d
+module github.com/mikenye/geom2d
 
 go 1.23
 

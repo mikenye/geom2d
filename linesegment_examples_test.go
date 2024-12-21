@@ -2,7 +2,7 @@ package geom2d_test
 
 import (
 	"fmt"
-	"geom2d"
+	"github.com/mikenye/geom2d"
 	"math"
 )
 

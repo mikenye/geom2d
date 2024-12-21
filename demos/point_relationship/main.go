@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"geom2d"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/mikenye/geom2d"
 	"golang.org/x/image/colornames"
 	"log"
 )
