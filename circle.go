@@ -464,3 +464,92 @@ func (c Circle[T]) String() string {
 func (c Circle[T]) Translate(v Point[T]) Circle[T] {
 	return Circle[T]{center: c.center.Translate(v), radius: c.radius}
 }
+
+// Bresenham generates all points on the perimeter of a circle using Bresenham's circle-drawing algorithm.
+//
+// This method is typically used for rasterized circle rendering.
+//
+// The function is designed to be used with a for-loop, and thus takes a callback yield that processes each point.
+// If the callback returns false at any point (if the calling for-loop is terminated, for example), the function
+// halts further generation.
+//
+// This algorithm utilizes integer arithmetic to efficiently calculate the points on the circle,
+// making it suitable for rendering or other grid-based operations.
+//
+// Parameters:
+//   - yield (func([Point][int]) bool): A function that processes each generated point.
+//     Returning false will stop further point generation.
+//
+// Note: This implementation requires the circle is defined with integer-type coordinates.
+func (c Circle[int]) Bresenham(yield func(Point[int]) bool) {
+	var xc, yc, r, x, y, p int
+
+	xc = c.center.x
+	yc = c.center.y
+	r = c.radius
+
+	// Starting at the top of the circle
+	x = 0
+	y = r
+	p = 1 - r // Initial decision parameter
+
+	// Yield the initial points for all octants
+	for _, point := range reflectAcrossCircleOctants(xc, yc, x, y) {
+		if !yield(point) {
+			return
+		}
+	}
+
+	// Loop until x meets y
+	for x < y {
+		x++
+		if p < 0 {
+			// Midpoint is inside the circle
+			p += 2*x + 1
+		} else {
+			// Midpoint is outside or on the circle
+			y--
+			p += 2*(x-y) + 1
+		}
+
+		// Yield the points for the current x, y
+		for _, point := range reflectAcrossCircleOctants(xc, yc, x, y) {
+			if !yield(point) {
+				return
+			}
+		}
+	}
+}
+
+// reflectAcrossCircleOctants generates a slice of points that represent the reflection
+// of a given point (x, y) across all eight octants of a circle centered at (xc, yc).
+//
+// The function is typically used in circle-drawing algorithms, such as Bresenham's Circle Algorithm,
+// to exploit the symmetry of circles for efficient computation.
+//
+// Parameters:
+//   - xc, yc: The coordinates of the circle's center.
+//   - x, y: The coordinates of the point to reflect across the octants.
+//
+// Returns:
+//   - A slice of Point[T] containing the reflected points in the following order:
+//     1. Octant 1: (xc + x, yc + y)
+//     2. Octant 2: (xc - x, yc + y)
+//     3. Octant 8: (xc + x, yc - y)
+//     4. Octant 7: (xc - x, yc - y)
+//     5. Octant 3: (xc + y, yc + x)
+//     6. Octant 4: (xc - y, yc + x)
+//     7. Octant 6: (xc + y, yc - x)
+//     8. Octant 5: (xc - y, yc - x)
+func reflectAcrossCircleOctants[T SignedNumber](xc, yc, x, y T) []Point[T] {
+	return []Point[T]{
+		NewPoint[T](xc+x, yc+y), // Octant 1
+		NewPoint[T](xc-x, yc+y), // Octant 2
+		NewPoint[T](xc+x, yc-y), // Octant 8
+		NewPoint[T](xc-x, yc-y), // Octant 7
+		NewPoint[T](xc+y, yc+x), // Octant 3
+		NewPoint[T](xc-y, yc+x), // Octant 4
+		NewPoint[T](xc+y, yc-x), // Octant 6
+		NewPoint[T](xc-y, yc-x), // Octant 5
+	}
+}

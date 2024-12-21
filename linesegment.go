@@ -1013,3 +1013,68 @@ func (l LineSegment[T]) Translate(delta Point[T]) LineSegment[T] {
 		l.end.Translate(delta),
 	)
 }
+
+// Bresenham generates all the integer points along the line segment using
+// Bresenham's line algorithm. It is an efficient way to rasterize a line
+// in a grid or pixel-based system.
+//
+// The function is designed to be used with a for-loop, and thus takes a callback yield that processes each point.
+// If the callback returns false at any point (if the calling for-loop is terminated, for example), the function
+// halts further generation.
+//
+// Example use cases include:
+// - Rendering lines in graphics applications.
+// - Generating grid points for pathfinding.
+//
+// Parameters:
+//   - yield (func([Point][int]) bool): A function that processes each generated point.
+//     Returning false will stop further point generation.
+//
+// Note: This method requires integer-type coordinates for the line segment.
+func (l LineSegment[int]) Bresenham(yield func(Point[int]) bool) {
+
+	var x1, x2, y1, y2, dx, dy, sx, sy int
+
+	x1 = l.start.x
+	x2 = l.end.x
+	y1 = l.start.y
+	y2 = l.end.y
+
+	// Calculate absolute deltas
+	dx = abs(x2 - x1)
+	dy = abs(y2 - y1)
+
+	// Determine the direction of the increments
+	sx = 1
+	if x1 > x2 {
+		sx = -1
+	}
+	sy = 1
+	if y1 > y2 {
+		sy = -1
+	}
+
+	// Bresenham's algorithm
+	err := dx - dy
+	for {
+		if !yield(NewPoint(x1, y1)) {
+			return
+		}
+
+		// Break the loop if we've reached the end point
+		if x1 == x2 && y1 == y2 {
+			return
+		}
+
+		// Calculate the error
+		e2 := 2 * err
+		if e2 > -dy {
+			err -= dy
+			x1 += sx
+		}
+		if e2 < dx {
+			err += dx
+			y1 += sy
+		}
+	}
+}

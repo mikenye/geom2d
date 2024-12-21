@@ -912,6 +912,14 @@ func TestPoint_String(t *testing.T) {
 	}
 }
 
+func TestPoint_String_panic(t *testing.T) {
+	invalid := PointOrientation(math.MaxUint8)
+	panicFunc := func() {
+		_ = invalid.String()
+	}
+	assert.Panics(t, panicFunc, "expected to panic")
+}
+
 func TestPoint_Translate(t *testing.T) {
 	tests := []struct {
 		name     string

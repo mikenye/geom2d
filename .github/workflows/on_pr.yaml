@@ -18,6 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+      - name: Install ebitengine dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install libasound2-dev libgl1-mesa-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev
+
       # Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -31,6 +37,9 @@ jobs:
           check-latest: 'true'
           go-version-file: ./go.mod
 
+      - name: go mod tidy
+        run: go mod tidy
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
@@ -40,6 +49,12 @@ jobs:
     name: go vet
     runs-on: ubuntu-24.04
     steps:
+
+      - name: Install ebitengine dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install libasound2-dev libgl1-mesa-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev
 
       # Checkout repo
       - name: Checkout repository
@@ -64,6 +79,12 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+
+      - name: Install ebitengine dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install libasound2-dev libgl1-mesa-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev
 
       # Checkout repo
       - name: Checkout repository
@@ -110,6 +131,12 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+
+      - name: Install ebitengine dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install libasound2-dev libgl1-mesa-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev
 
       # Checkout repo
       - name: Checkout repository

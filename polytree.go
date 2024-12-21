@@ -164,22 +164,22 @@ type PolyTreeMismatch uint8
 // Valid values for PolyTreeMismatch
 const (
 	// PTMNoMismatch indicates that there is no mismatch between the compared PolyTree structures.
-	PTMNoMismatch PolyTreeMismatch = 0
+	PTMNoMismatch PolyTreeMismatch = 0 << iota
 
 	// PTMNilPolygonMismatch indicates that one of the PolyTree structures is nil while the other is not.
-	PTMNilPolygonMismatch PolyTreeMismatch = 1 << iota
+	PTMNilPolygonMismatch PolyTreeMismatch = 1
 
 	// PTMContourMismatch indicates that the contours of the compared PolyTree structures are not identical.
 	// This could mean differences in the points, their order, or their overall shape.
-	PTMContourMismatch
+	PTMContourMismatch PolyTreeMismatch = 2
 
 	// PTMSiblingMismatch indicates that the siblings of the compared PolyTree structures do not match.
 	// This could mean differences in the number of siblings, their contours, or their structure.
-	PTMSiblingMismatch
+	PTMSiblingMismatch PolyTreeMismatch = 4
 
 	// PTMChildMismatch indicates that the children of the compared PolyTree structures do not match.
 	// This could mean differences in the number of children, their contours, or their structure.
-	PTMChildMismatch
+	PTMChildMismatch PolyTreeMismatch = 8
 )
 
 // entryExitPointLookUpTable is a lookup table that determines the entry/exit type of intersection points
@@ -602,22 +602,6 @@ func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPo
 		}
 	}
 
-	// Sanity check: Ensure all children have the opposite PolygonType.
-	for _, c := range p.children {
-		switch p.polygonType {
-		case PTSolid:
-			// Solid polygons can only have hole children.
-			if c.polygonType != PTHole {
-				return nil, fmt.Errorf("expected all children to have PolygonType PTHole")
-			}
-		case PTHole:
-			// Hole polygons can only have solid children.
-			if c.polygonType != PTSolid {
-				return nil, fmt.Errorf("expected all children to have PolygonType PTSolid")
-			}
-		}
-	}
-
 	// Return the constructed PolyTree.
 	return p, nil
 }
@@ -809,47 +793,47 @@ func (c *contour[T]) findLowestLeftmost() Point[T] {
 	return minimum
 }
 
-// insertIntersectionPoint inserts an intersection point into a contour between two specified indices.
-// The insertion position is determined based on the proximity of the intersection point to the
-// corresponding line segment, ensuring correct ordering for polygon operations.
+//// insertIntersectionPoint inserts an intersection point into a contour between two specified indices.
+//// The insertion position is determined based on the proximity of the intersection point to the
+//// corresponding line segment, ensuring correct ordering for polygon operations.
+////
+//// Parameters:
+////   - start: The index of the starting point of the line segment in the contour.
+////   - end: The index of the ending point of the line segment in the contour.
+////   - intersection: The intersection point to insert, represented as a polyTreePoint.
+////
+//// Notes:
+////   - The function assumes that start and end indices are valid and start < end.
+////   - The insertion logic ensures that the intersection is placed in the correct position relative to
+////     other intermediate points, preserving the geometric consistency of the contour.
+////   - Simply inserting at the start index is not sufficient because the contour may already contain
+////     intermediate points between start and end. Proper ordering is necessary to maintain the
+////     validity of polygon operations such as traversals and Boolean operations.
+//func (c *contour[T]) insertIntersectionPoint(start, end int, intersection polyTreePoint[T]) {
+//	// Define the line segment between the start and end points.
+//	segment := NewLineSegment((*c)[start].point, (*c)[end].point)
 //
-// Parameters:
-//   - start: The index of the starting point of the line segment in the contour.
-//   - end: The index of the ending point of the line segment in the contour.
-//   - intersection: The intersection point to insert, represented as a polyTreePoint.
+//	// Initialize the insertion position to the end index.
+//	insertPos := end
 //
-// Notes:
-//   - The function assumes that start and end indices are valid and start < end.
-//   - The insertion logic ensures that the intersection is placed in the correct position relative to
-//     other intermediate points, preserving the geometric consistency of the contour.
-//   - Simply inserting at the start index is not sufficient because the contour may already contain
-//     intermediate points between start and end. Proper ordering is necessary to maintain the
-//     validity of polygon operations such as traversals and Boolean operations.
-func (c *contour[T]) insertIntersectionPoint(start, end int, intersection polyTreePoint[T]) {
-	// Define the line segment between the start and end points.
-	segment := NewLineSegment((*c)[start].point, (*c)[end].point)
-
-	// Initialize the insertion position to the end index.
-	insertPos := end
-
-	// Iterate through the intermediate points in the contour between start and end.
-	// Find the correct position to insert the intersection point.
-	for i := start + 1; i < end; i++ {
-		// Define the segment from the start point to the current point.
-		existingSegment := NewLineSegment((*c)[start].point, (*c)[i].point)
-
-		// Compare the distance of the intersection to the original segment
-		// with its distance to the intermediate segment.
-		if segment.DistanceToPoint(intersection.point) < existingSegment.DistanceToPoint((*c)[i].point) {
-			// Update the insertion position if the intersection is closer to the original segment.
-			insertPos = i
-			break
-		}
-	}
-
-	// Insert the intersection point into the contour at the calculated position.
-	*c = slices.Insert(*c, insertPos, intersection)
-}
+//	// Iterate through the intermediate points in the contour between start and end.
+//	// Find the correct position to insert the intersection point.
+//	for i := start + 1; i < end; i++ {
+//		// Define the segment from the start point to the current point.
+//		existingSegment := NewLineSegment((*c)[start].point, (*c)[i].point)
+//
+//		// Compare the distance of the intersection to the original segment
+//		// with its distance to the intermediate segment.
+//		if segment.DistanceToPoint(intersection.point) < existingSegment.DistanceToPoint((*c)[i].point) {
+//			// Update the insertion position if the intersection is closer to the original segment.
+//			insertPos = i
+//			break
+//		}
+//	}
+//
+//	// Insert the intersection point into the contour at the calculated position.
+//	*c = slices.Insert(*c, insertPos, intersection)
+//}
 
 // isContourInside checks if all points of one contour (c2) are inside another contour (c).
 //
@@ -1269,14 +1253,9 @@ func (pt *PolyTree[T]) Area() float64 {
 // Panics:
 //   - If an error occurs during the nesting of contours into the new [PolyTree], the function panics.
 func (pt *PolyTree[T]) AsFloat32() *PolyTree[float32] {
-	output, err := ApplyPointTransform[T](pt, func(p Point[T]) (Point[float32], error) {
+	output, _ := ApplyPointTransform[T](pt, func(p Point[T]) (Point[float32], error) {
 		return p.AsFloat32(), nil
 	})
-
-	if err != nil {
-		panic(err)
-	}
-
 	return output
 }
 
@@ -1291,14 +1270,9 @@ func (pt *PolyTree[T]) AsFloat32() *PolyTree[float32] {
 // Panics:
 //   - If an error occurs during the nesting of contours into the new [PolyTree], the function panics.
 func (pt *PolyTree[T]) AsFloat64() *PolyTree[float64] {
-	output, err := ApplyPointTransform[T](pt, func(p Point[T]) (Point[float64], error) {
+	output, _ := ApplyPointTransform[T](pt, func(p Point[T]) (Point[float64], error) {
 		return p.AsFloat64(), nil
 	})
-
-	if err != nil {
-		panic(err)
-	}
-
 	return output
 }
 
@@ -1313,15 +1287,9 @@ func (pt *PolyTree[T]) AsFloat64() *PolyTree[float64] {
 // Panics:
 //   - If an error occurs during the nesting of contours into the new [PolyTree], the function panics.
 func (pt *PolyTree[T]) AsInt() *PolyTree[int] {
-
-	output, err := ApplyPointTransform[T](pt, func(p Point[T]) (Point[int], error) {
+	output, _ := ApplyPointTransform[T](pt, func(p Point[T]) (Point[int], error) {
 		return p.AsInt(), nil
 	})
-
-	if err != nil {
-		panic(err)
-	}
-
 	return output
 }
 
@@ -1337,14 +1305,9 @@ func (pt *PolyTree[T]) AsInt() *PolyTree[int] {
 // Panics:
 //   - If an error occurs during the nesting of contours into the new [PolyTree], the function panics.
 func (pt *PolyTree[T]) AsIntRounded() *PolyTree[int] {
-	output, err := ApplyPointTransform[T](pt, func(p Point[T]) (Point[int], error) {
+	output, _ := ApplyPointTransform[T](pt, func(p Point[T]) (Point[int], error) {
 		return p.AsIntRounded(), nil
 	})
-
-	if err != nil {
-		panic(err)
-	}
-
 	return output
 }
 
@@ -1664,13 +1627,11 @@ func (pt *PolyTree[T]) Eq(other *PolyTree[T], opts ...polyTreeEqOption[T]) (bool
 	// Compare contours
 	if !pt.contour.eq(other.contour) {
 		mismatches |= PTMContourMismatch
-		fmt.Println("Mismatch in contours detected")
 	}
 
 	// Compare siblings
 	if len(pt.siblings) != len(other.siblings) {
 		mismatches |= PTMSiblingMismatch
-		fmt.Println("Mismatch in siblings count detected")
 	} else {
 		// Siblings order doesn't matter, check if each sibling matches
 		for _, sibling := range pt.siblings {
@@ -1683,7 +1644,6 @@ func (pt *PolyTree[T]) Eq(other *PolyTree[T], opts ...polyTreeEqOption[T]) (bool
 			}
 			if !found {
 				mismatches |= PTMSiblingMismatch
-				fmt.Println("Mismatch in siblings content detected")
 				break
 			}
 		}
@@ -1775,8 +1735,10 @@ func (pt *PolyTree[T]) findIntersections(other *PolyTree[T]) {
 						}
 
 						// Step 7: Insert the intersection point into both polygons
-						poly1.contour.insertIntersectionPoint(i1, j1, intersection)
-						poly2.contour.insertIntersectionPoint(i2, j2, intersection)
+						//poly1.contour.insertIntersectionPoint(i1, j1, intersection)
+						poly1.contour = slices.Insert(poly1.contour, j1, intersection)
+						//poly2.contour.insertIntersectionPoint(i2, j2, intersection)
+						poly2.contour = slices.Insert(poly2.contour, j2, intersection)
 
 						// Step 8: Increment indices to avoid re-processing the same intersection
 						i1++

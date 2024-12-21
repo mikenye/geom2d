@@ -186,6 +186,87 @@ func TestCircle_BoundingBox(t *testing.T) {
 	}
 }
 
+func TestCircle_Bresenham(t *testing.T) {
+	tests := map[string]struct {
+		center   Point[int]
+		radius   int
+		expected []Point[int]
+	}{
+		"circle at origin, radius 2": {
+			center: NewPoint(0, 0),
+			radius: 2,
+			expected: []Point[int]{
+				NewPoint(-1, -2),
+				NewPoint(-1, -2),
+				NewPoint(-1, 2),
+				NewPoint(-1, 2),
+				NewPoint(-2, -1),
+				NewPoint(-2, -1),
+				NewPoint(-2, 0),
+				NewPoint(-2, 0),
+				NewPoint(-2, 1),
+				NewPoint(-2, 1),
+				NewPoint(0, -2),
+				NewPoint(0, -2),
+				NewPoint(0, 2),
+				NewPoint(0, 2),
+				NewPoint(1, -2),
+				NewPoint(1, -2),
+				NewPoint(1, 2),
+				NewPoint(1, 2),
+				NewPoint(2, -1),
+				NewPoint(2, -1),
+				NewPoint(2, 0),
+				NewPoint(2, 0),
+				NewPoint(2, 1),
+				NewPoint(2, 1),
+			},
+		},
+		"circle offset, radius 3": {
+			center: NewPoint(5, 5),
+			radius: 3,
+			expected: []Point[int]{
+				NewPoint(5, 8),
+				NewPoint(5, 8),
+				NewPoint(5, 2),
+				NewPoint(5, 2),
+				NewPoint(8, 5),
+				NewPoint(2, 5),
+				NewPoint(8, 5),
+				NewPoint(2, 5),
+				NewPoint(6, 8),
+				NewPoint(4, 8),
+				NewPoint(6, 2),
+				NewPoint(4, 2),
+				NewPoint(8, 6),
+				NewPoint(2, 6),
+				NewPoint(8, 4),
+				NewPoint(2, 4),
+				NewPoint(7, 7),
+				NewPoint(3, 7),
+				NewPoint(7, 3),
+				NewPoint(3, 3),
+				NewPoint(7, 7),
+				NewPoint(3, 7),
+				NewPoint(7, 3),
+				NewPoint(3, 3),
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			var actual []Point[int]
+			c := NewCircle(tc.center, tc.radius)
+			c.Bresenham(func(p Point[int]) bool {
+				actual = append(actual, p)
+				return true
+			})
+			assert.ElementsMatch(t, tc.expected, actual, "Points should match expected circle perimeter")
+		})
+	}
+}
+
 func TestCircle_Center(t *testing.T) {
 	tests := map[string]struct {
 		circle   Circle[float64]
@@ -674,6 +755,47 @@ func TestNewCircle(t *testing.T) {
 			result := NewCircle(tt.center, tt.radius)
 			assert.Equal(t, tt.expected.center, result.center)
 			assert.Equal(t, tt.expected.radius, result.radius)
+		})
+	}
+}
+
+func TestReflectAcrossCircleOctants(t *testing.T) {
+	tests := map[string]struct {
+		xc, yc, x, y int
+		expected     []Point[int]
+	}{
+		"center at origin, simple point": {
+			xc: 0, yc: 0, x: 2, y: 1,
+			expected: []Point[int]{
+				NewPoint(2, 1),   // Octant 1
+				NewPoint(-2, 1),  // Octant 2
+				NewPoint(2, -1),  // Octant 8
+				NewPoint(-2, -1), // Octant 7
+				NewPoint(1, 2),   // Octant 3
+				NewPoint(-1, 2),  // Octant 4
+				NewPoint(1, -2),  // Octant 6
+				NewPoint(-1, -2), // Octant 5
+			},
+		},
+		"center offset, simple point": {
+			xc: 3, yc: 4, x: 2, y: 1,
+			expected: []Point[int]{
+				NewPoint(5, 5), // Octant 1
+				NewPoint(1, 5), // Octant 2
+				NewPoint(5, 3), // Octant 8
+				NewPoint(1, 3), // Octant 7
+				NewPoint(4, 6), // Octant 3
+				NewPoint(2, 6), // Octant 4
+				NewPoint(4, 2), // Octant 6
+				NewPoint(2, 2), // Octant 5
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			actual := reflectAcrossCircleOctants(tc.xc, tc.yc, tc.x, tc.y)
+			assert.Equal(t, tc.expected, actual, "Points should match expected octant reflections")
 		})
 	}
 }

@@ -6,6 +6,43 @@ import (
 	"testing"
 )
 
+func TestAbs(t *testing.T) {
+	t.Run("positive int", func(t *testing.T) {
+		input := 42
+		expected := 42
+		actual := abs(input)
+		assert.Equal(t, expected, actual, "abs(%v) should return %v", input, expected)
+	})
+
+	t.Run("negative int", func(t *testing.T) {
+		input := -42
+		expected := 42
+		actual := abs(input)
+		assert.Equal(t, expected, actual, "abs(%v) should return %v", input, expected)
+	})
+
+	t.Run("zero int", func(t *testing.T) {
+		input := 0
+		expected := 0
+		actual := abs(input)
+		assert.Equal(t, expected, actual, "abs(%v) should return %v", input, expected)
+	})
+
+	t.Run("positive float", func(t *testing.T) {
+		input := 3.14
+		expected := 3.14
+		actual := abs(input)
+		assert.Equal(t, expected, actual, "abs(%v) should return %v", input, expected)
+	})
+
+	t.Run("negative float", func(t *testing.T) {
+		input := -3.14
+		expected := 3.14
+		actual := abs(input)
+		assert.Equal(t, expected, actual, "abs(%v) should return %v", input, expected)
+	})
+}
+
 func TestRelationship_String(t *testing.T) {
 	tests := map[string]struct {
 		input       Relationship

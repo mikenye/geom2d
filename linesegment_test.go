@@ -358,6 +358,80 @@ func TestLineSegment_AsIntRounded(t *testing.T) {
 	}
 }
 
+func TestLineSegment_Bresenham(t *testing.T) {
+	tests := map[string]struct {
+		lineSegment LineSegment[int]
+		expected    []Point[int]
+	}{
+		"horizontal line": {
+			lineSegment: NewLineSegment(NewPoint(0, 0), NewPoint(5, 0)),
+			expected: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(1, 0),
+				NewPoint(2, 0),
+				NewPoint(3, 0),
+				NewPoint(4, 0),
+				NewPoint(5, 0),
+			},
+		},
+		"vertical line": {
+			lineSegment: NewLineSegment(NewPoint(0, 0), NewPoint(0, 5)),
+			expected: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(0, 1),
+				NewPoint(0, 2),
+				NewPoint(0, 3),
+				NewPoint(0, 4),
+				NewPoint(0, 5),
+			},
+		},
+		"diagonal line": {
+			lineSegment: NewLineSegment(NewPoint(0, 0), NewPoint(5, 5)),
+			expected: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(1, 1),
+				NewPoint(2, 2),
+				NewPoint(3, 3),
+				NewPoint(4, 4),
+				NewPoint(5, 5),
+			},
+		},
+		"reverse diagonal": {
+			lineSegment: NewLineSegment(NewPoint(5, 5), NewPoint(0, 0)),
+			expected: []Point[int]{
+				NewPoint(5, 5),
+				NewPoint(4, 4),
+				NewPoint(3, 3),
+				NewPoint(2, 2),
+				NewPoint(1, 1),
+				NewPoint(0, 0),
+			},
+		},
+		"steep slope": {
+			lineSegment: NewLineSegment(NewPoint(0, 0), NewPoint(2, 5)),
+			expected: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(0, 1),
+				NewPoint(1, 2),
+				NewPoint(1, 3),
+				NewPoint(2, 4),
+				NewPoint(2, 5),
+			},
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			var actual []Point[int]
+			test.lineSegment.Bresenham(func(p Point[int]) bool {
+				actual = append(actual, p)
+				return true
+			})
+			assert.ElementsMatch(t, test.expected, actual, "Bresenham points mismatch")
+		})
+	}
+}
+
 func TestLineSegment_Center(t *testing.T) {
 	tests := map[string]struct {
 		lineSegment LineSegment[int]
