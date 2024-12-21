@@ -31,6 +31,8 @@ jobs:
         run: gomarkdoc --output wiki/Home.md
 
       - name: Commit and push changes if needed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd wiki
           git config user.name "${{ github.actor }}"
@@ -38,7 +40,7 @@ jobs:
           if [[ -n "$(git status --porcelain)" ]]; then
             git add Home.md
             git commit -m "Update Wiki documentation [ci skip]"
-            git push
+            git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.wiki.git
           else
             echo "No changes to commit"
           fi
