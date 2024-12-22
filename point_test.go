@@ -1,6 +1,7 @@
 package geom2d
 
 import (
+	"github.com/stretchr/testify/require"
 	"image"
 	"math"
 	"testing"
@@ -738,6 +739,36 @@ func TestPoint_RelationshipToPoint(t *testing.T) {
 			assert.Equal(t, tt.expectedRel, rel, "unexpected relationship")
 		})
 	}
+}
+
+func TestPoint_RelationshipToPolyTree(t *testing.T) {
+	t.Run("issue 7: Point is left of and collinear to a PolyTree edge", func(t *testing.T) {
+		holeInPolyTree, err := NewPolyTree[int]([]Point[int]{
+			NewPoint(299, 191),
+			NewPoint(329, 195),
+			NewPoint(325, 210),
+			NewPoint(298, 211),
+		}, PTHole)
+		require.NoError(t, err, "error creating holeInPolyTree")
+		polyTree, err := NewPolyTree[int]([]Point[int]{
+			NewPoint(333, 218),
+			NewPoint(345, 195),
+			NewPoint(324, 181),
+			NewPoint(341, 164),
+			NewPoint(307, 169),
+			NewPoint(270, 163),
+			NewPoint(254, 180),
+			NewPoint(263, 193),
+			NewPoint(253, 210),
+			NewPoint(290, 181),
+			NewPoint(288, 218),
+		}, PTSolid, WithChildren(holeInPolyTree))
+		require.NoError(t, err, "error creating polyTree")
+		point := NewPoint(273, 218)
+		rel := point.RelationshipToPolyTree(polyTree)
+		assert.Equal(t, RelationshipDisjoint, rel[polyTree])
+		assert.Equal(t, RelationshipDisjoint, rel[holeInPolyTree])
+	})
 }
 
 func TestPoint_RelationshipToRectangle(t *testing.T) {

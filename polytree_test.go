@@ -521,6 +521,187 @@ func TestContour_isPointInside(t *testing.T) {
 	}
 }
 
+// TestContour_isPointInside_issue7 deals specifically with points that are
+// collinear with a polytree edge.
+func TestContour_isPointInside_issue7(t *testing.T) {
+	poly, err := NewPolyTree([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(5, 0),
+		NewPoint(5, 4),
+		NewPoint(10, 4),
+		NewPoint(10, 2),
+		NewPoint(15, 2),
+		NewPoint(15, 7),
+		NewPoint(20, 7),
+		NewPoint(20, 10),
+		NewPoint(25, 10),
+		NewPoint(25, 5),
+		NewPoint(30, 5),
+		NewPoint(30, 3),
+		NewPoint(35, 3),
+		NewPoint(35, -1),
+		NewPoint(40, -1),
+		NewPoint(40, 26),
+		NewPoint(35, 26),
+		NewPoint(35, 22),
+		NewPoint(30, 22),
+		NewPoint(30, 20),
+		NewPoint(25, 20),
+		NewPoint(25, 15),
+		NewPoint(20, 15),
+		NewPoint(20, 18),
+		NewPoint(15, 18),
+		NewPoint(15, 23),
+		NewPoint(10, 23),
+		NewPoint(10, 21),
+		NewPoint(5, 21),
+		NewPoint(5, 25),
+		NewPoint(0, 25),
+	}, PTSolid)
+	require.NoError(t, err, "unexpected error when creating poly")
+
+	pointsToCheck := map[string]struct {
+		point  Point[int]
+		inside bool
+	}{
+		// x = -1, all outside
+		"(-1, 27), outside, no intersection":  {NewPoint(-1, 27), false},
+		"(-1, 26), outside, up, left, down":   {NewPoint(-1, 26), false},
+		"(-1, 25), outside, up, left, down":   {NewPoint(-1, 25), false},
+		"(-1, 24), outside, no collinearity":  {NewPoint(-1, 24), false},
+		"(-1, 23), outside, up, left, down":   {NewPoint(-1, 23), false},
+		"(-1, 22), outside, down, left, down": {NewPoint(-1, 22), false},
+		"(-1, 21), outside, down, left, up":   {NewPoint(-1, 21), false},
+		"(-1, 20), outside, down, left, down": {NewPoint(-1, 20), false},
+		"(-1, 19), outside, no collinearity":  {NewPoint(-1, 19), false},
+		"(-1, 18), outside, up, left, up":     {NewPoint(-1, 18), false},
+		"(-1, 17), outside, no collinearity":  {NewPoint(-1, 17), false},
+		"(-1, 16), outside, no collinearity":  {NewPoint(-1, 16), false},
+		"(-1, 15), outside, down, left, up":   {NewPoint(-1, 15), false},
+		"(-1, 14), outside, no collinearity":  {NewPoint(-1, 14), false},
+		"(-1, 13), outside, no collinearity":  {NewPoint(-1, 13), false},
+		"(-1, 12), outside, no collinearity":  {NewPoint(-1, 12), false},
+		"(-1, 11), outside, no collinearity":  {NewPoint(-1, 11), false},
+		"(-1, 10), outside, up, right, down":  {NewPoint(-1, 10), false},
+		"(-1, 9), outside, no collinearity":   {NewPoint(-1, 9), false},
+		"(-1, 8), outside, no collinearity":   {NewPoint(-1, 8), false},
+		"(-1, 7), outside, up, right, up":     {NewPoint(-1, 7), false},
+		"(-1, 6), outside, no collinearity":   {NewPoint(-1, 6), false},
+		"(-1, 5), outside, down, right, down": {NewPoint(-1, 5), false},
+		"(-1, 4), outside, up, right, down":   {NewPoint(-1, 4), false},
+		"(-1, 3), outside, down, right, down": {NewPoint(-1, 3), false},
+		"(-1, 2), outside, down, right, up":   {NewPoint(-1, 2), false},
+		"(-1, 1), outside, no collinearity":   {NewPoint(-1, 1), false},
+		"(-1, 0), outside, down, right, up":   {NewPoint(-1, 0), false},
+		"(-1, -1), outside, down, right, up":  {NewPoint(-1, -1), false},
+		"(-1, -2), outside, no intersection":  {NewPoint(-1, -2), false},
+
+		// x = 9, mixed
+		"(9, 27), outside, no intersection":  {NewPoint(9, 27), false},
+		"(9, 26), outside, up, left, down":   {NewPoint(9, 26), false},
+		"(9, 25), outside, no collinearity":  {NewPoint(9, 25), false},
+		"(9, 24), outside, no collinearity":  {NewPoint(9, 24), false},
+		"(9, 23), outside, up, left, down":   {NewPoint(9, 23), false},
+		"(9, 22), outside, down, left, down": {NewPoint(9, 22), false},
+		"(9, 21), on vertex":                 {NewPoint(9, 21), true},
+		"(9, 20), inside, down, left, down":  {NewPoint(9, 20), true},
+		"(9, 19), inside, no collinearity":   {NewPoint(9, 19), true},
+		"(9, 18), inside, up, left, up":      {NewPoint(9, 18), true},
+		"(9, 17), inside, no collinearity":   {NewPoint(9, 17), true},
+		"(9, 16), inside, no collinearity":   {NewPoint(9, 16), true},
+		"(9, 15), inside, down, left, up":    {NewPoint(9, 15), true},
+		"(9, 14), inside, no collinearity":   {NewPoint(9, 14), true},
+		"(9, 13), inside, no collinearity":   {NewPoint(9, 13), true},
+		"(9, 12), inside, no collinearity":   {NewPoint(9, 12), true},
+		"(9, 11), inside, no collinearity":   {NewPoint(9, 11), true},
+		"(9, 10), inside, up, right, down":   {NewPoint(9, 10), true},
+		"(9, 9), inside, no collinearity":    {NewPoint(9, 9), true},
+		"(9, 8), inside, no collinearity":    {NewPoint(9, 8), true},
+		"(9, 7), inside, up, right, up":      {NewPoint(9, 7), true},
+		"(9, 6), inside, no collinearity":    {NewPoint(9, 6), true},
+		"(9, 5), inside, down, right, down":  {NewPoint(9, 5), true},
+		"(9, 4), on vertex":                  {NewPoint(9, 4), true},
+		"(9, 3), outside, down, right, down": {NewPoint(9, 3), false},
+		"(9, 2), outside, down, right, up":   {NewPoint(9, 2), false},
+		"(9, 1), outside, no collinearity":   {NewPoint(9, 1), false},
+		"(9, 0), outside, no collinearity":   {NewPoint(9, 0), false},
+		"(9, -1), outside, down, right, up":  {NewPoint(9, -1), false},
+		"(9, -2), outside, no intersection":  {NewPoint(9, -2), false},
+
+		// x = 14, mixed
+		"(14, 27), outside, no intersection": {NewPoint(14, 27), false},
+		"(14, 26), outside, up, left, down":  {NewPoint(14, 26), false},
+		"(14, 25), outside, no collinearity": {NewPoint(14, 25), false},
+		"(14, 24), outside, no collinearity": {NewPoint(14, 24), false},
+		"(14, 23), on vertex":                {NewPoint(14, 23), true},
+		"(14, 22), inside, down, left, down": {NewPoint(14, 22), true},
+		"(14, 21), inside, no collinearity":  {NewPoint(14, 21), true},
+		"(14, 20), inside, down, left, down": {NewPoint(14, 20), true},
+		"(14, 19), inside, no collinearity":  {NewPoint(14, 19), true},
+		"(14, 18), inside, up, left, up":     {NewPoint(14, 18), true},
+		"(14, 17), inside, no collinearity":  {NewPoint(14, 17), true},
+		"(14, 16), inside, no collinearity":  {NewPoint(14, 16), true},
+		"(14, 15), inside, down, left, up":   {NewPoint(14, 15), true},
+		"(14, 14), inside, no collinearity":  {NewPoint(14, 14), true},
+		"(14, 13), inside, no collinearity":  {NewPoint(14, 13), true},
+		"(14, 12), inside, no collinearity":  {NewPoint(14, 12), true},
+		"(14, 11), inside, no collinearity":  {NewPoint(14, 11), true},
+		"(14, 10), inside, up, right, down":  {NewPoint(14, 10), true},
+		"(14, 9), inside, no collinearity":   {NewPoint(14, 9), true},
+		"(14, 8), inside, no collinearity":   {NewPoint(14, 8), true},
+		"(14, 7), inside, up, right, up":     {NewPoint(14, 7), true},
+		"(14, 6), inside, no collinearity":   {NewPoint(14, 6), true},
+		"(14, 5), inside, down, right, down": {NewPoint(14, 5), true},
+		"(14, 4), inside, no collinearity":   {NewPoint(14, 4), true},
+		"(14, 3), inside, down, right, down": {NewPoint(14, 3), true},
+		"(14, 2), on vertex":                 {NewPoint(14, 2), true},
+		"(14, 1), outside, no collinearity":  {NewPoint(14, 1), false},
+		"(14, 0), outside, no collinearity":  {NewPoint(14, 0), false},
+		"(14, -1), outside, down, right, up": {NewPoint(14, -1), false},
+		"(14, -2), outside, no intersection": {NewPoint(14, -2), false},
+
+		// x = 19, mixed
+		"(19, 27), outside, no intersection":  {NewPoint(19, 27), false},
+		"(19, 26), outside, up, left, down":   {NewPoint(19, 26), false},
+		"(19, 25), outside, no collinearity":  {NewPoint(19, 25), false},
+		"(19, 24), outside, no collinearity":  {NewPoint(19, 24), false},
+		"(19, 23), outside, no collinearoty":  {NewPoint(19, 23), false},
+		"(19, 22), outside, down, left, down": {NewPoint(19, 22), false},
+		"(19, 21), outside, no collinearity":  {NewPoint(19, 21), false},
+		"(19, 20), outside, down, left, down": {NewPoint(19, 20), false},
+		"(19, 19), outside, no collinearity":  {NewPoint(19, 19), false},
+		"(19, 18), on vertex":                 {NewPoint(19, 18), true},
+		"(19, 17), inside, no collinearity":   {NewPoint(19, 17), true},
+		"(19, 16), inside, no collinearity":   {NewPoint(19, 16), true},
+		"(19, 15), inside, down, left, up":    {NewPoint(19, 15), true},
+		"(19, 14), inside, no collinearity":   {NewPoint(19, 14), true},
+		"(19, 13), inside, no collinearity":   {NewPoint(19, 13), true},
+		"(19, 12), inside, no collinearity":   {NewPoint(19, 12), true},
+		"(19, 11), inside, no collinearity":   {NewPoint(19, 11), true},
+		"(19, 10), inside, up, right, down":   {NewPoint(19, 10), true},
+		"(19, 9), inside, no collinearity":    {NewPoint(19, 9), true},
+		"(19, 8), inside, no collinearity":    {NewPoint(19, 8), true},
+		"(19, 7), on vertex":                  {NewPoint(19, 7), true},
+		"(19, 6), outside, no collinearity":   {NewPoint(19, 6), false},
+		"(19, 5), outside, down, right, down": {NewPoint(19, 5), false},
+		"(19, 4), outside, no collinearity":   {NewPoint(19, 4), false},
+		"(19, 3), outside, down, right, down": {NewPoint(19, 3), false},
+		"(19, 2), outside, no collinearity":   {NewPoint(19, 2), false},
+		"(19, 1), outside, no collinearity":   {NewPoint(19, 1), false},
+		"(19, 0), outside, no collinearity":   {NewPoint(19, 0), false},
+		"(19, -1), outside, down, right, up":  {NewPoint(19, -1), false},
+		"(19, -2), outside, no intersection":  {NewPoint(19, -2), false},
+	}
+
+	for name, check := range pointsToCheck {
+		t.Run(name, func(t *testing.T) {
+			actual := poly.contour.isPointInside(check.point.Scale(NewPoint(0, 0), 2))
+			assert.Equal(t, check.inside, actual)
+		})
+	}
+
+}
+
 func TestContour_iterEdges_EarlyExit(t *testing.T) {
 	c := contour[int]{
 		{point: Point[int]{0, 0}},
@@ -1770,9 +1951,9 @@ func TestPolyTree_Eq(t *testing.T) {
 		require.NoError(t, err, "expected no error when creating poly2")
 
 		poly2Hole, err := NewPolyTree([]Point[int]{
-			NewPoint(1, 1),
-			NewPoint(5, 4),
-			NewPoint(9, 1),
+			NewPoint(3, 1),
+			NewPoint(5, 3),
+			NewPoint(7, 1),
 		}, PTHole)
 		require.NoError(t, err, "expected no error when creating poly2Hole")
 
@@ -1794,9 +1975,9 @@ func TestPolyTree_Eq(t *testing.T) {
 		require.NoError(t, err, "expected no error when creating poly1")
 
 		poly1Hole, err := NewPolyTree([]Point[int]{
-			NewPoint(1, 1),
-			NewPoint(4, 4),
-			NewPoint(9, 1),
+			NewPoint(3, 1),
+			NewPoint(4, 3),
+			NewPoint(7, 1),
 		}, PTHole)
 		require.NoError(t, err, "expected no error when creating poly1Hole")
 
@@ -1811,9 +1992,9 @@ func TestPolyTree_Eq(t *testing.T) {
 		require.NoError(t, err, "expected no error when creating poly2")
 
 		poly2Hole, err := NewPolyTree([]Point[int]{
-			NewPoint(1, 1),
+			NewPoint(2, 1),
 			NewPoint(5, 4),
-			NewPoint(9, 1),
+			NewPoint(8, 1),
 		}, PTHole)
 		require.NoError(t, err, "expected no error when creating poly2Hole")
 
@@ -1870,85 +2051,6 @@ func TestPolyTree_Hull(t *testing.T) {
 
 	// Validate the hull
 	assert.ElementsMatch(t, expectedHull, hull, "Hull points do not match expected")
-}
-
-func TestPolyTree_Intersects_PointInOther(t *testing.T) {
-	p1 := &PolyTree[int]{contour: contour[int]{
-		{point: Point[int]{0, 0}},
-		{point: Point[int]{10, 0}},
-		{point: Point[int]{10, 10}},
-		{point: Point[int]{0, 10}},
-	}}
-	p2 := &PolyTree[int]{contour: contour[int]{
-		{point: Point[int]{7, 11}},
-		{point: Point[int]{11, 7}},
-		{point: Point[int]{11, 11}},
-	}}
-	require.True(t, p1.Intersects(p2))
-}
-
-func TestPolyTree_Intersects_EdgeOverlap(t *testing.T) {
-	p1 := &PolyTree[int]{contour: contour[int]{
-		{point: Point[int]{0, 0}},
-		{point: Point[int]{10, 0}},
-		{point: Point[int]{10, 10}},
-		{point: Point[int]{0, 10}},
-	}}
-	p2 := &PolyTree[int]{contour: contour[int]{
-		{point: Point[int]{5, 0}},
-		{point: Point[int]{15, 0}},
-		{point: Point[int]{15, 5}},
-		{point: Point[int]{5, 5}},
-	}}
-	require.True(t, p1.Intersects(p2))
-}
-
-func TestPolyTree_Intersects_NoIntersection(t *testing.T) {
-	p1 := &PolyTree[int]{contour: contour[int]{
-		{point: Point[int]{0, 0}},
-		{point: Point[int]{10, 0}},
-		{point: Point[int]{10, 10}},
-		{point: Point[int]{0, 10}},
-	}}
-	p2 := &PolyTree[int]{contour: contour[int]{
-		{point: Point[int]{20, 20}},
-		{point: Point[int]{30, 20}},
-		{point: Point[int]{30, 30}},
-		{point: Point[int]{20, 30}},
-	}}
-	require.False(t, p1.Intersects(p2))
-}
-
-func TestPolyTree_Intersects_OverlappingPolygons(t *testing.T) {
-	p1 := &PolyTree[int]{contour: contour[int]{
-		{point: Point[int]{0, 0}},
-		{point: Point[int]{10, 0}},
-		{point: Point[int]{10, 10}},
-		{point: Point[int]{0, 10}},
-	}}
-	p2 := &PolyTree[int]{contour: contour[int]{
-		{point: Point[int]{5, 5}},
-		{point: Point[int]{15, 5}},
-		{point: Point[int]{15, 15}},
-		{point: Point[int]{5, 15}},
-	}}
-	require.True(t, p1.Intersects(p2))
-}
-
-func TestPolyTree_Intersects_PointInside(t *testing.T) {
-	p1 := &PolyTree[int]{contour: contour[int]{
-		{point: Point[int]{0, 0}},
-		{point: Point[int]{10, 0}},
-		{point: Point[int]{10, 10}},
-		{point: Point[int]{0, 10}},
-	}}
-	p2 := &PolyTree[int]{contour: contour[int]{
-		{point: Point[int]{5, 5}},
-		{point: Point[int]{6, 5}},
-		{point: Point[int]{6, 6}},
-		{point: Point[int]{5, 6}},
-	}}
-	require.True(t, p1.Intersects(p2))
 }
 
 func TestPolyTree_IsRoot(t *testing.T) {
@@ -2052,6 +2154,98 @@ func TestPolyTree_OrderConsistency(t *testing.T) {
 	// Verify sibling order
 	expectedSiblingOrder := []*PolyTree[int]{sibling2, sibling1} // Ordered by lowest, leftmost point
 	assert.Equal(t, expectedSiblingOrder, root.siblings, "Siblings should be ordered by lowest, leftmost point")
+}
+
+func TestPolyTree_Overlaps_PointInOther(t *testing.T) {
+	p1 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{0, 0}},
+		{point: Point[int]{10, 0}},
+		{point: Point[int]{10, 10}},
+		{point: Point[int]{0, 10}},
+	}}
+	p2 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{7, 11}},
+		{point: Point[int]{11, 7}},
+		{point: Point[int]{11, 11}},
+	}}
+	require.True(t, p1.Overlaps(p2))
+}
+
+func TestPolyTree_Overlaps_EdgeOverlap(t *testing.T) {
+	p1 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{0, 0}},
+		{point: Point[int]{10, 0}},
+		{point: Point[int]{10, 10}},
+		{point: Point[int]{0, 10}},
+	}}
+	p2 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{5, 0}},
+		{point: Point[int]{15, 0}},
+		{point: Point[int]{15, 5}},
+		{point: Point[int]{5, 5}},
+	}}
+	require.True(t, p1.Overlaps(p2))
+}
+
+func TestPolyTree_Overlaps_NoIntersection(t *testing.T) {
+	p1 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{0, 0}},
+		{point: Point[int]{10, 0}},
+		{point: Point[int]{10, 10}},
+		{point: Point[int]{0, 10}},
+	}}
+	p2 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{20, 20}},
+		{point: Point[int]{30, 20}},
+		{point: Point[int]{30, 30}},
+		{point: Point[int]{20, 30}},
+	}}
+	require.False(t, p1.Overlaps(p2))
+}
+
+func TestPolyTree_Overlaps_OverlappingPolygons(t *testing.T) {
+	p1 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{0, 0}},
+		{point: Point[int]{10, 0}},
+		{point: Point[int]{10, 10}},
+		{point: Point[int]{0, 10}},
+	}}
+	p2 := &PolyTree[int]{contour: contour[int]{
+		{point: Point[int]{5, 5}},
+		{point: Point[int]{15, 5}},
+		{point: Point[int]{15, 15}},
+		{point: Point[int]{5, 15}},
+	}}
+	require.True(t, p1.Overlaps(p2))
+}
+
+func TestPolyTree_Overlaps_PointInside(t *testing.T) {
+	p1, err := NewPolyTree[int]([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(10, 0),
+		NewPoint(10, 10),
+		NewPoint(0, 10),
+	}, PTHole)
+	require.NoError(t, err, "unexpected error creating p1")
+
+	p2, err := NewPolyTree[int]([]Point[int]{
+		NewPoint(1, 1),
+		NewPoint(9, 1),
+		NewPoint(9, 9),
+		NewPoint(1, 9),
+	}, PTSolid)
+	require.NoError(t, err, "unexpected error creating p2")
+
+	p3, err := NewPolyTree[int]([]Point[int]{
+		NewPoint(5, 5),
+		NewPoint(15, 5),
+		NewPoint(15, 15),
+		NewPoint(5, 15),
+	}, PTSolid)
+	require.NoError(t, err, "unexpected error creating p3")
+
+	require.True(t, p1.Overlaps(p2), "p1 should overlap p2")
+	require.True(t, p1.Overlaps(p3), "p1 should overlap p3")
 }
 
 func TestPolyTree_Parent(t *testing.T) {
@@ -2262,7 +2456,6 @@ func TestPolyTree_RelationshipToLineSegment(t *testing.T) {
 }
 
 func TestPolyTree_RelationshipToPoint(t *testing.T) {
-	// Create a PolyTree
 	root, err := NewPolyTree([]Point[int]{
 		NewPoint(0, 0),
 		NewPoint(0, 100),
@@ -2279,6 +2472,28 @@ func TestPolyTree_RelationshipToPoint(t *testing.T) {
 	}, PTHole)
 	require.NoError(t, err, "error creating hole polygon")
 	require.NoError(t, root.AddChild(hole), "error adding hole to root polygon")
+
+	issue7Hole, err := NewPolyTree[int]([]Point[int]{
+		NewPoint(299, 191),
+		NewPoint(329, 195),
+		NewPoint(325, 210),
+		NewPoint(298, 211),
+	}, PTHole)
+	require.NoError(t, err, "error creating issue7Hole polygon")
+	issue7PolyTree, err := NewPolyTree[int]([]Point[int]{
+		NewPoint(333, 218),
+		NewPoint(345, 195),
+		NewPoint(324, 181),
+		NewPoint(341, 164),
+		NewPoint(307, 169),
+		NewPoint(270, 163),
+		NewPoint(254, 180),
+		NewPoint(263, 193),
+		NewPoint(253, 210),
+		NewPoint(290, 181),
+		NewPoint(288, 218),
+	}, PTSolid, WithChildren(issue7Hole))
+	require.NoError(t, err, "error creating issue7PolyTree polygon")
 
 	tests := []struct {
 		name                     string
@@ -2321,6 +2536,13 @@ func TestPolyTree_RelationshipToPoint(t *testing.T) {
 			pt:                       root,
 			expectedRootRelationship: RelationshipContains,
 			expectedHoleRelationship: RelationshipIntersection,
+		},
+		{
+			name:                     "issue 7: Point is left of and collinear to a PolyTree edge",
+			point:                    NewPoint(273, 218),
+			pt:                       issue7PolyTree,
+			expectedRootRelationship: RelationshipDisjoint,
+			expectedHoleRelationship: RelationshipDisjoint,
 		},
 	}
 
