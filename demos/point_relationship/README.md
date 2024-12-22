@@ -3,6 +3,8 @@
 
 This demo showcases the capabilities of the [Geom2D library](https://github.com/mikenye/geom2d) by visualizing relationships between a mouse-controlled point and various geometric shapes (point, line segment, rectangle, circle, and polygon) in real-time.
 
+![Red pixel representing the mouse cursor moves around and over various geometries.](screenshot.gif "Animated Screenshot of Demo")
+
 ## How to Use
 
 1. **Mouse Cursor**:
