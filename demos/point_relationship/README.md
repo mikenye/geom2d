@@ -56,7 +56,7 @@ If this doesn't work:
 1. Clone the repository:
    ```bash
    git clone https://github.com/mikenye/geom2d
-   cd geom2d/demos
+   cd geom2d/demos/point_relationship
    ```
 
 2. Install dependencies:
