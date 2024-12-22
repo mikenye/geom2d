@@ -1,5 +1,7 @@
 # Geom2D
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/mikenye/geom2d.svg)](https://pkg.go.dev/github.com/mikenye/geom2d)
+
 Geom2D is a computational geometry library for Go, designed for 2D polygon operations and other fundamental geometric types, and is currently reaching its release candidate phase, nearing production readiness.
 
 ## Table of Contents
@@ -151,6 +153,8 @@ Geom2D builds upon the work of others and is grateful for the foundations they h
 - **Martínez et al.**: Their paper on Boolean operations on polygons has been instrumental in the implementation of Martínez's algorithm in this library. See [A simple algorithm for Boolean operations on polygons](https://web.archive.org/web/20230514184409/https://www.sciencedirect.com/science/article/abs/pii/S0925772199000124).
 
 - **Tom Wright**: The inspiration for starting this library came from Tom Wright’s repository [Provably Correct Polygon Algorithms](https://github.com/TooOldCoder/Provably-Correct-Polygon-Algorithms) and his accompanying paper. While Geom2D follows its own approach, certain ideas have been influenced by his work.
+
+- **Jack Bresenham**: The Bresenham's Line Algorithm and Bresenham's Circle Algorithm implemented in this library are inspired by Jack Bresenham's pioneering work. These algorithms are efficient methods for rasterizing lines and circles in computer graphics. For more details, see Bresenham's original paper ["Algorithm for computer control of a digital plotter." IBM Systems Journal, 1965.](https://dl.acm.org/doi/10.1147/sj.41.025)
 
 - This project is a collaborative effort, with significant assistance from [OpenAI's Assistant](https://openai.com/) for brainstorming, debugging, and refining implementations.
 

@@ -609,42 +609,6 @@ func ExamplePolyTree_Hull() {
 	// Point: Point[(50, 100)]
 }
 
-func ExamplePolyTree_Intersects() {
-	// Create the first PolyTree - a square
-	root1, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
-		geom2d.NewPoint(0, 0),
-		geom2d.NewPoint(100, 0),
-		geom2d.NewPoint(100, 100),
-		geom2d.NewPoint(0, 100),
-	}, geom2d.PTSolid)
-
-	// Create the second PolyTree - a smaller square inside the first
-	root2, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
-		geom2d.NewPoint(20, 20),
-		geom2d.NewPoint(80, 20),
-		geom2d.NewPoint(80, 80),
-		geom2d.NewPoint(20, 80),
-	}, geom2d.PTSolid)
-
-	// Create a third PolyTree - disjoint from the first two
-	root3, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
-		geom2d.NewPoint(200, 200),
-		geom2d.NewPoint(300, 200),
-		geom2d.NewPoint(300, 300),
-		geom2d.NewPoint(200, 300),
-	}, geom2d.PTSolid)
-
-	// Check intersections
-	fmt.Printf("Root1 intersects Root2: %v\n", root1.Intersects(root2)) // Expect true
-	fmt.Printf("Root1 intersects Root3: %v\n", root1.Intersects(root3)) // Expect false
-	fmt.Printf("Root2 intersects Root3: %v\n", root2.Intersects(root3)) // Expect false
-
-	// Output:
-	// Root1 intersects Root2: true
-	// Root1 intersects Root3: false
-	// Root2 intersects Root3: false
-}
-
 func ExamplePolyTree_IsRoot() {
 	// Create a root PolyTree
 	rootContour := []geom2d.Point[int]{
@@ -769,6 +733,42 @@ func ExamplePolyTree_Nodes() {
 	// Contour: [Point[(20, 20)] Point[(20, 80)] Point[(80, 80)] Point[(80, 20)]]
 	// Polygon Type: PTSolid
 	// Contour: [Point[(40, 40)] Point[(60, 40)] Point[(60, 60)] Point[(40, 60)]]
+}
+
+func ExamplePolyTree_Overlaps() {
+	// Create the first PolyTree - a square
+	root1, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(100, 0),
+		geom2d.NewPoint(100, 100),
+		geom2d.NewPoint(0, 100),
+	}, geom2d.PTSolid)
+
+	// Create the second PolyTree - a smaller square inside the first
+	root2, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(20, 20),
+		geom2d.NewPoint(80, 20),
+		geom2d.NewPoint(80, 80),
+		geom2d.NewPoint(20, 80),
+	}, geom2d.PTSolid)
+
+	// Create a third PolyTree - disjoint from the first two
+	root3, _ := geom2d.NewPolyTree([]geom2d.Point[int]{
+		geom2d.NewPoint(200, 200),
+		geom2d.NewPoint(300, 200),
+		geom2d.NewPoint(300, 300),
+		geom2d.NewPoint(200, 300),
+	}, geom2d.PTSolid)
+
+	// Check intersections
+	fmt.Printf("Root1 intersects Root2: %v\n", root1.Overlaps(root2)) // Expect true
+	fmt.Printf("Root1 intersects Root3: %v\n", root1.Overlaps(root3)) // Expect false
+	fmt.Printf("Root2 intersects Root3: %v\n", root2.Overlaps(root3)) // Expect false
+
+	// Output:
+	// Root1 intersects Root2: true
+	// Root1 intersects Root3: false
+	// Root2 intersects Root3: false
 }
 
 func ExamplePolyTree_Parent() {

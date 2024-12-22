@@ -236,11 +236,6 @@ const (
 	ReflectAcrossCustomLine
 )
 
-// inOrder returns true if b lies between a and c
-func inOrder[T SignedNumber](a, b, c T) bool {
-	return (a-b)*(b-c) > 0
-}
-
 // geomOptions defines a set of configurable parameters for geometric operations.
 // These options allow users to customize the behavior of functions in the library,
 // such as applying numerical stability adjustments or other optional features.
