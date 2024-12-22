@@ -1,0 +1,4 @@
+ignore:
+  - ".github"
+  - "demos"
+  - "testdata"
