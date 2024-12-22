@@ -154,6 +154,8 @@ Geom2D builds upon the work of others and is grateful for the foundations they h
 
 - **Tom Wright**: The inspiration for starting this library came from Tom Wright’s repository [Provably Correct Polygon Algorithms](https://github.com/TooOldCoder/Provably-Correct-Polygon-Algorithms) and his accompanying paper. While Geom2D follows its own approach, certain ideas have been influenced by his work.
 
+- **Jack Bresenham**: The Bresenham's Line Algorithm and Bresenham's Circle Algorithm implemented in this library are inspired by Jack Bresenham's pioneering work. These algorithms are efficient methods for rasterizing lines and circles in computer graphics. For more details, see Bresenham's original paper ["Algorithm for computer control of a digital plotter." IBM Systems Journal, 1965.](https://dl.acm.org/doi/10.1147/sj.41.025)
+
 - This project is a collaborative effort, with significant assistance from [OpenAI's Assistant](https://openai.com/) for brainstorming, debugging, and refining implementations.
 
 To learn more about the work that inspired this library, visit the linked papers and repositories.
