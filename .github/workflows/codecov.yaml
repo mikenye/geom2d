@@ -1,0 +1,48 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+
+  codecov:
+    name: Codecov
+    runs-on: ubuntu-24.04
+
+    steps:
+
+      - name: Install ebitengine dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install libasound2-dev libgl1-mesa-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev
+
+      # Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Setup Go with caching
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          cache: 'true'
+          cache-dependency-path: ./go.sum
+          check-latest: 'true'
+          go-version-file: ./go.mod
+
+      # Get test coverage
+      - name: Generate test coverage
+        run: |
+          go test ./... -coverprofile=coverage.txt
+
+      # Upload test coverage
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
