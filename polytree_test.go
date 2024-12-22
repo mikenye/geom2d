@@ -2538,7 +2538,7 @@ func TestPolyTree_RelationshipToPoint(t *testing.T) {
 			expectedHoleRelationship: RelationshipIntersection,
 		},
 		{
-			name:                     "issue 7: Point is left of and collinear to a PolyTree edge",
+			name:                     "issue #7: Point is left of and collinear to a PolyTree edge",
 			point:                    NewPoint(273, 218),
 			pt:                       issue7PolyTree,
 			expectedRootRelationship: RelationshipDisjoint,

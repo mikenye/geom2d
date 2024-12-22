@@ -877,6 +877,11 @@ func (c *contour[T]) isContourInside(other contour[T]) bool {
 //   - If the number of crossings is odd, the point is inside; if even, the point is outside.
 //   - Contour lying directly on the contour edges are considered inside.
 func (c *contour[T]) isPointInside(point Point[T]) bool {
+
+	/////
+	// Abandon all hope, ye who enter here
+	/////
+
 	crosses := 0
 
 	// Calculate the farthest x-coordinate to cast a ray.
@@ -922,22 +927,28 @@ func (c *contour[T]) isPointInside(point Point[T]) bool {
 		}
 
 		// get index of previous and next points
+		iNext := (i + 1) % len(edges)
 		iPrev := i - 1
 		if iPrev < 0 {
 			iPrev = len(edges) - 1
 		}
-		iNext := (i + 1) % len(edges)
 
-		// determine directionality of previous line segment
-		downPrev := false
-		if edges[iPrev].lineSegment.start.y > edges[iPrev].lineSegment.end.y {
-			downPrev = true
+		// determine directionality of current line segment
+		downCurr := false
+		if edges[i].lineSegment.start.y > edges[i].lineSegment.end.y {
+			downCurr = true
 		}
 
 		// determine directionality of next line segment
 		downNext := false
 		if edges[iNext].lineSegment.start.y > edges[iNext].lineSegment.end.y {
 			downNext = true
+		}
+
+		// determine directionality of previous line segment
+		downPrev := false
+		if edges[iPrev].lineSegment.start.y > edges[iPrev].lineSegment.end.y {
+			downPrev = true
 		}
 
 		//// determine directionality of current line segment
@@ -965,7 +976,9 @@ func (c *contour[T]) isPointInside(point Point[T]) bool {
 		}
 
 		// down, down / up, up on point
-		if edges[i].rel == lsrDonAB && edges[iNext].rel == lsrConAB {
+		if edges[i].rel == lsrDonAB &&
+			edges[iNext].rel == lsrConAB &&
+			downCurr == downNext {
 			crosses++
 			//fmt.Println(edges[i].lineSegment.String(), "vertical line on join")
 			continue
