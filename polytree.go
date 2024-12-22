@@ -884,59 +884,128 @@ func (c *contour[T]) isPointInside(point Point[T]) bool {
 	for _, p := range *c {
 		maxX = max(maxX, p.point.x)
 	}
-	maxX++                                                // Ensure the ray extends beyond the contour's bounds.
-	ray := NewLineSegment(point, NewPoint(maxX, point.y)) // Cast the ray.
+	maxX++ // Ensure the ray extends beyond the contour's bounds.
+	ray := NewLineSegment(
+		point,
+		NewPoint(maxX, point.y)) // Cast the ray.
 
 	// Convert the contour to edges (line segments).
 	edges := c.toEdges()
 
-	// Determine the relationship of each edge to the ray.
+	// Determine all relationships of the edges to the ray
 	for i := range edges {
-		// If the point lies directly on the edge, consider it inside.
-		if edges[i].lineSegment.ContainsPoint(point) {
-			return true
-		}
-
 		// Determine the relationship of the edge to the ray.
 		edges[i].rel = ray.detailedRelationshipToLineSegment(edges[i].lineSegment)
+
+		// if the point is on the edge, then we bail out early
+		if edges[i].rel == lsrCollinearAonCD {
+			//fmt.Println(edges[i].lineSegment.String(), "on edge")
+			return true
+		}
 	}
+
+	//fmt.Println("ray:", ray.String())
 
 	// Analyze the relationships and count ray crossings.
 	for i := range edges {
-		// Look at the next edge in the contour.
+
+		// miss
+		if edges[i].rel == lsrMiss {
+			continue
+		}
+
+		// normal intersection
+		if edges[i].rel == lsrIntersects {
+			crosses++
+			//fmt.Println(edges[i].lineSegment.String(), "normal intersection")
+			continue
+		}
+
+		// get index of previous and next points
+		iPrev := i - 1
+		if iPrev < 0 {
+			iPrev = len(edges) - 1
+		}
 		iNext := (i + 1) % len(edges)
 
-		switch edges[i].rel {
-		case lsrIntersects: // Ray intersects the edge.
-			crosses++
-
-		case lsrCollinearCDinAB: // Ray is collinear with the edge and overlaps it.
-			crosses += 1
-
-		case lsrConAB: // Ray starts on the edge.
-			crosses++
-
-			// Handle potential overlaps with the next edge.
-			if edges[iNext].rel == lsrDonAB {
-				if inOrder(edges[i].lineSegment.start.y, point.y, edges[iNext].lineSegment.end.y) {
-					crosses++
-				}
-			}
-
-		case lsrDonAB: // Ray ends on the edge.
-			crosses++
-
-			// Handle potential overlaps with the next edge.
-			if edges[iNext].rel == lsrConAB {
-				if inOrder(edges[i].lineSegment.start.y, point.y, edges[iNext].lineSegment.end.y) {
-					crosses++
-				}
-			}
-
-		default:
-			// No action for edges that don't interact with the ray.
+		// determine directionality of previous line segment
+		downPrev := false
+		if edges[iPrev].lineSegment.start.y > edges[iPrev].lineSegment.end.y {
+			downPrev = true
 		}
+
+		// determine directionality of next line segment
+		downNext := false
+		if edges[iNext].lineSegment.start.y > edges[iNext].lineSegment.end.y {
+			downNext = true
+		}
+
+		//// determine directionality of current line segment
+		//leftCurr := false
+		//if edges[i].lineSegment.start.x > edges[i].lineSegment.end.x {
+		//	leftCurr = true
+		//}
+
+		// down, left, down && down, right, down
+		if edges[iPrev].rel == lsrDonAB && downPrev &&
+			edges[i].rel == lsrCollinearCDinAB &&
+			edges[iNext].rel == lsrConAB && downNext {
+			crosses++
+			//fmt.Println(edges[i].lineSegment.String(), "down, collinear, down")
+			continue
+		}
+
+		// up, left, up && up, right, up
+		if edges[iPrev].rel == lsrDonAB && !downPrev &&
+			edges[i].rel == lsrCollinearCDinAB &&
+			edges[iNext].rel == lsrConAB && !downNext {
+			crosses++
+			//fmt.Println(edges[i].lineSegment.String(), "up, collinear, up")
+			continue
+		}
+
+		// down, down / up, up on point
+		if edges[i].rel == lsrDonAB && edges[iNext].rel == lsrConAB {
+			crosses++
+			//fmt.Println(edges[i].lineSegment.String(), "vertical line on join")
+			continue
+		}
+
+		//fmt.Println("no action on:", edges[i].lineSegment.String(), edges[i].rel.String())
+
+		//switch edges[i].rel {
+		//case lsrIntersects: // Ray intersects the edge.
+		//	crosses++
+		//
+		////case lsrCollinearCDinAB: // Ray is collinear with the edge and overlaps it.
+		////	crosses++
+		//
+		////case lsrConAB: // Ray starts on the edge.
+		////	crosses++
+		////
+		////	// Handle potential overlaps with the next edge.
+		////	if edges[iNext].rel == lsrDonAB {
+		////		if inOrder(edges[i].lineSegment.start.y, point.y, edges[iNext].lineSegment.end.y) {
+		////			crosses++
+		////		}
+		////	}
+		//
+		//case lsrDonAB: // Ray ends on the edge.
+		//	crosses++
+		//
+		//	//// Handle potential overlaps with the next edge.
+		//	//if edges[iNext].rel == lsrConAB {
+		//	//	if inOrder(edges[i].lineSegment.start.y, point.y, edges[iNext].lineSegment.end.y) {
+		//	//		crosses++
+		//	//	}
+		//	//}
+		//
+		//default:
+		//	// No action for edges that don't interact with the ray.
+		//}
 	}
+
+	//fmt.Printf("crosses: %d\n", crosses)
 
 	// A point is inside if the number of crossings is odd.
 	return crosses%2 == 1
@@ -1344,7 +1413,7 @@ func (pt *PolyTree[T]) AsIntRounded() *PolyTree[int] {
 //   - Returns a nested PolyTree structure representing the operation result.
 func (pt *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOperation) (*PolyTree[T], error) {
 	// Edge Case: Check if the polygons intersect
-	if !pt.Intersects(other) {
+	if !pt.Overlaps(other) {
 		switch operation {
 		case BooleanUnion:
 			// Non-intersecting polygons: Add other as a sibling
@@ -1652,7 +1721,7 @@ func (pt *PolyTree[T]) Eq(other *PolyTree[T], opts ...polyTreeEqOption[T]) (bool
 	// Compare children
 	if len(pt.children) != len(other.children) {
 		mismatches |= PTMChildMismatch
-		fmt.Println("Mismatch in children count detected")
+		//fmt.Println("Mismatch in children count detected")
 	} else {
 		// Children order doesn't matter, check if each child matches
 		for _, child := range pt.children {
@@ -1665,7 +1734,7 @@ func (pt *PolyTree[T]) Eq(other *PolyTree[T], opts ...polyTreeEqOption[T]) (bool
 			}
 			if !found {
 				mismatches |= PTMChildMismatch
-				fmt.Println("Mismatch in children content detected")
+				//fmt.Println("Mismatch in children content detected")
 				break
 			}
 		}
@@ -1797,51 +1866,6 @@ func (pt *PolyTree[T]) findTraversalStartingPoint(other *PolyTree[T]) (*PolyTree
 //   - The points in the hull are ordered counterclockwise.
 func (pt *PolyTree[T]) Hull() []Point[T] {
 	return pt.hull.Points
-}
-
-// Intersects checks whether the current PolyTree intersects with another PolyTree.
-//
-// Parameters:
-//   - other (*PolyTree[T]): The PolyTree to compare against the current PolyTree.
-//
-// Returns:
-//   - true if the two PolyTree objects intersect, either by containment or edge overlap.
-//   - false if there is no intersection.
-//
-// Behavior:
-//   - Checks if any point from one PolyTree lies inside the contour of the other PolyTree.
-//   - Verifies if any edges of the two PolyTree objects intersect.
-//
-// This method accounts for all potential intersection cases, including:
-//   - One polygon entirely inside the other.
-//   - Overlapping polygons with shared edges.
-//   - Polygons touching at vertices or along edges.
-func (pt *PolyTree[T]) Intersects(other *PolyTree[T]) bool {
-	// Check if any point of "other" is inside the contour of "pt"
-	for _, otherPoint := range other.contour {
-		if pt.contour.isPointInside(otherPoint.point) {
-			return true // Intersection found via point containment
-		}
-	}
-
-	// Check if any point of "pt" is inside the contour of "other"
-	for _, point := range pt.contour {
-		if other.contour.isPointInside(point.point) {
-			return true // Intersection found via point containment
-		}
-	}
-
-	// Check for edge intersections between "pt" and "other"
-	for poly1Edge := range pt.contour.iterEdges {
-		for poly2Edge := range other.contour.iterEdges {
-			if poly1Edge.IntersectsLineSegment(poly2Edge) {
-				return true // Intersection found via edge overlap
-			}
-		}
-	}
-
-	// No intersections detected
-	return false
 }
 
 // IsRoot determines if the current PolyTree node is the root of the tree.
@@ -2045,6 +2069,51 @@ func (pt *PolyTree[T]) orderSiblingsAndChildren() {
 		// Compare contours using their lowest, leftmost points
 		return compareLowestLeftmost(a.contour, b.contour)
 	})
+}
+
+// Overlaps checks whether the current PolyTree intersects with another PolyTree.
+//
+// Parameters:
+//   - other (*PolyTree[T]): The PolyTree to compare against the current PolyTree.
+//
+// Returns:
+//   - true if the two PolyTree objects intersect, either by containment or edge overlap.
+//   - false if there is no intersection.
+//
+// Behavior:
+//   - Checks if any point from one PolyTree lies inside the contour of the other PolyTree.
+//   - Verifies if any edges of the two PolyTree objects intersect.
+//
+// This method accounts for all potential intersection cases, including:
+//   - One polygon entirely inside the other.
+//   - Overlapping polygons with shared edges.
+//   - Polygons touching at vertices or along edges.
+func (pt *PolyTree[T]) Overlaps(other *PolyTree[T]) bool {
+	// Check if any point of "other" is inside the contour of "pt"
+	for _, otherPoint := range other.contour {
+		if pt.contour.isPointInside(otherPoint.point.Scale(NewPoint[T](0, 0), 2)) {
+			return true // Intersection found via point containment
+		}
+	}
+
+	// Check if any point of "pt" is inside the contour of "other"
+	for _, point := range pt.contour {
+		if other.contour.isPointInside(point.point.Scale(NewPoint[T](0, 0), 2)) {
+			return true // Intersection found via point containment
+		}
+	}
+
+	// Check for edge intersections between "pt" and "other"
+	for poly1Edge := range pt.contour.iterEdges {
+		for poly2Edge := range other.contour.iterEdges {
+			if poly1Edge.IntersectsLineSegment(poly2Edge) {
+				return true // Intersection found via edge overlap
+			}
+		}
+	}
+
+	// No intersections detected
+	return false
 }
 
 // Parent retrieves the parent of the current PolyTree node.
