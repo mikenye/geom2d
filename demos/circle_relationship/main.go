@@ -13,7 +13,7 @@ import (
 // App represents the state of the demo application.
 type App struct {
 	mouseX, mouseY int                // Current mouse position.
-	mouseCircle    geom2d.Circle[int] // Current mouse position as a geom2d Point.
+	mouseCircle    geom2d.Circle[int] // Current mouse position as a geom2d Circle.
 
 	// Single point and its relationship to the mouse point.
 	point             geom2d.Point[int]
@@ -104,7 +104,7 @@ func (app *App) Draw(screen *ebiten.Image) {
 }
 
 // Layout specifies the screen size for the application.
-func (app *App) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
+func (app *App) Layout(_, _ int) (screenWidth, screenHeight int) {
 	return 350, 250 // Fixed screen size.
 }
 
@@ -126,7 +126,7 @@ func (app *App) Update() error {
 
 // initGeometry initializes all geometric objects and handles potential errors.
 func (app *App) initGeometry() error {
-	// Initialize the mouse point.
+	// Initialize the mouse circle.
 	app.mouseCircle = geom2d.NewCircle[int](geom2d.NewPoint(0, 0), 3)
 
 	// Initialize the single point.

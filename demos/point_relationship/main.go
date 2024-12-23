@@ -102,7 +102,7 @@ func (app *App) Draw(screen *ebiten.Image) {
 }
 
 // Layout specifies the screen size for the application.
-func (app *App) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
+func (app *App) Layout(_, _ int) (screenWidth, screenHeight int) {
 	return 350, 250 // Fixed screen size.
 }
 
