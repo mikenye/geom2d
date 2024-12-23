@@ -93,7 +93,7 @@ func (app *App) Draw(screen *ebiten.Image) {
 	vector.StrokeLine(screen, 0, 224, 800, 224, 1, colornames.White, false)
 
 	// Render the mouse point as a red pixel.
-	screen.Set(app.mousePoint.AsIntRounded().X(), app.mousePoint.AsIntRounded().Y(), colornames.Red)
+	screen.Set(app.mousePoint.X(), app.mousePoint.Y(), colornames.Red)
 
 	// Display mouse position, FPS, and TPS.
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Mouse: %s", app.mousePoint.String()), 5, 224)
