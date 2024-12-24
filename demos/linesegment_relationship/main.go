@@ -92,9 +92,9 @@ func (app *App) Draw(screen *ebiten.Image) {
 	// Separator for visual clarity.
 	vector.StrokeLine(screen, 0, 224, 800, 224, 1, colornames.White, false)
 
-	// Render the mouse point as a red pixel.
+	// Render the mouse point as a red line segment.
 	for p := range app.mouseLineSegment.Bresenham {
-		screen.Set(p.X(), p.Y(), colornames.Red) // Render the circle.
+		screen.Set(p.X(), p.Y(), colornames.Red)
 	}
 
 	// Display mouse position, FPS, and TPS.
