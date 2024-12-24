@@ -110,7 +110,7 @@ func (app *App) Layout(_, _ int) (screenWidth, screenHeight int) {
 
 // Update computes the relationships between the mouse point and other geometries.
 func (app *App) Update() error {
-	// Update mouse position and convert to a geom2d Point.
+	// Update mouse position and recreate mouse geometry.
 	app.mouseX, app.mouseY = ebiten.CursorPosition()
 	app.mouseCircle = geom2d.NewCircle[int](geom2d.NewPoint(app.mouseX, app.mouseY), 3)
 
