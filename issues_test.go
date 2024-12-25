@@ -1,11 +1,14 @@
 package geom2d
 
 import (
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 func TestIssue7(t *testing.T) {
+	// https://github.com/mikenye/geom2d/issues/7
 
 	t.Run("issue as-per github", func(t *testing.T) {
 		holeInPolyTree, err := NewPolyTree[int]([]Point[int]{
@@ -100,4 +103,65 @@ func TestIssue7(t *testing.T) {
 			require.Equal(t, RelationshipDisjoint, rel[pt])
 		}
 	})
+}
+
+func TestIssue15(t *testing.T) {
+
+	// mimmick the issue conditions for issue #15 (https://github.com/mikenye/geom2d/issues/15)
+
+	ptAHole, err := NewPolyTree([]Point[int]{
+		NewPoint(150, 150),
+		NewPoint(200, 150),
+		NewPoint(200, 100),
+		NewPoint(150, 100),
+	}, PTHole)
+	require.NoError(t, err, "unexpected error creating ptAHole")
+
+	ptA, err := NewPolyTree([]Point[int]{
+		NewPoint(125, 75),
+		NewPoint(225, 75),
+		NewPoint(225, 175),
+		NewPoint(125, 175),
+	}, PTSolid, WithChildren(ptAHole))
+	require.NoError(t, err, "unexpected error creating ptA")
+
+	ptBHole, err := NewPolyTree([]Point[int]{
+		NewPoint(35, 135),
+		NewPoint(35, 185),
+		NewPoint(85, 185),
+		NewPoint(85, 135),
+	}, PTHole)
+	require.NoError(t, err, "unexpected error creating ptBHole")
+
+	ptB, err := NewPolyTree([]Point[int]{
+		NewPoint(10, 110),
+		NewPoint(110, 110),
+		NewPoint(110, 210),
+		NewPoint(10, 210),
+	}, PTSolid, WithChildren(ptBHole))
+	require.NoError(t, err, "unexpected error creating ptB")
+
+	// mimmick user dragging ptB across ptA
+	for i := 0; i < 230; i++ {
+
+		// perform boolean operation in goroutine
+		completed := false
+		go func() {
+			_, err := ptA.BooleanOperation(
+				ptB,
+				BooleanSubtraction,
+			)
+			require.NoError(t, err, "unexpected error creating ptResult")
+			completed = true
+		}()
+
+		// Require that goroutine finishes within 3 seconds.
+		// If not, then the function must be stuck in an infinite loop.
+		require.EventuallyWithTf(t, func(c *assert.CollectT) {
+			require.True(c, completed, "expected 'completed' to be true")
+		}, 3*time.Second, 100*time.Millisecond, "external state has not changed to 'true'; still false")
+
+		// mimmick dragging by moving ptB one pixel to the right
+		ptB = ptB.Translate(NewPoint(1, 0))
+	}
 }
