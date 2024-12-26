@@ -948,69 +948,47 @@ func TestLineSegment_Eq(t *testing.T) {
 	}
 }
 
-func TestLineSegment_IntersectionPoint(t *testing.T) {
+func TestLineSegment_IntersectionGeometry(t *testing.T) {
 	tests := map[string]struct {
-		AB, CD               any // Use `any` to support both `int` and `float64`
-		expectedPoint        Point[float64]
-		expectedIntersection bool
+		AB, CD                   LineSegment[int]
+		expectedIntersectionType LineSegmentIntersectionType
+		expectedResult           any
 	}{
-		"Intersecting segments (float64)": {
-			AB:                   NewLineSegment(NewPoint(0.0, 0.0), NewPoint(10.0, 10.0)),
-			CD:                   NewLineSegment(NewPoint(0.0, 10.0), NewPoint(10.0, 0.0)),
-			expectedPoint:        NewPoint(5.0, 5.0),
-			expectedIntersection: true,
+		"Intersecting segments returning point": {
+			AB:                       NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
+			CD:                       NewLineSegment(NewPoint(0, 10), NewPoint(10, 0)),
+			expectedIntersectionType: IntersectionPoint,
+			expectedResult:           NewPoint(5.0, 5.0),
 		},
-		"Non-intersecting segments (float64)": {
-			AB:                   NewLineSegment(NewPoint(0.0, 0.0), NewPoint(5.0, 5.0)),
-			CD:                   NewLineSegment(NewPoint(6.0, 6.0), NewPoint(10.0, 10.0)),
-			expectedPoint:        Point[float64]{},
-			expectedIntersection: false,
+		"Intersecting collinear segments returning line segment": {
+			AB:                       NewLineSegment(NewPoint(0, 0), NewPoint(10, 0)),
+			CD:                       NewLineSegment(NewPoint(-5, 0), NewPoint(5, 0)),
+			expectedIntersectionType: IntersectionSegment,
+			expectedResult:           NewLineSegment(NewPoint(0.0, 0.0), NewPoint(5.0, 0.0)),
 		},
-		"Parallel segments (float64)": {
-			AB:                   NewLineSegment(NewPoint(0.0, 0.0), NewPoint(5.0, 5.0)),
-			CD:                   NewLineSegment(NewPoint(1.0, 1.0), NewPoint(6.0, 6.0)),
-			expectedPoint:        Point[float64]{},
-			expectedIntersection: false,
-		},
-		"Intersection outside segment bounds (float64)": {
-			AB:                   NewLineSegment(NewPoint(0.0, 0.0), NewPoint(1.0, 1.0)),
-			CD:                   NewLineSegment(NewPoint(2.0, 2.0), NewPoint(3.0, 0.0)),
-			expectedPoint:        Point[float64]{},
-			expectedIntersection: false,
-		},
-		"Intersecting segments (int)": {
-			AB:                   NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
-			CD:                   NewLineSegment(NewPoint(0, 10), NewPoint(10, 0)),
-			expectedPoint:        NewPoint(5.0, 5.0),
-			expectedIntersection: true,
-		},
-		"Non-intersecting segments (int)": {
-			AB:                   NewLineSegment(NewPoint(0, 0), NewPoint(5, 5)),
-			CD:                   NewLineSegment(NewPoint(6, 6), NewPoint(10, 10)),
-			expectedPoint:        Point[float64]{},
-			expectedIntersection: false,
+		"Non-intersecting segments": {
+			AB:                       NewLineSegment(NewPoint(0, 0), NewPoint(5, 5)),
+			CD:                       NewLineSegment(NewPoint(6, 6), NewPoint(10, 10)),
+			expectedIntersectionType: IntersectionNone,
 		},
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			switch AB := tc.AB.(type) {
-			case LineSegment[float64]:
-				CD := tc.CD.(LineSegment[float64])
-				point, intersects := AB.IntersectionPoint(CD)
-				assert.Equal(t, tc.expectedIntersection, intersects)
-				if intersects {
-					assert.Equal(t, tc.expectedPoint, point)
-				}
-			case LineSegment[int]:
-				CD := tc.CD.(LineSegment[int])
-				point, intersects := AB.IntersectionPoint(CD)
-				assert.Equal(t, tc.expectedIntersection, intersects)
-				if intersects {
-					assert.Equal(t, tc.expectedPoint, Point[float64]{float64(point.x), float64(point.y)})
-				}
-			default:
-				t.Fatalf("unexpected type for line segments: %T", tc.AB)
+			actual := tc.AB.IntersectionGeometry(tc.CD)
+			switch tc.expectedIntersectionType {
+			case IntersectionNone:
+				assert.Equal(t, IntersectionNone, actual.IntersectionType)
+				assert.Equal(t, Point[float64]{}, actual.IntersectionPoint)
+				assert.Equal(t, LineSegment[float64]{}, actual.IntersectionSegment)
+			case IntersectionPoint:
+				assert.Equal(t, IntersectionPoint, actual.IntersectionType)
+				assert.Equal(t, tc.expectedResult, actual.IntersectionPoint)
+				assert.Equal(t, LineSegment[float64]{}, actual.IntersectionSegment)
+			case IntersectionSegment:
+				assert.Equal(t, IntersectionSegment, actual.IntersectionType)
+				assert.Equal(t, Point[float64]{}, actual.IntersectionPoint)
+				assert.Equal(t, tc.expectedResult, actual.IntersectionSegment)
 			}
 		})
 	}
