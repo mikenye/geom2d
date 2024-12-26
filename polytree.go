@@ -1425,6 +1425,7 @@ func (pt *PolyTree[T]) AsIntRounded() *PolyTree[int] {
 //   - Traverses the polygons to construct the result of the operation.
 //   - Returns a nested PolyTree structure representing the operation result.
 func (pt *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOperation) (*PolyTree[T], error) {
+
 	// Edge Case: Check if the polygons intersect
 	if !pt.Overlaps(other) {
 		switch operation {
@@ -1448,6 +1449,12 @@ func (pt *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOpe
 			return nil, fmt.Errorf("unknown operation: %v", operation)
 		}
 	}
+
+	fmt.Println("BooleanOperation")
+	fmt.Println("pt:")
+	fmt.Println(pt.String())
+	fmt.Println("other:")
+	fmt.Println(other.String())
 
 	// Step 1: Find intersection points between all polygons
 	pt.findIntersections(other)
@@ -1557,23 +1564,40 @@ func (pt *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation B
 	}
 
 	// Handle edge cases: No intersections found
-	if len(resultContours) == 0 {
-		switch operation {
-		case BooleanUnion:
-			return [][]Point[T]{
-				pt.contour.toPoints(),
-				other.contour.toPoints(),
-			}
-		case BooleanIntersection:
-			return nil // No intersection
-		case BooleanSubtraction:
-			return [][]Point[T]{
-				pt.contour.toPoints(),
-			}
-		default:
-			panic(fmt.Errorf("unknown BooleanOperation: %v", operation))
+	//if len(resultContours) == 0 {
+	switch operation {
+
+	case BooleanUnion:
+		for poly := range pt.Nodes {
+			resultContours = append(resultContours, poly.Contour())
 		}
+		for poly := range other.Nodes {
+			resultContours = append(resultContours, poly.Contour())
+		}
+
+	case BooleanIntersection:
+		return nil // No intersection
+
+	case BooleanSubtraction:
+
+		// append any polygons from pt that don't have an intersection
+		for poly := range pt.Nodes {
+			intersection := false
+			for _, point := range poly.contour {
+				if point.entryExit != intersectionTypeNotSet {
+					intersection = true
+					break
+				}
+			}
+			if !intersection {
+				resultContours = append(resultContours, poly.Contour())
+			}
+		}
+
+	default:
+		panic(fmt.Errorf("unknown BooleanOperation: %v", operation))
 	}
+	//}
 
 	return resultContours
 }
