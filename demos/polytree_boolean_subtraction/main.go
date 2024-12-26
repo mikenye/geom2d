@@ -129,7 +129,7 @@ func main() {
 	// Configure Ebitengine settings and start the game.
 	ebiten.SetWindowSize(700, 500)
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
-	ebiten.SetWindowTitle("geom2d demo: polytree boolean operations")
+	ebiten.SetWindowTitle("geom2d demo: polytree boolean subtraction")
 	ebiten.SetCursorMode(ebiten.CursorModeHidden)
 	err = ebiten.RunGame(app)
 	if err != nil {
