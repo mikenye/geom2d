@@ -1,10 +1,9 @@
 package geom2d
 
 import (
-	"github.com/stretchr/testify/assert"
+	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
-	"time"
 )
 
 func TestIssue7(t *testing.T) {
@@ -105,63 +104,69 @@ func TestIssue7(t *testing.T) {
 	})
 }
 
+// TestIssue15 tests boolean operations (e.g., union, intersection, subtraction)
+// between two PolyTrees (ptA and ptB) by sweeping ptB across ptA at every possible x and y offset.
+//
+// Aims to mimmick the issue conditions for issue #15 (https://github.com/mikenye/geom2d/issues/15), to
+// ensure the issue is resolved.
+//
+// This test is designed to ensure no infinite loops or panics are caused during the phases:
+//   - find intersections
+//   - identifying entry/exit points
+//   - boolean traversal
+//   - nesting resultant contours into polytrees
 func TestIssue15(t *testing.T) {
 
-	// mimmick the issue conditions for issue #15 (https://github.com/mikenye/geom2d/issues/15)
-
-	ptAHole, err := NewPolyTree([]Point[int]{
-		NewPoint(150, 150),
-		NewPoint(200, 150),
-		NewPoint(200, 100),
-		NewPoint(150, 100),
+	// Initialize PolyTreeA.
+	ptAHole, err := NewPolyTree[int]([]Point[int]{
+		NewPoint(25, 25),
+		NewPoint(25, 75),
+		NewPoint(75, 75),
+		NewPoint(75, 25),
 	}, PTHole)
 	require.NoError(t, err, "unexpected error creating ptAHole")
 
-	ptA, err := NewPolyTree([]Point[int]{
-		NewPoint(125, 75),
-		NewPoint(225, 75),
-		NewPoint(225, 175),
-		NewPoint(125, 175),
+	ptA, err := NewPolyTree[int]([]Point[int]{
+		NewPoint(0, 0),
+		NewPoint(100, 0),
+		NewPoint(100, 100),
+		NewPoint(0, 100),
 	}, PTSolid, WithChildren(ptAHole))
 	require.NoError(t, err, "unexpected error creating ptA")
 
-	ptBHole, err := NewPolyTree([]Point[int]{
-		NewPoint(35, 135),
-		NewPoint(35, 185),
-		NewPoint(85, 185),
-		NewPoint(85, 135),
-	}, PTHole)
-	require.NoError(t, err, "unexpected error creating ptBHole")
-
-	ptB, err := NewPolyTree([]Point[int]{
-		NewPoint(10, 110),
-		NewPoint(110, 110),
-		NewPoint(110, 210),
-		NewPoint(10, 210),
-	}, PTSolid, WithChildren(ptBHole))
-	require.NoError(t, err, "unexpected error creating ptB")
-
 	// mimmick user dragging ptB across ptA
-	for i := 0; i < 230; i++ {
+	for yOffset := -105; yOffset <= 105; yOffset++ {
+		for xOffset := -105; xOffset <= 105; xOffset++ {
 
-		// perform boolean operation in goroutine
-		completed := false
-		go func() {
-			_, err := ptA.BooleanOperation(
-				ptB,
-				BooleanSubtraction,
-			)
-			require.NoError(t, err, "unexpected error creating ptResult")
-			completed = true
-		}()
+			t.Run(fmt.Sprintf("test ptB offset (%d, %d)", xOffset, yOffset), func(t *testing.T) {
 
-		// Require that goroutine finishes within 3 seconds.
-		// If not, then the function must be stuck in an infinite loop.
-		require.EventuallyWithTf(t, func(c *assert.CollectT) {
-			require.True(c, completed, "expected 'completed' to be true")
-		}, 3*time.Second, 100*time.Millisecond, "external state has not changed to 'true'; still false")
+				t.Logf("test ptB offset (%d, %d)\n", xOffset, yOffset)
 
-		// mimmick dragging by moving ptB one pixel to the right
-		ptB = ptB.Translate(NewPoint(1, 0))
+				offset := NewPoint(xOffset, yOffset)
+
+				ptB := ptA.Translate(offset)
+				_, err := ptA.BooleanOperation(
+					ptB,
+					BooleanSubtraction,
+				)
+
+				require.NoError(t, err, "unexpected error creating ptResult")
+
+			})
+		}
 	}
+
+	// perform boolean operation in goroutine
+	//completed := false
+	//go func() {
+
+	//	completed = true
+	//}()
+
+	// Require that goroutine finishes within 3 seconds.
+	// If not, then the function must be stuck in an infinite loop.
+	//require.EventuallyWithTf(t, func(c *assert.CollectT) {
+	//	require.True(c, completed, "expected 'completed' to be true")
+	//}, 3*time.Second, 100*time.Millisecond, "external state has not changed to 'true'; still false")
+
 }
