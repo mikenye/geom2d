@@ -572,14 +572,10 @@ type simpleConvexPolygon[T SignedNumber] struct {
 //   - Child polygons must have the opposite [PolygonType] (e.g., holes for a solid polygon and solids for a hole polygon).
 func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPolyTreeOption[T]) (*PolyTree[T], error) {
 
-	// Sanity check: A polygon must have at least three points.
-	if len(points) < 3 {
-		return nil, fmt.Errorf("new polytree must have at least 3 points")
-	}
-
-	// Sanity check: A polygon must have a non-zero area.
-	if SignedArea2X(points) == 0 {
-		return nil, fmt.Errorf("new polytree must have non-zero area")
+	// Validate the polygon
+	_, err := IsWellFormedPolygon(points)
+	if err != nil {
+		return nil, fmt.Errorf("invalid polygon: %w", err)
 	}
 
 	// Create a new, zero-initialised PolyTree.

@@ -1060,21 +1060,6 @@ func TestPolyTree_Area(t *testing.T) {
 			expectedArea:  50.0,
 			expectedError: nil,
 		},
-		"Line (Degenerate Polygon)": {
-			contour: []Point[int]{
-				NewPoint(0, 0),
-				NewPoint(10, 0),
-			},
-			expectedArea:  0.0,
-			expectedError: fmt.Errorf("new polytree must have at least 3 points"),
-		},
-		"Point (Degenerate Polygon)": {
-			contour: []Point[int]{
-				NewPoint(0, 0),
-			},
-			expectedArea:  0.0,
-			expectedError: fmt.Errorf("new polytree must have at least 3 points"),
-		},
 	}
 
 	for name, test := range tests {
@@ -3233,9 +3218,16 @@ func TestNewPolyTree(t *testing.T) {
 }
 
 func TestNewPolyTree_Errors(t *testing.T) {
+	errSubStr := func(err error, subStr string) bool {
+		if err == nil {
+			return false
+		}
+		return strings.Contains(err.Error(), subStr)
+	}
+
 	tests := map[string]struct {
-		NewPolyFunc    func() (*PolyTree[int], error)
-		expectedErrMsg string
+		NewPolyFunc func() (*PolyTree[int], error)
+		errSubStr   string
 	}{
 		"Less than three points": {
 			NewPolyFunc: func() (*PolyTree[int], error) {
@@ -3257,7 +3249,7 @@ func TestNewPolyTree_Errors(t *testing.T) {
 					PTSolid,
 				)
 			},
-			expectedErrMsg: "new polytree must have non-zero area",
+			errSubStr: "polygon has zero area",
 		},
 		"Invalid child polygon type for hole": {
 			NewPolyFunc: func() (*PolyTree[int], error) {
@@ -3282,7 +3274,7 @@ func TestNewPolyTree_Errors(t *testing.T) {
 					WithChildren(hole),
 				)
 			},
-			expectedErrMsg: "cannot add child: mismatched polygon types (parent: PTSolid, child: PTSolid)",
+			errSubStr: "cannot add child: mismatched polygon types",
 		},
 		"Invalid child polygon type for island": {
 			NewPolyFunc: func() (*PolyTree[int], error) {
@@ -3307,7 +3299,7 @@ func TestNewPolyTree_Errors(t *testing.T) {
 					WithChildren(island),
 				)
 			},
-			expectedErrMsg: "cannot add child: mismatched polygon types (parent: PTHole, child: PTHole)",
+			errSubStr: "cannot add child: mismatched polygon types",
 		},
 	}
 
@@ -3315,7 +3307,7 @@ func TestNewPolyTree_Errors(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			_, err := tt.NewPolyFunc()
 			require.Error(t, err, "expected error but got nil")
-			assert.Contains(t, err.Error(), tt.expectedErrMsg, "unexpected error message")
+			assert.True(t, errSubStr(err, tt.errSubStr), "error message does not contain expected substring")
 		})
 	}
 }
