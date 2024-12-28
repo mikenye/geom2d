@@ -930,6 +930,53 @@ func EnsureCounterClockwise[T SignedNumber](points []Point[T]) {
 	slices.Reverse(points)
 }
 
+// IsWellFormedPolygon checks whether a given set of points defines a well-formed polygon.
+// A polygon is considered well-formed if:
+//
+//  1. It has at least 3 points.
+//  2. It has a non-zero area.
+//  3. It does not contain any self-intersecting edges.
+//
+// Parameters:
+//   - points ([]Point[T]): A slice of Point[T] representing the vertices of the polygon.
+//
+// Returns:
+//   - A boolean indicating whether the polygon is well-formed.
+//   - An error providing details if the polygon is not well-formed.
+//
+// Example Errors:
+//   - "polygon must have at least 3 points"
+//   - "polygon has zero area"
+//   - "polygon has self-intersecting edges: edge1 and edge2"
+func IsWellFormedPolygon[T SignedNumber](points []Point[T]) (bool, error) {
+	// Check for minimum 3 points
+	if len(points) < 3 {
+		return false, fmt.Errorf("polygon must have at least 3 points")
+	}
+
+	// Check for non-zero area
+	if SignedArea2X(points) == 0 {
+		return false, fmt.Errorf("polygon has zero area")
+	}
+
+	// Check for self-intersection
+	n := len(points)
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			// Ensure non-adjacent edges (and non-cyclic edges) are checked
+			if abs(i-j) > 1 && !(i == 0 && j == n-1) {
+				edge1 := NewLineSegment(points[i], points[(i+1)%n])
+				edge2 := NewLineSegment(points[j], points[(j+1)%n])
+				if edge1.IntersectsLineSegment(edge2) {
+					return false, fmt.Errorf("polygon has self-intersecting edges: %v and %v", edge1, edge2)
+				}
+			}
+		}
+	}
+
+	return true, nil // Polygon is well-formed
+}
+
 // Orientation determines the relative orientation of three points: p0, p1, and p2.
 // It calculates the signed area of the triangle formed by these points to determine if the
 // points make a counterclockwise turn, a clockwise turn, or are collinear. This method is
