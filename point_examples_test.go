@@ -92,6 +92,19 @@ func ExampleIsWellFormedPolygon() {
 	// The polygon is well-formed.
 }
 
+func ExampleRoundPointToEpsilon() {
+	point := geom2d.NewPoint[float64](1.234, 5.678)
+	epsilon := 0.1
+
+	roundedPoint := geom2d.RoundPointToEpsilon(point, epsilon)
+	fmt.Printf("Original point: %v\n", point)
+	fmt.Printf("Rounded point: (%.4f, %.4f)\n", roundedPoint.X(), roundedPoint.Y())
+
+	// Output:
+	// Original point: Point[(1.234, 5.678)]
+	// Rounded point: (1.2000, 5.7000)
+}
+
 func ExampleNewPoint() {
 	// Create a new point with integer coordinates
 	pointInt := geom2d.NewPoint[int](10, 20)

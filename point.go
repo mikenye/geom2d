@@ -1099,6 +1099,25 @@ func RelativeCosineOfAngle[T SignedNumber](A, B Point[T], O ...Point[T]) float64
 	return float64(OAdotOB) / (magnitudeOA * magnitudeOB)
 }
 
+// RoundPointToEpsilon rounds the coordinates of a point to the nearest multiple of a given epsilon value.
+// This function is useful for reducing numerical precision issues in geometric computations.
+//
+// Parameters:
+// - point (Point[float64]): The input Point[float64] whose coordinates need to be rounded.
+// - epsilon (float64): The precision value to which the coordinates should be rounded.
+//
+// Returns:
+// - A new Point[float64] where each coordinate is rounded to the nearest multiple of epsilon.
+//
+// Notes:
+// - The epsilon value must be greater than zero.
+func RoundPointToEpsilon(point Point[float64], epsilon float64) Point[float64] {
+	return NewPoint[float64](
+		math.Round(point.x/epsilon)*epsilon,
+		math.Round(point.y/epsilon)*epsilon,
+	)
+}
+
 // SignedArea2X computes twice the signed area of a polygon defined by the given points.
 //
 // The function calculates the signed area of the polygon using the [Shoelace Formula],
