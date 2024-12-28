@@ -73,6 +73,25 @@ func ExampleEnsureCounterClockwise() {
 	// [Point[(4, 0)] Point[(4, 4)] Point[(0, 0)]]
 }
 
+func ExampleIsWellFormedPolygon() {
+	points := []geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(4, 0),
+		geom2d.NewPoint(4, 3),
+		geom2d.NewPoint(0, 3),
+	}
+
+	wellFormed, err := geom2d.IsWellFormedPolygon(points)
+	if wellFormed {
+		fmt.Println("The polygon is well-formed.")
+	} else {
+		fmt.Printf("The polygon is not well-formed: %v\n", err)
+	}
+
+	// Output:
+	// The polygon is well-formed.
+}
+
 func ExampleNewPoint() {
 	// Create a new point with integer coordinates
 	pointInt := geom2d.NewPoint[int](10, 20)
