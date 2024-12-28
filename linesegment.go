@@ -556,7 +556,11 @@ func (l LineSegment[T]) Eq(other LineSegment[T], opts ...Option) bool {
 //     no intersection within the segments’ bounds or the segments are parallel.
 //
 // todo: update doc comments and reorder
-func (l LineSegment[T]) IntersectionGeometry(other LineSegment[T]) LineSegmentIntersectionResult[float64] {
+func (l LineSegment[T]) IntersectionGeometry(other LineSegment[T], opts ...Option) LineSegmentIntersectionResult[float64] {
+
+	// Apply options with defaults
+	options := applyOptions(geomOptions{epsilon: 1e-10}, opts...)
+
 	// Define segment endpoints for AB (l) and CD (other)
 	A, B := l.start.AsFloat64(), l.end.AsFloat64()
 	C, D := other.start.AsFloat64(), other.end.AsFloat64()
@@ -594,8 +598,9 @@ func (l LineSegment[T]) IntersectionGeometry(other LineSegment[T]) LineSegmentIn
 		}
 
 		// Calculate the overlapping segment
-		overlapStart := A.Translate(dir1.Scale(NewPoint[float64](0, 0), tOverlapStart))
-		overlapEnd := A.Translate(dir1.Scale(NewPoint[float64](0, 0), tOverlapEnd))
+		overlapStart := RoundPointToEpsilon(A.Translate(dir1.Scale(NewPoint[float64](0, 0), tOverlapStart)), options.epsilon)
+		overlapEnd := RoundPointToEpsilon(A.Translate(dir1.Scale(NewPoint[float64](0, 0), tOverlapEnd)), options.epsilon)
+
 		return LineSegmentIntersectionResult[float64]{
 			IntersectionType:    IntersectionSegment,
 			IntersectionSegment: NewLineSegment(overlapStart, overlapEnd),
@@ -616,7 +621,7 @@ func (l LineSegment[T]) IntersectionGeometry(other LineSegment[T]) LineSegmentIn
 	}
 
 	// Calculate the intersection point
-	intersection := A.Translate(dir1.Scale(NewPoint[float64](0, 0), t))
+	intersection := RoundPointToEpsilon(A.Translate(dir1.Scale(NewPoint[float64](0, 0), t)), options.epsilon)
 	return LineSegmentIntersectionResult[float64]{
 		IntersectionType:  IntersectionPoint,
 		IntersectionPoint: intersection,
