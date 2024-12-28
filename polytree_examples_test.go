@@ -7,6 +7,22 @@ import (
 	"math"
 )
 
+func ExampleBooleanOperation_String() {
+	op := geom2d.BooleanUnion
+	fmt.Println(op.String())
+
+	op = geom2d.BooleanIntersection
+	fmt.Println(op.String())
+
+	op = geom2d.BooleanSubtraction
+	fmt.Println(op.String())
+
+	// Output:
+	// BooleanUnion
+	// BooleanIntersection
+	// BooleanSubtraction
+}
+
 func ExampleNewPolyTree() {
 	// Create root/parent polygon - large square
 	root, _ := geom2d.NewPolyTree([]geom2d.Point[int]{

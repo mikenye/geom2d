@@ -8,6 +8,40 @@ import (
 	"testing"
 )
 
+func TestBooleanOperation_String(t *testing.T) {
+	tests := map[string]struct {
+		input          BooleanOperation
+		expectedOutput string
+	}{
+		"Union operation": {
+			input:          BooleanUnion,
+			expectedOutput: "BooleanUnion",
+		},
+		"Intersection operation": {
+			input:          BooleanIntersection,
+			expectedOutput: "BooleanIntersection",
+		},
+		"Subtraction operation": {
+			input:          BooleanSubtraction,
+			expectedOutput: "BooleanSubtraction",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := tt.input.String()
+			assert.Equal(t, tt.expectedOutput, result, "unexpected string representation")
+		})
+	}
+
+	t.Run("Unsupported operation", func(t *testing.T) {
+		unsupported := BooleanOperation(99) // Invalid operation
+		assert.PanicsWithError(t, "unsupported BooleanOperation", func() {
+			_ = unsupported.String()
+		}, "expected panic for unsupported operation")
+	})
+}
+
 func TestSimpleConvexPolygon_ContainsPoint(t *testing.T) {
 	tests := map[string]struct {
 		polygon         simpleConvexPolygon[int]

@@ -26,6 +26,28 @@ const (
 	BooleanSubtraction
 )
 
+// String returns the string representation of a BooleanOperation.
+// This is useful for debugging and logging purposes.
+//
+// Supported operations:
+// - BooleanUnion: "BooleanUnion"
+// - BooleanIntersection: "BooleanIntersection"
+// - BooleanSubtraction: "BooleanSubtraction"
+//
+// Panics if an unsupported BooleanOperation is encountered.
+func (o *BooleanOperation) String() string {
+	switch *o {
+	case BooleanUnion:
+		return "BooleanUnion"
+	case BooleanIntersection:
+		return "BooleanIntersection"
+	case BooleanSubtraction:
+		return "BooleanSubtraction"
+	default:
+		panic(fmt.Errorf("unsupported BooleanOperation"))
+	}
+}
+
 // NewPolyTreeOption defines a functional option type for configuring a new [PolyTree] during creation.
 //
 // This type allows for flexible and extensible initialization of [PolyTree] objects by applying optional
