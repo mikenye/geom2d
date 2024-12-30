@@ -1,0 +1,56 @@
+name: Bencher
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  bencher:
+    name: Bencher
+
+    # DO NOT REMOVE: For handling Fork PRs see Pull Requests from Forks
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+
+    permissions:
+      checks: write
+    runs-on: ubuntu-latest
+    steps:
+
+      # Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Setup Go with caching
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          cache: 'true'
+          cache-dependency-path: ./go.sum
+          check-latest: 'true'
+          go-version-file: ./go.mod
+
+      # Install bemcher
+      - name: Bencher CLI
+        uses: bencherdev/bencher@v0.4.32
+
+      # Run benchmarks
+      - name: Track PR Benchmarks with Bencher
+        run: |
+          bencher run \
+          --project geom2d \
+          --token '${{ secrets.BENCHER_API_TOKEN }}' \
+          --branch "$GITHUB_HEAD_REF" \
+          --start-point "$GITHUB_BASE_REF" \
+          --start-point-hash '${{ github.event.pull_request.base.sha }}' \
+          --start-point-clone-thresholds \
+          --start-point-reset \
+          --testbed ubuntu-latest \
+          --err \
+          --adapter json \
+          --github-actions '${{ secrets.GITHUB_TOKEN }}' \
+          bencher mock
