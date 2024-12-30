@@ -1,4 +1,4 @@
-name: Bencher
+name: Bencher (on PR)
 
 on:
   pull_request:
@@ -27,5 +27,5 @@ jobs:
           --start-point-reset \
           --testbed ubuntu-latest \
           --err \
-          --adapter go_bench "go test -bench ." \
+          --adapter go_bench 'go test -bench .' \
           --github-actions '${{ secrets.GITHUB_TOKEN }}' \
