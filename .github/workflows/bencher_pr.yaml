@@ -27,5 +27,5 @@ jobs:
           --start-point-reset \
           --testbed ubuntu-latest \
           --err \
-          --github-actions '${{ secrets.GITHUB_TOKEN }}' \
-          --adapter go_bench
+          --adapter go_bench \
+          --github-actions '${{ secrets.GITHUB_TOKEN }}'
