@@ -3,7 +3,7 @@ module github.com/mikenye/geom2d
 go 1.23
 
 require (
-	github.com/hajimehoshi/ebiten/v2 v2.8.5
+	github.com/hajimehoshi/ebiten/v2 v2.8.6
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/image v0.23.0
 )
