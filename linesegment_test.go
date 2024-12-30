@@ -1057,6 +1057,31 @@ func TestLineSegment_Midpoint(t *testing.T) {
 	}
 }
 
+func TestNormalize(t *testing.T) {
+	cases := map[string]struct {
+		input    LineSegment[int]
+		expected LineSegment[int]
+	}{
+		"already normalized": {
+			input:    NewLineSegment(NewPoint(1, 2), NewPoint(3, 5)),
+			expected: NewLineSegment(NewPoint(1, 2), NewPoint(3, 5)),
+		},
+		"needs normalization": {
+			input:    NewLineSegment(NewPoint(3, 5), NewPoint(1, 2)),
+			expected: NewLineSegment(NewPoint(1, 2), NewPoint(3, 5)),
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			result := tc.input.Normalize()
+			if !result.Eq(tc.expected) {
+				t.Errorf("expected %v, got %v", tc.expected, result)
+			}
+		})
+	}
+}
+
 func TestLineSegment_Points(t *testing.T) {
 	tests := map[string]struct {
 		segment  LineSegment[int]

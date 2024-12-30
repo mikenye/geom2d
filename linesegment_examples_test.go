@@ -227,6 +227,22 @@ func ExampleLineSegment_Length() {
 	// 5
 }
 
+func ExampleLineSegment_Normalize() {
+	// Create a line segment where the start point is not leftmost-lowest
+	original := geom2d.NewLineSegment(geom2d.NewPoint(3, 5), geom2d.NewPoint(1, 2))
+
+	// Normalize the segment
+	normalized := original.Normalize()
+
+	// Print the result
+	fmt.Printf("Original Line Segment: %s\n", original.String())
+	fmt.Printf("Normalized Line Segment: %s\n", normalized.String())
+
+	// Output:
+	// Original Line Segment: LineSegment[(3, 5) -> (1, 2)]
+	// Normalized Line Segment: LineSegment[(1, 2) -> (3, 5)]
+}
+
 func ExampleLineSegment_Points() {
 	// Create a line segment with two endpoints
 	line := geom2d.NewLineSegment(geom2d.NewPoint(1, 2), geom2d.NewPoint(3, 4))

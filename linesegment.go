@@ -667,6 +667,24 @@ func (l LineSegment[T]) Length(opts ...Option) float64 {
 	return l.start.DistanceToPoint(l.end, opts...)
 }
 
+// Normalize returns a "normalized" version of the line segment where the start point
+// is guaranteed to be the leftmost-lowest point. This ensures that:
+// - The point with the smallest X-coordinate is the start point.
+// - If the X-coordinates are equal, the point with the smallest Y-coordinate is the start point.
+//
+// This normalization is useful for algorithms that require consistent ordering of line segments,
+// such as the Bentley-Ottmann sweep line algorithm or Boolean operations on polygons.
+//
+// Returns a new LineSegment with the points swapped if necessary.
+func (l LineSegment[T]) Normalize() LineSegment[T] {
+	// if start point is not leftest-lowest, swap points
+	if l.start.x > l.end.x || (l.start.x == l.end.x && l.start.y > l.end.y) {
+		return NewLineSegment[T](l.end, l.start)
+	}
+	// else, return original point
+	return l
+}
+
 // Points returns the two endpoints of the line segment as a slice of Points.
 // The order of the points is [start, end].
 //
