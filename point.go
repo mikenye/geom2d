@@ -930,6 +930,53 @@ func EnsureCounterClockwise[T SignedNumber](points []Point[T]) {
 	slices.Reverse(points)
 }
 
+// IsWellFormedPolygon checks whether a given set of points defines a well-formed polygon.
+// A polygon is considered well-formed if:
+//
+//  1. It has at least 3 points.
+//  2. It has a non-zero area.
+//  3. It does not contain any self-intersecting edges.
+//
+// Parameters:
+//   - points ([]Point[T]): A slice of Point[T] representing the vertices of the polygon.
+//
+// Returns:
+//   - A boolean indicating whether the polygon is well-formed.
+//   - An error providing details if the polygon is not well-formed.
+//
+// Example Errors:
+//   - "polygon must have at least 3 points"
+//   - "polygon has zero area"
+//   - "polygon has self-intersecting edges: edge1 and edge2"
+func IsWellFormedPolygon[T SignedNumber](points []Point[T]) (bool, error) {
+	// Check for minimum 3 points
+	if len(points) < 3 {
+		return false, fmt.Errorf("polygon must have at least 3 points")
+	}
+
+	// Check for non-zero area
+	if SignedArea2X(points) == 0 {
+		return false, fmt.Errorf("polygon has zero area")
+	}
+
+	// Check for self-intersection
+	n := len(points)
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			// Ensure non-adjacent edges (and non-cyclic edges) are checked
+			if abs(i-j) > 1 && !(i == 0 && j == n-1) {
+				edge1 := NewLineSegment(points[i], points[(i+1)%n])
+				edge2 := NewLineSegment(points[j], points[(j+1)%n])
+				if edge1.IntersectsLineSegment(edge2) {
+					return false, fmt.Errorf("polygon has self-intersecting edges: %v and %v", edge1, edge2)
+				}
+			}
+		}
+	}
+
+	return true, nil // Polygon is well-formed
+}
+
 // Orientation determines the relative orientation of three points: p0, p1, and p2.
 // It calculates the signed area of the triangle formed by these points to determine if the
 // points make a counterclockwise turn, a clockwise turn, or are collinear. This method is
@@ -1050,6 +1097,25 @@ func RelativeCosineOfAngle[T SignedNumber](A, B Point[T], O ...Point[T]) float64
 
 	// Use the Dot Product Formula to Find the Cosine of the Angle
 	return float64(OAdotOB) / (magnitudeOA * magnitudeOB)
+}
+
+// RoundPointToEpsilon rounds the coordinates of a point to the nearest multiple of a given epsilon value.
+// This function is useful for reducing numerical precision issues in geometric computations.
+//
+// Parameters:
+// - point (Point[float64]): The input Point[float64] whose coordinates need to be rounded.
+// - epsilon (float64): The precision value to which the coordinates should be rounded.
+//
+// Returns:
+// - A new Point[float64] where each coordinate is rounded to the nearest multiple of epsilon.
+//
+// Notes:
+// - The epsilon value must be greater than zero.
+func RoundPointToEpsilon(point Point[float64], epsilon float64) Point[float64] {
+	return NewPoint[float64](
+		math.Round(point.x/epsilon)*epsilon,
+		math.Round(point.y/epsilon)*epsilon,
+	)
 }
 
 // SignedArea2X computes twice the signed area of a polygon defined by the given points.

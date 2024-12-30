@@ -1290,6 +1290,92 @@ func TestFindLowestPoint(t *testing.T) {
 	}
 }
 
+func TestIsWellFormedPolygon(t *testing.T) {
+	tests := []struct {
+		name      string
+		points    []Point[int]
+		expected  bool
+		errSubstr string // Substring expected in the error message
+	}{
+		{
+			name: "Valid triangle",
+			points: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(10, 0),
+				NewPoint(5, 5),
+			},
+			expected: true,
+		},
+		{
+			name: "Too few points",
+			points: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(10, 0),
+			},
+			expected:  false,
+			errSubstr: "at least 3 points",
+		},
+		{
+			name: "Zero area (collinear points)",
+			points: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(5, 0),
+				NewPoint(10, 0),
+			},
+			expected:  false,
+			errSubstr: "zero area",
+		},
+		{
+			name: "Self-intersecting polygon",
+			points: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(10, 10),
+				NewPoint(10, 0),
+				NewPoint(0, 2),
+			},
+			expected:  false,
+			errSubstr: "self-intersecting",
+		},
+		{
+			name: "Valid large polygon",
+			points: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(10, 0),
+				NewPoint(10, 10),
+				NewPoint(0, 10),
+			},
+			expected: true,
+		},
+		{
+			name: "Polygon with duplicate points",
+			points: []Point[int]{
+				NewPoint(0, 0),
+				NewPoint(5, 0),
+				NewPoint(5, 5),
+				NewPoint(0, 5),
+				NewPoint(0, 0), // Duplicate
+			},
+			expected:  false,
+			errSubstr: "self-intersecting",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := IsWellFormedPolygon(tc.points)
+
+			assert.Equal(t, tc.expected, result)
+
+			if tc.errSubstr != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.errSubstr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestTriangleAreaX2Signed(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -73,6 +73,38 @@ func ExampleEnsureCounterClockwise() {
 	// [Point[(4, 0)] Point[(4, 4)] Point[(0, 0)]]
 }
 
+func ExampleIsWellFormedPolygon() {
+	points := []geom2d.Point[int]{
+		geom2d.NewPoint(0, 0),
+		geom2d.NewPoint(4, 0),
+		geom2d.NewPoint(4, 3),
+		geom2d.NewPoint(0, 3),
+	}
+
+	wellFormed, err := geom2d.IsWellFormedPolygon(points)
+	if wellFormed {
+		fmt.Println("The polygon is well-formed.")
+	} else {
+		fmt.Printf("The polygon is not well-formed: %v\n", err)
+	}
+
+	// Output:
+	// The polygon is well-formed.
+}
+
+func ExampleRoundPointToEpsilon() {
+	point := geom2d.NewPoint[float64](1.234, 5.678)
+	epsilon := 0.1
+
+	roundedPoint := geom2d.RoundPointToEpsilon(point, epsilon)
+	fmt.Printf("Original point: %v\n", point)
+	fmt.Printf("Rounded point: (%.4f, %.4f)\n", roundedPoint.X(), roundedPoint.Y())
+
+	// Output:
+	// Original point: Point[(1.234, 5.678)]
+	// Rounded point: (1.2000, 5.7000)
+}
+
 func ExampleNewPoint() {
 	// Create a new point with integer coordinates
 	pointInt := geom2d.NewPoint[int](10, 20)

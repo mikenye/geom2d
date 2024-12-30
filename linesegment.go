@@ -554,25 +554,60 @@ func (l LineSegment[T]) Eq(other LineSegment[T], opts ...Option) bool {
 //   - [Point][T]: The intersection point.
 //   - bool: If true, the first element is the intersection point. If false, there is
 //     no intersection within the segments’ bounds or the segments are parallel.
-func (l LineSegment[T]) IntersectionPoint(other LineSegment[T]) (Point[float64], bool) {
+//
+// todo: update doc comments and reorder
+func (l LineSegment[T]) IntersectionGeometry(other LineSegment[T], opts ...Option) LineSegmentIntersectionResult[float64] {
+
+	// Apply options with defaults
+	options := applyOptions(geomOptions{epsilon: 1e-10}, opts...)
+
 	// Define segment endpoints for AB (l) and CD (other)
 	A, B := l.start.AsFloat64(), l.end.AsFloat64()
 	C, D := other.start.AsFloat64(), other.end.AsFloat64()
 
 	// Calculate the direction vectors
-
 	dir1 := B.Translate(A.Negate())
 	dir2 := D.Translate(C.Negate())
 
 	// Calculate the determinants
 	denominator := dir1.CrossProduct(dir2)
 
-	// Check if the lines are parallel (no intersection)
+	// Handle collinear case (denominator == 0)
 	if denominator == 0 {
-		return Point[float64]{}, false // No intersection
+		// Check if the segments are collinear
+		AC := C.Translate(A.Negate())
+		if AC.CrossProduct(dir1) != 0 {
+			return LineSegmentIntersectionResult[float64]{IntersectionType: IntersectionNone} // Parallel but not collinear
+		}
+
+		// Check overlap by projecting points onto the line
+		tStart := (C.Translate(A.Negate())).DotProduct(dir1) / dir1.DotProduct(dir1)
+		tEnd := (D.Translate(A.Negate())).DotProduct(dir1) / dir1.DotProduct(dir1)
+
+		// Ensure tStart < tEnd for consistency
+		if tStart > tEnd {
+			tStart, tEnd = tEnd, tStart
+		}
+
+		// Check for overlap
+		tOverlapStart := max(0.0, tStart)
+		tOverlapEnd := min(1.0, tEnd)
+
+		if tOverlapStart > tOverlapEnd {
+			return LineSegmentIntersectionResult[float64]{IntersectionType: IntersectionNone} // No overlap
+		}
+
+		// Calculate the overlapping segment
+		overlapStart := RoundPointToEpsilon(A.Translate(dir1.Scale(NewPoint[float64](0, 0), tOverlapStart)), options.epsilon)
+		overlapEnd := RoundPointToEpsilon(A.Translate(dir1.Scale(NewPoint[float64](0, 0), tOverlapEnd)), options.epsilon)
+
+		return LineSegmentIntersectionResult[float64]{
+			IntersectionType:    IntersectionSegment,
+			IntersectionSegment: NewLineSegment(overlapStart, overlapEnd),
+		}
 	}
 
-	// Calculate parameters t and u
+	// Calculate parameters t and u for non-collinear case
 	AC := C.Translate(A.Negate())
 	tNumerator := AC.CrossProduct(dir2)
 	uNumerator := AC.CrossProduct(dir1)
@@ -582,12 +617,15 @@ func (l LineSegment[T]) IntersectionPoint(other LineSegment[T]) (Point[float64],
 
 	// Check if intersection occurs within the segment bounds
 	if t < 0 || t > 1 || u < 0 || u > 1 {
-		return Point[float64]{}, false // Intersection is outside the segments
+		return LineSegmentIntersectionResult[float64]{IntersectionType: IntersectionNone} // Intersection is outside the segments
 	}
 
 	// Calculate the intersection point
-	intersection := A.Translate(dir1.Scale(NewPoint[float64](0, 0), t))
-	return intersection, true
+	intersection := RoundPointToEpsilon(A.Translate(dir1.Scale(NewPoint[float64](0, 0), t)), options.epsilon)
+	return LineSegmentIntersectionResult[float64]{
+		IntersectionType:  IntersectionPoint,
+		IntersectionPoint: intersection,
+	}
 }
 
 // IntersectsLineSegment checks whether there is any intersection or overlap between LineSegment l and LineSegment other.
@@ -1077,4 +1115,18 @@ func (l LineSegment[int]) Bresenham(yield func(Point[int]) bool) {
 			y1 += sy
 		}
 	}
+}
+
+type LineSegmentIntersectionType uint8
+
+const (
+	IntersectionNone LineSegmentIntersectionType = iota
+	IntersectionPoint
+	IntersectionSegment
+)
+
+type LineSegmentIntersectionResult[T SignedNumber] struct {
+	IntersectionType    LineSegmentIntersectionType // Type of intersection
+	IntersectionPoint   Point[T]                    // Valid if Type == IntersectionPoint
+	IntersectionSegment LineSegment[T]              // Valid if Type == IntersectionSegment
 }
