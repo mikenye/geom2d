@@ -9,6 +9,85 @@ import (
 	"testing"
 )
 
+type TestPolyGeometry[T SignedNumber] struct {
+	PolyA              [][]Point[T]
+	PolyB              [][]Point[T]
+	IntersectionPoints []Point[float64]
+}
+
+type CreateTestGeometryFunc[T SignedNumber] func() TestPolyGeometry[T]
+
+// test_poly_01.dxf
+var CreateTestPoly01 CreateTestGeometryFunc[int] = func() TestPolyGeometry[int] {
+	polyA := [][]Point[int]{
+		{
+			NewPoint(0, 0),
+			NewPoint(-5, -5),
+			NewPoint(0, 10),
+			NewPoint(0, 20),
+			NewPoint(5, 25),
+			NewPoint(0, 30),
+			NewPoint(5, 35),
+			NewPoint(10, 30),
+			NewPoint(20, 30),
+			NewPoint(25, 25),
+			NewPoint(30, 30),
+			NewPoint(35, 25),
+			NewPoint(30, 20),
+			NewPoint(30, 10),
+			NewPoint(25, 5),
+			NewPoint(30, 0),
+			NewPoint(25, -5),
+			NewPoint(20, 0),
+			NewPoint(10, 0),
+			NewPoint(5, 5),
+		},
+	}
+
+	intersectionPoints := []Point[float64]{
+		NewPoint(1.5, 1.5),
+		NewPoint(5.5, 34.5),
+		NewPoint(26.5, 26.5),
+		NewPoint(26.5, -3.5),
+	}
+
+	polyB := make([][]Point[int], 1)
+	polyB[0] = make([]Point[int], len(polyA[0]))
+
+	for i, pt := range polyA[0] {
+		polyB[0][i] = pt.Translate(NewPoint(2, 1))
+	}
+
+	return TestPolyGeometry[int]{
+		PolyA:              polyA,
+		PolyB:              polyB,
+		IntersectionPoints: intersectionPoints,
+	}
+}
+
+func BenchmarkFindIntersections_Naive(b *testing.B) {
+	b.StopTimer()
+	testPoly01 := CreateTestPoly01()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		// ensure fresh polys for each test
+		polyA, err := nestPointsToPolyTrees(testPoly01.PolyA)
+		if err != nil {
+			b.Fatalf("unexpected error creating polyA: %v", err)
+		}
+		polyB, err := nestPointsToPolyTrees(testPoly01.PolyB)
+		if err != nil {
+			b.Fatalf("unexpected error creating polyB: %v", err)
+		}
+
+		// run benchmark
+		b.StartTimer()
+		polyA.findIntersections(polyB)
+		b.StopTimer()
+	}
+}
+
 func TestBooleanOperation_String(t *testing.T) {
 	tests := map[string]struct {
 		input          BooleanOperation

@@ -1936,7 +1936,7 @@ func (pt *PolyTree[T]) findIntersections(other *PolyTree[T]) {
 					intersectionPoints := make([]Point[T], 0, 2)
 					// todo: implement epsilon for IntersectionGeometry
 					res := segment1.IntersectionGeometry(segment2)
-					fmt.Println(res)
+					//fmt.Println(res)
 					switch res.IntersectionType {
 					case IntersectionNone:
 						continue findIntersectionsi2Loop
