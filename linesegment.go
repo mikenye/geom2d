@@ -1070,6 +1070,110 @@ func (l LineSegment[T]) Translate(delta Point[T]) LineSegment[T] {
 	)
 }
 
+// XAtY calculates the X-coordinate of the line segment at the given Y-coordinate.
+//
+// The function determines the X-coordinate of the intersection point between the line
+// segment and the horizontal line at the specified Y. It handles vertical, horizontal,
+// and diagonal line segments.
+//
+// Parameters:
+//   - y (float64): The Y-coordinate for which the corresponding X-coordinate is to be calculated.
+//
+// Returns:
+//   - float64: The X-coordinate corresponding to the given Y, if it lies within the bounds of the segment.
+//   - bool: A boolean indicating whether the given Y is within the vertical range of the segment.
+//
+// Behavior:
+//   - If the line segment is vertical (constant X), the function returns the constant X-coordinate
+//     if the Y-coordinate is within the segment's range, and false otherwise.
+//   - If the line segment is horizontal (constant Y), the function returns false unless the Y-coordinate
+//     matches the segment's Y-coordinate.
+//   - For diagonal line segments, the function computes the X-coordinate using the line equation
+//     and returns true if the calculated X lies within the segment's bounds.
+func (l LineSegment[T]) XAtY(y float64) (float64, bool) {
+	// Handle vertical line segment (undefined slope)
+	lf := l.AsFloat64()
+	if lf.start.x == lf.end.x {
+		if y >= lf.start.y && y <= lf.end.y || y >= lf.end.y && y <= lf.start.y {
+			return lf.start.x, true
+		}
+		return 0, false // Y is out of bounds
+	}
+
+	// Handle horizontal line segment
+	if lf.start.y == lf.end.y {
+		if y == lf.start.y {
+			return lf.start.x, true // Any X on the segment is valid
+		}
+		return 0, false // Y is out of bounds
+	}
+
+	// Calculate the X value using the line equation
+	slope := (lf.end.y - lf.start.y) / (lf.end.x - lf.start.x)
+	intercept := lf.start.y - slope*lf.start.x // y = mx + b -> b = y - mx
+
+	// Rearrange y = mx + b to solve for x: x = (y - b) / m
+	x := (y - intercept) / slope
+
+	// Check if the calculated X is within the segment bounds
+	if (x >= lf.start.x && x <= lf.end.x) || (x >= lf.end.x && x <= lf.start.x) {
+		return x, true
+	}
+	return 0, false // X is out of bounds
+}
+
+// YAtX calculates the Y-coordinate of the line segment at the given X-coordinate.
+//
+// The function determines the Y-coordinate of the intersection point between the line
+// segment and the vertical line at the specified X. It handles vertical, horizontal,
+// and diagonal line segments.
+//
+// Parameters:
+//   - x (float64): The X-coordinate for which the corresponding Y-coordinate is to be calculated.
+//
+// Returns:
+//   - float64: The Y-coordinate corresponding to the given X, if it lies within the bounds of the segment.
+//   - bool: A boolean indicating whether the given X is within the horizontal range of the segment.
+//
+// Behavior:
+//   - If the line segment is vertical (constant X), the function returns the Y-coordinate
+//     of the line segment if the X-coordinate matches the segment's X-coordinate, and false otherwise.
+//   - If the line segment is horizontal (constant Y), the function returns the constant Y-coordinate
+//     if the X-coordinate is within the segment's range, and false otherwise.
+//   - For diagonal line segments, the function computes the Y-coordinate using the line equation
+//     and returns true if the calculated Y lies within the segment's bounds.
+func (l LineSegment[T]) YAtX(x float64) (float64, bool) {
+	lf := l.AsFloat64()
+	// Handle vertical line segment
+	if lf.start.x == lf.end.x {
+		if x == lf.start.x {
+			return lf.start.y, true // Any Y within the segment's range is valid
+		}
+		return 0, false // X is out of bounds
+	}
+
+	// Handle horizontal line segment
+	if lf.start.y == lf.end.y {
+		if x >= lf.start.x && x <= lf.end.x || x >= lf.end.x && x <= lf.start.x {
+			return lf.start.y, true
+		}
+		return 0, false // X is out of bounds
+	}
+
+	// Calculate Y value using the line equation: y = mx + b
+	slope := (lf.end.y - lf.start.y) / (lf.end.x - lf.start.x)
+	intercept := lf.start.y - slope*lf.start.x // y = mx + b -> b = y - mx
+
+	// Calculate y = mx + b
+	y := slope*x + intercept
+
+	// Check if X is within the segment bounds
+	if (x >= lf.start.x && x <= lf.end.x) || (x >= lf.end.x && x <= lf.start.x) {
+		return y, true
+	}
+	return 0, false // X is out of bounds
+}
+
 // Bresenham generates all the integer points along the line segment using
 // Bresenham's line algorithm. It is an efficient way to rasterize a line
 // in a grid or pixel-based system.

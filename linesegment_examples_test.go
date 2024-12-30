@@ -538,3 +538,32 @@ func ExampleLineSegment_Translate() {
 	// Start Point: Point[(3, 4)]
 	// End Point: Point[(6, 7)]
 }
+
+func ExampleLineSegment_XAtY() {
+	segment := geom2d.NewLineSegment(geom2d.NewPoint(2, 2), geom2d.NewPoint(8, 5))
+
+	x, ok := segment.XAtY(3) // Y = 3
+	if ok {
+		fmt.Printf("X at Y=3 is %.2f\n", x)
+	} else {
+		fmt.Println("Y=3 is out of bounds for the segment")
+	}
+
+	// Output:
+	// X at Y=3 is 4.00
+
+}
+
+func ExampleLineSegment_YAtX() {
+	segment := geom2d.NewLineSegment(geom2d.NewPoint(2, 2), geom2d.NewPoint(8, 5))
+
+	y, ok := segment.YAtX(4) // X = 4
+	if ok {
+		fmt.Printf("Y at X=4 is %.2f\n", y)
+	} else {
+		fmt.Println("X=4 is out of bounds for the segment")
+	}
+
+	// Output:
+	// Y at X=4 is 3.00
+}
