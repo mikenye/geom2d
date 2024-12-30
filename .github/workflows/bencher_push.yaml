@@ -1,0 +1,44 @@
+name: Bencher (on push to main)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  benchmark_base_branch:
+    name: Bencher (on push to main)
+    permissions:
+      checks: write
+    runs-on: ubuntu-latest
+    steps:
+
+      # Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Setup Go with caching
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          cache: 'true'
+          cache-dependency-path: ./go.sum
+          check-latest: 'true'
+          go-version-file: ./go.mod
+
+      # Install bencher
+      - uses: bencherdev/bencher@main
+      - name: Track base branch benchmarks with Bencher
+        run: |
+          bencher run \
+          --project geom2d \
+          --token '${{ secrets.BENCHER_TOKEN }}' \
+          --branch main \
+          --testbed ubuntu-latest \
+          --threshold-measure latency \
+          --threshold-test t_test \
+          --threshold-max-sample-size 64 \
+          --threshold-upper-boundary 0.99 \
+          --thresholds-reset \
+          --err \
+          --adapter go_bench "go test -bench ." \
+          --github-actions '${{ secrets.GITHUB_TOKEN }}'
