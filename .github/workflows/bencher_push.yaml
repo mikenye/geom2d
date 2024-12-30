@@ -40,5 +40,5 @@ jobs:
           --threshold-upper-boundary 0.99 \
           --thresholds-reset \
           --err \
-          --adapter go_bench 'go test -bench .' \
+          --adapter go_bench ""go test -bench ."" \
           --github-actions '${{ secrets.GITHUB_TOKEN }}'
