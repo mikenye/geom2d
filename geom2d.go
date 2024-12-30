@@ -67,6 +67,10 @@ import (
 	"math"
 )
 
+func init() {
+	logDebugf("debug logging enabled")
+}
+
 // Option is a functional option type used to configure optional parameters
 // in geometric operations. Functions that accept an Option parameter allow
 // users to customize behavior without modifying the primary function signature.

@@ -1573,10 +1573,7 @@ func (pt *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOpe
 
 	// Remove degenerate polygons
 	contours = slices.DeleteFunc(contours, func(c []Point[T]) bool {
-		if len(c) < 3 {
-			return true
-		}
-		return false
+		return len(c) < 3
 	})
 
 	return nestPointsToPolyTrees(contours)
