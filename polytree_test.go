@@ -9,16 +9,16 @@ import (
 	"testing"
 )
 
-type TestPolyGeometry[T SignedNumber] struct {
+type testPolyGeometry[T SignedNumber] struct {
 	PolyA              [][]Point[T]
 	PolyB              [][]Point[T]
 	IntersectionPoints []Point[float64]
 }
 
-type CreateTestGeometryFunc[T SignedNumber] func() TestPolyGeometry[T]
+type createTestGeometryFunc[T SignedNumber] func() testPolyGeometry[T]
 
 // test_poly_01.dxf
-var CreateTestPoly01 CreateTestGeometryFunc[int] = func() TestPolyGeometry[int] {
+var createTestPoly01 createTestGeometryFunc[int] = func() testPolyGeometry[int] {
 	polyA := [][]Point[int]{
 		{
 			NewPoint(0, 0),
@@ -58,7 +58,7 @@ var CreateTestPoly01 CreateTestGeometryFunc[int] = func() TestPolyGeometry[int] 
 		polyB[0][i] = pt.Translate(NewPoint(2, 1))
 	}
 
-	return TestPolyGeometry[int]{
+	return testPolyGeometry[int]{
 		PolyA:              polyA,
 		PolyB:              polyB,
 		IntersectionPoints: intersectionPoints,
@@ -81,7 +81,7 @@ var CreateTestPoly01 CreateTestGeometryFunc[int] = func() TestPolyGeometry[int] 
 // method under realistic conditions where polygon data may vary between calls.
 func BenchmarkFindIntersections_Naive(b *testing.B) {
 	b.StopTimer()
-	testPoly01 := CreateTestPoly01()
+	testPoly01 := createTestPoly01()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
