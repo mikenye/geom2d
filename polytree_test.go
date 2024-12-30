@@ -65,6 +65,20 @@ var CreateTestPoly01 CreateTestGeometryFunc[int] = func() TestPolyGeometry[int] 
 	}
 }
 
+// BenchmarkFindIntersections benchmarks the performance of the findIntersections method
+// between two PolyTree objects. It creates fresh PolyTree instances for each iteration
+// to ensure the benchmark is not influenced by any state carried over from previous iterations.
+//
+// The benchmark measures the time taken to find intersections between two nested polygons.
+// Each iteration performs the following steps:
+// 1. Recreates PolyTree objects (polyA and polyB) from predefined test data (testPoly01).
+// 2. Ensures no errors occur during the creation of PolyTree objects.
+// 3. Calls the findIntersections method on the freshly created PolyTree objects.
+//
+// The call to findIntersections is timed.
+//
+// This benchmark is designed to test the computational efficiency of the findIntersections
+// method under realistic conditions where polygon data may vary between calls.
 func BenchmarkFindIntersections_Naive(b *testing.B) {
 	b.StopTimer()
 	testPoly01 := CreateTestPoly01()
