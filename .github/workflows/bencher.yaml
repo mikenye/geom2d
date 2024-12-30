@@ -43,7 +43,7 @@ jobs:
         run: |
           bencher run \
           --project geom2d \
-          --token '${{ secrets.BENCHER_API_TOKEN }}' \
+          --token '${{ secrets.BENCHER_TOKEN }}' \
           --branch "$GITHUB_HEAD_REF" \
           --start-point "$GITHUB_BASE_REF" \
           --start-point-hash '${{ github.event.pull_request.base.sha }}' \
