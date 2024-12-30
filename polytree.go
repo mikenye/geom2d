@@ -157,17 +157,42 @@ const (
 	intersectionTypeExit
 )
 
+// polyPointType defines the type of point in a polygon, used to distinguish between
+// original vertices and additional points introduced during polygon operations.
+//
+// This type is essential for managing polygon data during Boolean operations (e.g., union,
+// intersection, subtraction) and other algorithms that require distinguishing original
+// points from dynamically added points.
+type polyPointType uint8
+
 // Valid values for polyPointType
 const (
 	// pointTypeOriginal indicates that the point is an original, unmodified vertex of the polygon.
 	// These points are part of the polygon's initial definition.
 	pointTypeOriginal polyPointType = iota
 
+	// pointTypeOriginalAndIntersection indicates that the original point is also an intersection point
+	// that was identified during a polygon operation.
+	pointTypeOriginalAndIntersection
+
 	// pointTypeAddedIntersection indicates that the point is an intersection point that was added
 	// during a polygon operation. These points are not part of the polygon's original definition
 	// but are dynamically introduced for computational purposes.
 	pointTypeAddedIntersection
 )
+
+func (t polyPointType) String() string {
+	switch t {
+	case pointTypeOriginal:
+		return "pointTypeOriginal"
+	case pointTypeOriginalAndIntersection:
+		return "pointTypeOriginalAndIntersection"
+	case pointTypeAddedIntersection:
+		return "pointTypeAddedIntersection"
+	default:
+		panic(fmt.Errorf("unsupported polyPointType"))
+	}
+}
 
 // Valid values for polyTraversalDirection
 const (
@@ -407,6 +432,48 @@ type PolyTree[T SignedNumber] struct {
 // coordinates.
 type contour[T SignedNumber] []polyTreePoint[T]
 
+// insertIntersectionPoint inserts an intersection point into a contour between two specified indices.
+// The insertion position is determined based on the proximity of the intersection point to the
+// corresponding line segment, ensuring correct ordering for polygon operations.
+//
+// Parameters:
+//   - start: The index of the starting point of the line segment in the contour.
+//   - end: The index of the ending point of the line segment in the contour.
+//   - intersection: The intersection point to insert, represented as a polyTreePoint.
+//
+// Notes:
+//   - The function assumes that start and end indices are valid and start < end.
+//   - The insertion logic ensures that the intersection is placed in the correct position relative to
+//     other intermediate points, preserving the geometric consistency of the contour.
+//   - Simply inserting at the start index is not sufficient because the contour may already contain
+//     intermediate points between start and end. Proper ordering is necessary to maintain the
+//     validity of polygon operations such as traversals and Boolean operations.
+func (c *contour[T]) insertIntersectionPoint(start, end int, intersection polyTreePoint[T]) {
+	// Define the line segment between the start and end points.
+	segment := NewLineSegment((*c)[start].point, (*c)[end].point)
+
+	// Initialize the insertion position to the end index.
+	insertPos := end
+
+	// Iterate through the intermediate points in the contour between start and end.
+	// Find the correct position to insert the intersection point.
+	for i := start + 1; i < end; i++ {
+		// Define the segment from the start point to the current point.
+		existingSegment := NewLineSegment((*c)[start].point, (*c)[i].point)
+
+		// Compare the distance of the intersection to the original segment
+		// with its distance to the intermediate segment.
+		if segment.DistanceToPoint(intersection.point) < existingSegment.DistanceToPoint((*c)[i].point) {
+			// Update the insertion position if the intersection is closer to the original segment.
+			insertPos = i
+			break
+		}
+	}
+
+	// Insert the intersection point into the contour at the calculated position.
+	*c = slices.Insert(*c, insertPos, intersection)
+}
+
 // String returns a string representation of the contour, listing all its points in order.
 //
 // This method iterates through all polyTreePoints in the contour and appends their coordinates
@@ -455,14 +522,6 @@ type polyEdge[T SignedNumber] struct {
 // This type is primarily used in Boolean operations (e.g., union, intersection, subtraction)
 // to identify transitions at intersection points between polygons.
 type polyIntersectionType int
-
-// polyPointType defines the type of point in a polygon, used to distinguish between
-// original vertices and additional points introduced during polygon operations.
-//
-// This type is essential for managing polygon data during Boolean operations (e.g., union,
-// intersection, subtraction) and other algorithms that require distinguishing original
-// points from dynamically added points.
-type polyPointType uint8
 
 // polyTraversalDirection defines the direction in which a polygon's vertices are traversed.
 // This can either be clockwise or counterclockwise and is used to specify how to iterate
@@ -921,7 +980,7 @@ func (c *contour[T]) isPointInside(point Point[T]) bool {
 		edges[i].rel = ray.detailedRelationshipToLineSegment(edges[i].lineSegment)
 
 		// if the point is on the edge, then we bail out early
-		if edges[i].rel == lsrCollinearAonCD {
+		if edges[i].rel == lsrCollinearAonCD || edges[i].rel == lsrAonCD {
 			//fmt.Println(edges[i].lineSegment.String(), "on edge")
 			return true
 		}
@@ -1166,7 +1225,7 @@ func (c *contour[T]) toPoints() []Point[T] {
 	// Iterate over the contour to extract only the original points
 	for _, p := range *c {
 		// Include only points marked as pointTypeOriginal
-		if p.pointType == pointTypeOriginal {
+		if p.pointType == pointTypeOriginal || p.pointType == pointTypeOriginalAndIntersection {
 			// Halve the x and y coordinates to reverse the earlier doubling
 			originalPoints = append(originalPoints, NewPoint[T](
 				p.point.x/2,
@@ -1443,6 +1502,10 @@ func (pt *PolyTree[T]) AsIntRounded() *PolyTree[int] {
 //   - Traverses the polygons to construct the result of the operation.
 //   - Returns a nested PolyTree structure representing the operation result.
 func (pt *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOperation) (*PolyTree[T], error) {
+
+	defer pt.resetIntersectionMetadataAndReorder()
+	defer other.resetIntersectionMetadataAndReorder()
+
 	// Edge Case: Check if the polygons intersect
 	if !pt.Overlaps(other) {
 		switch operation {
@@ -1470,11 +1533,51 @@ func (pt *PolyTree[T]) BooleanOperation(other *PolyTree[T], operation BooleanOpe
 	// Step 1: Find intersection points between all polygons
 	pt.findIntersections(other)
 
+	fmt.Println("pt:")
+	for node := range pt.Nodes {
+		fmt.Println("node:")
+		for _, p := range node.contour {
+			fmt.Println(p.point.String(), p.pointType.String())
+		}
+	}
+
+	fmt.Println("other:")
+	for node := range other.Nodes {
+		fmt.Println("node:")
+		for _, p := range node.contour {
+			fmt.Println(p.point.String(), p.pointType.String())
+		}
+	}
+
 	// Step 2: Mark entry/exit points for traversal based on the operation
 	pt.markEntryExitPoints(other, operation)
 
+	fmt.Println("pt:")
+	for node := range pt.Nodes {
+		fmt.Println("node:")
+		for _, p := range node.contour {
+			fmt.Println(p.point.String(), p.pointType.String(), p.entryExit.String())
+		}
+	}
+
+	fmt.Println("other:")
+	for node := range other.Nodes {
+		fmt.Println("node:")
+		for _, p := range node.contour {
+			fmt.Println(p.point.String(), p.pointType.String(), p.entryExit.String())
+		}
+	}
+
 	// Step 3: Perform traversal to construct the result of the Boolean operation
 	contours := pt.booleanOperationTraversal(other, operation)
+
+	// Remove degenerate polygons
+	contours = slices.DeleteFunc(contours, func(c []Point[T]) bool {
+		if len(c) < 3 {
+			return true
+		}
+		return false
+	})
 
 	return nestPointsToPolyTrees(contours)
 }
@@ -1575,23 +1678,40 @@ func (pt *PolyTree[T]) booleanOperationTraversal(other *PolyTree[T], operation B
 	}
 
 	// Handle edge cases: No intersections found
-	if len(resultContours) == 0 {
-		switch operation {
-		case BooleanUnion:
-			return [][]Point[T]{
-				pt.contour.toPoints(),
-				other.contour.toPoints(),
-			}
-		case BooleanIntersection:
-			return nil // No intersection
-		case BooleanSubtraction:
-			return [][]Point[T]{
-				pt.contour.toPoints(),
-			}
-		default:
-			panic(fmt.Errorf("unknown BooleanOperation: %v", operation))
+	//if len(resultContours) == 0 {
+	switch operation {
+
+	case BooleanUnion:
+		for poly := range pt.Nodes {
+			resultContours = append(resultContours, poly.Contour())
 		}
+		for poly := range other.Nodes {
+			resultContours = append(resultContours, poly.Contour())
+		}
+
+	case BooleanIntersection:
+		return nil // No intersection
+
+	case BooleanSubtraction:
+
+		// append any polygons from pt that don't have an intersection
+		for poly := range pt.Nodes {
+			intersection := false
+			for _, point := range poly.contour {
+				if point.entryExit != intersectionTypeNotSet {
+					intersection = true
+					break
+				}
+			}
+			if !intersection {
+				resultContours = append(resultContours, poly.Contour())
+			}
+		}
+
+	default:
+		panic(fmt.Errorf("unknown BooleanOperation: %v", operation))
 	}
+	//}
 
 	return resultContours
 }
@@ -1793,36 +1913,49 @@ func (pt *PolyTree[T]) Eq(other *PolyTree[T], opts ...polyTreeEqOption[T]) (bool
 //
 // Assumptions:
 //   - The input PolyTrees represent closed polygons with properly ordered contours.
+//
+// todo: clean up comments
 func (pt *PolyTree[T]) findIntersections(other *PolyTree[T]) {
-
-	// Step 1: Reset intersection metadata and reorder both PolyTrees
-	pt.resetIntersectionMetadataAndReorder()
-	other.resetIntersectionMetadataAndReorder()
 
 	// Step 2: Iterate through all combinations of polygons
 	for poly1 := range pt.Nodes {
 		for poly2 := range other.Nodes {
 
 			// Step 3: Check all edge combinations between poly1 and poly2
-			for i1 := 0; i1 < len(poly1.contour); i1++ {
+			lenPoly1Contour := len(poly1.contour)
+			for i1 := 0; i1 < lenPoly1Contour; i1++ {
 				// Get the next index to form an edge in poly1
-				j1 := (i1 + 1) % len(poly1.contour)
+				j1 := (i1 + 1) % lenPoly1Contour
 				segment1 := NewLineSegment(poly1.contour[i1].point, poly1.contour[j1].point)
 
-				for i2 := 0; i2 < len(poly2.contour); i2++ {
+				lenPoly2Contour := len(poly2.contour)
+			findIntersectionsi2Loop:
+				for i2 := 0; i2 < lenPoly2Contour; i2++ {
 					// Get the next index to form an edge in poly2
-					j2 := (i2 + 1) % len(poly2.contour)
+					j2 := (i2 + 1) % lenPoly2Contour
 					segment2 := NewLineSegment(poly2.contour[i2].point, poly2.contour[j2].point)
 
 					// Step 4: Check for intersection between segment1 and segment2
-					intersectionPoint, intersects := segment1.IntersectionPoint(segment2)
-					if intersects {
-						intersectionPointT := NewPoint(T(intersectionPoint.x), T(intersectionPoint.y))
+					intersectionPoints := make([]Point[T], 0, 2)
+					// todo: implement epsilon for IntersectionGeometry
+					res := segment1.IntersectionGeometry(segment2)
+					fmt.Println(res)
+					switch res.IntersectionType {
+					case IntersectionNone:
+						continue findIntersectionsi2Loop
+					case IntersectionPoint:
+						intersectionPoints = append(intersectionPoints,
+							NewPoint(T(res.IntersectionPoint.x), T(res.IntersectionPoint.y)),
+						)
+					case IntersectionSegment:
+						intersectionPoints = append(intersectionPoints,
+							NewPoint(T(res.IntersectionSegment.start.x), T(res.IntersectionSegment.start.y)),
+							NewPoint(T(res.IntersectionSegment.end.x), T(res.IntersectionSegment.end.y)),
+						)
+					}
 
-						// Step 5: Ensure the intersection point is unique
-						if poly1.contour.contains(intersectionPointT) || poly2.contour.contains(intersectionPointT) {
-							continue // Skip duplicate intersections
-						}
+					// add intersection points
+					for _, intersectionPointT := range intersectionPoints {
 
 						// Step 6: Convert the intersection point to a polyTreePoint
 						intersection := polyTreePoint[T]{
@@ -1834,15 +1967,45 @@ func (pt *PolyTree[T]) findIntersections(other *PolyTree[T]) {
 							intersectionPartnerPointIndex: -1,
 						}
 
-						// Step 7: Insert the intersection point into both polygons
-						//poly1.contour.insertIntersectionPoint(i1, j1, intersection)
-						poly1.contour = slices.Insert(poly1.contour, j1, intersection)
-						//poly2.contour.insertIntersectionPoint(i2, j2, intersection)
-						poly2.contour = slices.Insert(poly2.contour, j2, intersection)
+						// Step 5: Ensure the intersection point is unique
+						if poly1.contour.contains(intersectionPointT) {
+							// if intersectionPoint is an original point, then mark it as such
+							if poly1.contour[i1].point.Eq(intersectionPointT) && poly1.contour[i1].pointType == pointTypeOriginal {
+								poly1.contour[i1].pointType = pointTypeOriginalAndIntersection
+							}
+							if poly1.contour[j1].point.Eq(intersectionPointT) && poly1.contour[j1].pointType == pointTypeOriginal {
+								poly1.contour[j1].pointType = pointTypeOriginalAndIntersection
+							}
+						} else {
+							// else, insert an added intersection point
+							//poly1.contour = slices.Insert(poly1.contour, j1, intersection)
+							poly1.contour.insertIntersectionPoint(i1, j1, intersection)
 
-						// Step 8: Increment indices to avoid re-processing the same intersection
-						i1++
-						i2++
+							// increment indices to avoid re-processing the same intersection
+							i1++
+							j1++
+							lenPoly1Contour++
+						}
+
+						if poly2.contour.contains(intersectionPointT) {
+							// if intersectionPoint is an original point, then mark it as such
+							if poly2.contour[i2].point.Eq(intersectionPointT) && poly2.contour[i2].pointType == pointTypeOriginal {
+								poly2.contour[i2].pointType = pointTypeOriginalAndIntersection
+							}
+							if poly2.contour[j2].point.Eq(intersectionPointT) && poly2.contour[j2].pointType == pointTypeOriginal {
+								poly2.contour[j2].pointType = pointTypeOriginalAndIntersection
+							}
+						} else {
+							// else, insert an added intersection point
+							//poly2.contour = slices.Insert(poly2.contour, j2, intersection)
+
+							poly2.contour.insertIntersectionPoint(i2, j2, intersection)
+
+							// increment indices to avoid re-processing the same intersection
+							i2++
+							j2++
+							lenPoly2Contour++
+						}
 					}
 				}
 			}
@@ -1957,11 +2120,13 @@ func (pt *PolyTree[T]) markEntryExitPoints(other *PolyTree[T], operation Boolean
 				poly1Point2Index := (poly1Point1Index + 1) % len(poly1.contour)
 
 				// Process only intersection points
-				if poly1Point1.pointType == pointTypeAddedIntersection {
+				// as pointTypeOriginal is 0, anything greater than this is an intersection type
+				if poly1Point1.pointType > pointTypeOriginal {
 					for poly2PointIndex, poly2Point := range poly2.contour {
 
 						// Match intersection points in `poly1` and `poly2`
-						if poly2Point.pointType == pointTypeAddedIntersection && poly1Point1.point.Eq(poly2Point.point) {
+						// as pointTypeOriginal is 0, anything greater than this is an intersection type
+						if poly2Point.pointType > pointTypeOriginal && poly1Point1.point.Eq(poly2Point.point) {
 
 							// Sanity check: Ensure intersection metadata is not already set
 							if poly1.contour[poly1Point1Index].entryExit != intersectionTypeNotSet ||
@@ -2440,6 +2605,12 @@ func (pt *PolyTree[T]) resetIntersectionMetadataAndReorder() {
 			poly.contour[i].intersectionPartner = nil          // Remove intersection partner reference
 			poly.contour[i].intersectionPartnerPointIndex = -1 // Reset partner point index
 		}
+
+		// reduce the capacity of slice
+		oldContour := poly.contour
+		poly.contour = make(contour[T], len(oldContour))
+		copy(poly.contour, oldContour)
+
 	}
 
 	// Reorder the contour to ensure a consistent starting point
@@ -2734,7 +2905,7 @@ func nestPointsToPolyTrees[T SignedNumber](contours [][]Point[T]) (*PolyTree[T],
 
 	// Sanity check: ensure contours exist
 	if len(contours) == 0 {
-		return nil, fmt.Errorf("no contours provided")
+		return new(PolyTree[T]), nil
 	}
 
 	// Step 1: Sort polygons by area

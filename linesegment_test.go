@@ -1,7 +1,6 @@
 package geom2d
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"math"
@@ -1392,7 +1391,7 @@ func TestLineSegment_Scale_Int(t *testing.T) {
 			assert.InDelta(t, tc.expected.start.y, result.start.y, 0.001)
 			assert.InDelta(t, tc.expected.end.x, result.end.x, 0.001)
 			assert.InDelta(t, tc.expected.end.y, result.end.y, 0.001)
-			fmt.Println(result)
+			t.Log(result.String())
 
 			//case LineSegment[float64]:
 			//	result := segment.Scale(tc.origin, tc.factor)
