@@ -1464,6 +1464,48 @@ func TestLineSegment_Scale_Int(t *testing.T) {
 	}
 }
 
+func TestLineSegment_Slope(t *testing.T) {
+	tests := map[string]struct {
+		lineSegment LineSegment[int]
+		expected    float64
+		defined     bool
+	}{
+		"positive slope": {
+			lineSegment: NewLineSegment(NewPoint(1, 1), NewPoint(3, 3)),
+			expected:    1.0,
+			defined:     true,
+		},
+		"negative slope": {
+			lineSegment: NewLineSegment(NewPoint(3, 3), NewPoint(1, 1)),
+			expected:    1.0,
+			defined:     true,
+		},
+		"zero slope": {
+			lineSegment: NewLineSegment(NewPoint(1, 2), NewPoint(5, 2)),
+			expected:    0.0,
+			defined:     true,
+		},
+		"undefined slope": {
+			lineSegment: NewLineSegment(NewPoint(2, 1), NewPoint(2, 5)),
+			expected:    0.0,
+			defined:     false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			slope, defined := tc.lineSegment.Slope()
+
+			if tc.defined {
+				assert.True(t, defined, "expected the slope to be defined")
+				assert.InDelta(t, tc.expected, slope, 1e-6, "expected slope to match")
+			} else {
+				assert.False(t, defined, "expected the slope to be undefined")
+			}
+		})
+	}
+}
+
 func TestLineSegment_Start_End(t *testing.T) {
 	tests := map[string]struct {
 		start, end any

@@ -499,6 +499,20 @@ func ExampleLineSegment_Scale() {
 	// Custom Scaled Line End: Point[(5, 9)]
 }
 
+// ExampleLineSegment_Slope demonstrates the use of the Slope method
+// to calculate the slope of a line segment.
+func ExampleLineSegment_Slope() {
+	// Create a line segment
+	ls := geom2d.NewLineSegment(geom2d.NewPoint[float64](1, 1), geom2d.NewPoint[float64](3, 5))
+
+	// Calculate the slope
+	slope, ok := ls.Slope()
+
+	// Print the slope and whether it is valid
+	fmt.Printf("Slope: %.6f, Valid: %t\n", slope, ok)
+	// Output: Slope: 2.000000, Valid: true
+}
+
 func ExampleLineSegment_Start() {
 	lineSegment := geom2d.NewLineSegment(geom2d.NewPoint(1, 2), geom2d.NewPoint(3, 4))
 	fmt.Println(lineSegment.Start())

@@ -1028,6 +1028,26 @@ func (l LineSegment[T]) Scale(ref Point[T], factor T) LineSegment[T] {
 	)
 }
 
+// Slope calculates the slope of the line segment.
+//
+// The slope is calculated as the change in y-coordinates (dy) divided by
+// the change in x-coordinates (dx) of the line segment. This function
+// returns the slope as a float64 and a boolean indicating whether the
+// slope is defined.
+//
+// Returns:
+//   - (float64, true): The calculated slope if the line segment is not vertical.
+//   - (0, false): Indicates the slope is undefined (the line segment is vertical).
+func (l LineSegment[T]) Slope() (float64, bool) {
+	dx := float64(l.end.x - l.start.x)
+	dy := float64(l.end.y - l.start.y)
+
+	if dx == 0 {
+		return 0, false // Vertical line, slope undefined
+	}
+	return dy / dx, true
+}
+
 // Start returns the starting point of the line segment.
 //
 // This function provides access to the starting point of the LineSegment l, typically representing
