@@ -439,6 +439,25 @@ func ExampleLineSegment_Rotate() {
 	// Rotated Line End: Point[(-6, 4)]
 }
 
+// ExampleLineSegment_RoundToEpsilon demonstrates the use of the RoundToEpsilon method
+// to round the coordinates of a LineSegment to the nearest multiple of the given epsilon.
+func ExampleLineSegment_RoundToEpsilon() {
+	// Create a line segment
+	ls := geom2d.NewLineSegment(geom2d.NewPoint[float64](1.2345, 4.5678), geom2d.NewPoint[float64](7.8912, 3.2109))
+
+	// Round the coordinates to the nearest 0.1
+	rounded := ls.RoundToEpsilon(0.1)
+
+	// Print the rounded line segment
+	fmt.Printf("LineSegment[(%.4f, %.4f) -> (%.4f, %.4f)]",
+		rounded.Start().X(),
+		rounded.Start().Y(),
+		rounded.End().X(),
+		rounded.End().Y(),
+	)
+	// Output: LineSegment[(1.2000, 4.6000) -> (7.9000, 3.2000)]
+}
+
 func ExampleLineSegment_Scale() {
 	// Define a line segment from (2, 3) to (4, 6)
 	line := geom2d.NewLineSegment(

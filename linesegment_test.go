@@ -1379,6 +1379,40 @@ func TestLineSegment_Rotate(t *testing.T) {
 	}
 }
 
+func TestLineSegment_RoundToEpsilon(t *testing.T) {
+	tests := map[string]struct {
+		input    LineSegment[float64]
+		epsilon  float64
+		expected LineSegment[float64]
+	}{
+		"standard rounding": {
+			input:    NewLineSegment(NewPoint[float64](1.23, 4.56), NewPoint[float64](7.89, 3.21)),
+			epsilon:  0.1,
+			expected: NewLineSegment(NewPoint[float64](1.2, 4.6), NewPoint[float64](7.9, 3.2)),
+		},
+		"no change for exact multiples": {
+			input:    NewLineSegment(NewPoint[float64](1.0, 4.0), NewPoint[float64](7.0, 3.0)),
+			epsilon:  0.5,
+			expected: NewLineSegment(NewPoint[float64](1.0, 4.0), NewPoint[float64](7.0, 3.0)),
+		},
+		"small epsilon": {
+			input:    NewLineSegment(NewPoint[float64](1.2345, 4.5678), NewPoint[float64](7.8912, 3.2109)),
+			epsilon:  0.01,
+			expected: NewLineSegment(NewPoint[float64](1.23, 4.57), NewPoint[float64](7.89, 3.21)),
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := tc.input.RoundToEpsilon(tc.epsilon)
+			assert.InDelta(t, tc.expected.start.x, result.start.x, tc.epsilon, "unexpected start x value")
+			assert.InDelta(t, tc.expected.start.y, result.start.y, tc.epsilon, "unexpected start y value")
+			assert.InDelta(t, tc.expected.end.x, result.end.x, tc.epsilon, "unexpected start x value")
+			assert.InDelta(t, tc.expected.end.y, result.end.y, tc.epsilon, "unexpected start y value")
+		})
+	}
+}
+
 func TestLineSegment_Scale_Int(t *testing.T) {
 	tests := map[string]struct {
 		segment  LineSegment[int]

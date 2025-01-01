@@ -1110,7 +1110,7 @@ func RelativeCosineOfAngle[T SignedNumber](A, B Point[T], O ...Point[T]) float64
 // - A new Point[float64] where each coordinate is rounded to the nearest multiple of epsilon.
 //
 // Notes:
-// - The epsilon value must be greater than zero.
+// - The epsilon value must be greater than zero or the function will panic.
 func RoundPointToEpsilon(point Point[float64], epsilon float64) Point[float64] {
 	return NewPoint[float64](
 		math.Round(point.x/epsilon)*epsilon,

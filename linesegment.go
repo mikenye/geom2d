@@ -977,6 +977,26 @@ func (l LineSegment[T]) Rotate(pivot Point[T], radians float64, opts ...Option) 
 	return NewLineSegment(newStart, newEnd)
 }
 
+// RoundToEpsilon returns a new LineSegment where the coordinates of both the start
+// and end points are rounded to the nearest multiple of the given epsilon.
+//
+// Parameters:
+//   - epsilon: The value to which the coordinates should be rounded.
+//
+// Returns:
+//
+//	A new LineSegment with rounded coordinates.
+//
+// Notes:
+//   - The epsilon value must be greater than 0. If it is 0 or negative,
+//     the function will panic.
+func (l LineSegment[T]) RoundToEpsilon(epsilon float64) LineSegment[float64] {
+	return NewLineSegment(
+		RoundPointToEpsilon(l.start.AsFloat64(), epsilon),
+		RoundPointToEpsilon(l.end.AsFloat64(), epsilon),
+	)
+}
+
 // Scale scales the line segment by a given factor from a specified reference point.
 //
 // Parameters:
