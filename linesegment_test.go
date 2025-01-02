@@ -1057,6 +1057,31 @@ func TestLineSegment_Midpoint(t *testing.T) {
 	}
 }
 
+func TestNormalize(t *testing.T) {
+	cases := map[string]struct {
+		input    LineSegment[int]
+		expected LineSegment[int]
+	}{
+		"already normalized": {
+			input:    NewLineSegment(NewPoint(1, 2), NewPoint(3, 5)),
+			expected: NewLineSegment(NewPoint(1, 2), NewPoint(3, 5)),
+		},
+		"needs normalization": {
+			input:    NewLineSegment(NewPoint(3, 5), NewPoint(1, 2)),
+			expected: NewLineSegment(NewPoint(1, 2), NewPoint(3, 5)),
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			result := tc.input.Normalize()
+			if !result.Eq(tc.expected) {
+				t.Errorf("expected %v, got %v", tc.expected, result)
+			}
+		})
+	}
+}
+
 func TestLineSegment_Points(t *testing.T) {
 	tests := map[string]struct {
 		segment  LineSegment[int]
@@ -1354,6 +1379,40 @@ func TestLineSegment_Rotate(t *testing.T) {
 	}
 }
 
+func TestLineSegment_RoundToEpsilon(t *testing.T) {
+	tests := map[string]struct {
+		input    LineSegment[float64]
+		epsilon  float64
+		expected LineSegment[float64]
+	}{
+		"standard rounding": {
+			input:    NewLineSegment(NewPoint[float64](1.23, 4.56), NewPoint[float64](7.89, 3.21)),
+			epsilon:  0.1,
+			expected: NewLineSegment(NewPoint[float64](1.2, 4.6), NewPoint[float64](7.9, 3.2)),
+		},
+		"no change for exact multiples": {
+			input:    NewLineSegment(NewPoint[float64](1.0, 4.0), NewPoint[float64](7.0, 3.0)),
+			epsilon:  0.5,
+			expected: NewLineSegment(NewPoint[float64](1.0, 4.0), NewPoint[float64](7.0, 3.0)),
+		},
+		"small epsilon": {
+			input:    NewLineSegment(NewPoint[float64](1.2345, 4.5678), NewPoint[float64](7.8912, 3.2109)),
+			epsilon:  0.01,
+			expected: NewLineSegment(NewPoint[float64](1.23, 4.57), NewPoint[float64](7.89, 3.21)),
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := tc.input.RoundToEpsilon(tc.epsilon)
+			assert.InDelta(t, tc.expected.start.x, result.start.x, tc.epsilon, "unexpected start x value")
+			assert.InDelta(t, tc.expected.start.y, result.start.y, tc.epsilon, "unexpected start y value")
+			assert.InDelta(t, tc.expected.end.x, result.end.x, tc.epsilon, "unexpected start x value")
+			assert.InDelta(t, tc.expected.end.y, result.end.y, tc.epsilon, "unexpected start y value")
+		})
+	}
+}
+
 func TestLineSegment_Scale_Int(t *testing.T) {
 	tests := map[string]struct {
 		segment  LineSegment[int]
@@ -1401,6 +1460,48 @@ func TestLineSegment_Scale_Int(t *testing.T) {
 			//	assert.InDelta(t, tc.expected.end.y, result.end.y, 0.001)
 			//	fmt.Println(result)
 			//}
+		})
+	}
+}
+
+func TestLineSegment_Slope(t *testing.T) {
+	tests := map[string]struct {
+		lineSegment LineSegment[int]
+		expected    float64
+		defined     bool
+	}{
+		"positive slope": {
+			lineSegment: NewLineSegment(NewPoint(1, 1), NewPoint(3, 3)),
+			expected:    1.0,
+			defined:     true,
+		},
+		"negative slope": {
+			lineSegment: NewLineSegment(NewPoint(3, 3), NewPoint(1, 1)),
+			expected:    1.0,
+			defined:     true,
+		},
+		"zero slope": {
+			lineSegment: NewLineSegment(NewPoint(1, 2), NewPoint(5, 2)),
+			expected:    0.0,
+			defined:     true,
+		},
+		"undefined slope": {
+			lineSegment: NewLineSegment(NewPoint(2, 1), NewPoint(2, 5)),
+			expected:    0.0,
+			defined:     false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			slope, defined := tc.lineSegment.Slope()
+
+			if tc.defined {
+				assert.True(t, defined, "expected the slope to be defined")
+				assert.InDelta(t, tc.expected, slope, 1e-6, "expected slope to match")
+			} else {
+				assert.False(t, defined, "expected the slope to be undefined")
+			}
 		})
 	}
 }
@@ -1511,6 +1612,56 @@ func TestLineSegment_SubLineSegment(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLineSegment_XAtY(t *testing.T) {
+	seg := NewLineSegment(NewPoint(2, 2), NewPoint(8, 5))
+
+	// Test diagonal line
+	x, ok := seg.XAtY(3)
+	require.True(t, ok, "expected valid X for Y=3")
+	assert.Equal(t, 4.0, x)
+
+	// Test out-of-bounds Y
+	_, ok = seg.XAtY(6)
+	require.False(t, ok, "expected out-of-bounds for Y=6")
+
+	// Test vertical line
+	seg = NewLineSegment(NewPoint(5, 1), NewPoint(5, 4))
+	x, ok = seg.XAtY(3)
+	require.True(t, ok, "expected valid X for vertical line")
+	assert.Equal(t, 5.0, x)
+
+	// Test horizontal line
+	seg = NewLineSegment(NewPoint(2, 3), NewPoint(7, 3))
+	x, ok = seg.XAtY(3)
+	require.True(t, ok, "expected valid X for horizontal line")
+	assert.Equal(t, 2.0, x) // Can test any X in the range
+}
+
+func TestLineSegment_YAtX(t *testing.T) {
+	seg := NewLineSegment(NewPoint(2, 2), NewPoint(8, 5))
+
+	// Test diagonal line
+	y, ok := seg.YAtX(4)
+	require.True(t, ok, "expected valid Y for X=4")
+	assert.Equal(t, 3.0, y)
+
+	// Test out-of-bounds X
+	_, ok = seg.YAtX(9)
+	require.False(t, ok, "expected out-of-bounds for X=9")
+
+	// Test vertical line
+	seg = NewLineSegment(NewPoint(5, 1), NewPoint(5, 4))
+	y, ok = seg.YAtX(5)
+	require.True(t, ok, "expected valid Y for vertical line")
+	assert.Equal(t, 1.0, y) // Can test for other Y values in the range
+
+	// Test horizontal line
+	seg = NewLineSegment(NewPoint(2, 3), NewPoint(7, 3))
+	y, ok = seg.YAtX(5)
+	require.True(t, ok, "expected valid Y for horizontal line")
+	assert.Equal(t, 3.0, y)
 }
 
 func TestNewLineSegment(t *testing.T) {

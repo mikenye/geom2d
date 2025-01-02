@@ -227,6 +227,22 @@ func ExampleLineSegment_Length() {
 	// 5
 }
 
+func ExampleLineSegment_Normalize() {
+	// Create a line segment where the start point is not leftmost-lowest
+	original := geom2d.NewLineSegment(geom2d.NewPoint(3, 5), geom2d.NewPoint(1, 2))
+
+	// Normalize the segment
+	normalized := original.Normalize()
+
+	// Print the result
+	fmt.Printf("Original Line Segment: %s\n", original.String())
+	fmt.Printf("Normalized Line Segment: %s\n", normalized.String())
+
+	// Output:
+	// Original Line Segment: LineSegment[(3, 5) -> (1, 2)]
+	// Normalized Line Segment: LineSegment[(1, 2) -> (3, 5)]
+}
+
 func ExampleLineSegment_Points() {
 	// Create a line segment with two endpoints
 	line := geom2d.NewLineSegment(geom2d.NewPoint(1, 2), geom2d.NewPoint(3, 4))
@@ -423,6 +439,25 @@ func ExampleLineSegment_Rotate() {
 	// Rotated Line End: Point[(-6, 4)]
 }
 
+// ExampleLineSegment_RoundToEpsilon demonstrates the use of the RoundToEpsilon method
+// to round the coordinates of a LineSegment to the nearest multiple of the given epsilon.
+func ExampleLineSegment_RoundToEpsilon() {
+	// Create a line segment
+	ls := geom2d.NewLineSegment(geom2d.NewPoint[float64](1.2345, 4.5678), geom2d.NewPoint[float64](7.8912, 3.2109))
+
+	// Round the coordinates to the nearest 0.1
+	rounded := ls.RoundToEpsilon(0.1)
+
+	// Print the rounded line segment
+	fmt.Printf("LineSegment[(%.4f, %.4f) -> (%.4f, %.4f)]",
+		rounded.Start().X(),
+		rounded.Start().Y(),
+		rounded.End().X(),
+		rounded.End().Y(),
+	)
+	// Output: LineSegment[(1.2000, 4.6000) -> (7.9000, 3.2000)]
+}
+
 func ExampleLineSegment_Scale() {
 	// Define a line segment from (2, 3) to (4, 6)
 	line := geom2d.NewLineSegment(
@@ -462,6 +497,20 @@ func ExampleLineSegment_Scale() {
 	// Shrunk Line End: Point[(2, 3)]
 	// Custom Scaled Line Start: Point[(1, 3)]
 	// Custom Scaled Line End: Point[(5, 9)]
+}
+
+// ExampleLineSegment_Slope demonstrates the use of the Slope method
+// to calculate the slope of a line segment.
+func ExampleLineSegment_Slope() {
+	// Create a line segment
+	ls := geom2d.NewLineSegment(geom2d.NewPoint[float64](1, 1), geom2d.NewPoint[float64](3, 5))
+
+	// Calculate the slope
+	slope, ok := ls.Slope()
+
+	// Print the slope and whether it is valid
+	fmt.Printf("Slope: %.6f, Valid: %t\n", slope, ok)
+	// Output: Slope: 2.000000, Valid: true
 }
 
 func ExampleLineSegment_Start() {
@@ -521,4 +570,33 @@ func ExampleLineSegment_Translate() {
 	// Translated Line Segment:
 	// Start Point: Point[(3, 4)]
 	// End Point: Point[(6, 7)]
+}
+
+func ExampleLineSegment_XAtY() {
+	segment := geom2d.NewLineSegment(geom2d.NewPoint(2, 2), geom2d.NewPoint(8, 5))
+
+	x, ok := segment.XAtY(3) // Y = 3
+	if ok {
+		fmt.Printf("X at Y=3 is %.2f\n", x)
+	} else {
+		fmt.Println("Y=3 is out of bounds for the segment")
+	}
+
+	// Output:
+	// X at Y=3 is 4.00
+
+}
+
+func ExampleLineSegment_YAtX() {
+	segment := geom2d.NewLineSegment(geom2d.NewPoint(2, 2), geom2d.NewPoint(8, 5))
+
+	y, ok := segment.YAtX(4) // X = 4
+	if ok {
+		fmt.Printf("Y at X=4 is %.2f\n", y)
+	} else {
+		fmt.Println("X=4 is out of bounds for the segment")
+	}
+
+	// Output:
+	// Y at X=4 is 3.00
 }

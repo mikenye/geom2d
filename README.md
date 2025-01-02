@@ -153,6 +153,8 @@ Geom2D builds upon the work of others and is grateful for the foundations they h
 
 - **Martínez et al.**: Their paper on Boolean operations on polygons has been instrumental in the implementation of Martínez's algorithm in this library. See [A simple algorithm for Boolean operations on polygons](https://web.archive.org/web/20230514184409/https://www.sciencedirect.com/science/article/abs/pii/S0925772199000124).
 
+- **Bentley-Ottmann Algorithm**: The implementation of line segment intersection detection in Geom2D is based on the Bentley-Ottmann algorithm for efficiently finding all intersections among a set of line segments. See Bentley, J. L., & Ottmann, T. A. ["Algorithms for reporting and counting geometric intersections."](https://doi.org/10.1145/361002.361007) Communications of the ACM, 1979, or [the "Bentley–Ottmann algorithm" article on Wikipedia](https://en.wikipedia.org/wiki/Bentley–Ottmann_algorithm).
+
 - **Tom Wright**: The inspiration for starting this library came from Tom Wright’s repository [Provably Correct Polygon Algorithms](https://github.com/TooOldCoder/Provably-Correct-Polygon-Algorithms) and his accompanying paper. While Geom2D follows its own approach, certain ideas have been influenced by his work.
 
 - **Jack Bresenham**: The Bresenham's Line Algorithm and Bresenham's Circle Algorithm implemented in this library are inspired by Jack Bresenham's pioneering work. These algorithms are efficient methods for rasterizing lines and circles in computer graphics. For more details, see Bresenham's original paper ["Algorithm for computer control of a digital plotter." IBM Systems Journal, 1965.](https://dl.acm.org/doi/10.1147/sj.41.025)
