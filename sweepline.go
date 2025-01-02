@@ -722,8 +722,38 @@ func SweepLine[T SignedNumber](linesegments []LineSegment[T], opts ...Option) Sw
 		currentX: -math.MaxFloat64,
 	}
 
+	// Prepare for guarding against maximum iterations, see below.
+	maxIterations := uint64(len(inputSegments) * len(inputSegments))
+	iterationCount := uint64(0)
+
 	// for each event in the queue...
 	for pq.Len() > 0 {
+
+		// Sanity check: guard against infinite loop.
+		//
+		// The Bentley-Ottmann algorithm processes a finite number of events: start, end,
+		// and intersection events.
+		//
+		// The total number of events is at most O(n^2), where n is the number of input line segments.
+		// This includes:
+		//  - 2n 'start' and 'end' events (one for each endpoint of each line segment).
+		//  - Up to n(n-1)/2 intersection events in the worst case, where every segment intersects
+		//    with every other segment.
+		//
+		// By setting a limit of n^2 iterations, we ensure the algorithm terminates even in
+		// worst-case scenarios involving dense intersections or overlapping inputs.
+		//
+		// This limit acts as a safeguard against infinite loops caused by unexpected
+		// implementation bugs or edge cases not yet catered for.
+		//
+		// A warning is logged if the iteration count nears the maximum limit to assist with debugging.
+		if iterationCount > maxIterations {
+			panic(fmt.Errorf("exceeded maximum expected iterations: %d", maxIterations))
+		}
+		if iterationCount > uint64(0.9*float64(maxIterations)) {
+			log.Printf("warning: sweep line iterations nearing maximum expected value (%d/%d)", iterationCount, maxIterations)
+		}
+		iterationCount++
 
 		// Pop the event from the event queue
 		event := heap.Pop(pq).(*sweeplineEvent)
