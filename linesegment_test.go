@@ -1623,7 +1623,7 @@ func TestLineSegment_XAtY(t *testing.T) {
 	assert.Equal(t, 4.0, x)
 
 	// Test out-of-bounds Y
-	x, ok = seg.XAtY(6)
+	_, ok = seg.XAtY(6)
 	require.False(t, ok, "expected out-of-bounds for Y=6")
 
 	// Test vertical line
@@ -1648,7 +1648,7 @@ func TestLineSegment_YAtX(t *testing.T) {
 	assert.Equal(t, 3.0, y)
 
 	// Test out-of-bounds X
-	y, ok = seg.YAtX(9)
+	_, ok = seg.YAtX(9)
 	require.False(t, ok, "expected out-of-bounds for X=9")
 
 	// Test vertical line
