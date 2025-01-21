@@ -3,6 +3,7 @@ package geom2d
 import (
 	"container/heap"
 	"fmt"
+	"github.com/mikenye/geom2d/types"
 	"log"
 	"math"
 	"slices"
@@ -689,7 +690,7 @@ func (sls *sweepLineStatus) Swap(A, B LineSegment[float64]) {
 //     Start: Insert the segment into the sweep line status and check for intersections with neighbors.
 //     End: Remove the segment from the sweep line status and check for new intersections between its former neighbors.
 //     Intersection: Record the intersection and swap the two intersecting segments in the sweep line status.
-func SweepLine[T SignedNumber](linesegments []LineSegment[T], opts ...Option) SweepLineResult {
+func SweepLine[T types.SignedNumber](linesegments []LineSegment[T], opts ...Option) SweepLineResult {
 
 	// Convert input slices to float64
 	inputSegments := make([]LineSegment[float64], len(linesegments))

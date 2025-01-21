@@ -2,6 +2,7 @@ package geom2d
 
 import (
 	"fmt"
+	"github.com/mikenye/geom2d/types"
 	"math"
 )
 
@@ -116,9 +117,9 @@ func (r detailedLineSegmentRelationship) String() string {
 
 // LineSegment represents a line segment in a 2D space, defined by two endpoints, the start [Point] and end [Point].
 //
-// The generic type parameter T must satisfy the [SignedNumber] constraint, allowing the segment
+// The generic type parameter T must satisfy the [types.SignedNumber] constraint, allowing the segment
 // to use various numeric types such as int or float64 for its coordinates.
-type LineSegment[T SignedNumber] struct {
+type LineSegment[T types.SignedNumber] struct {
 	start Point[T]
 	end   Point[T]
 }
@@ -126,7 +127,7 @@ type LineSegment[T SignedNumber] struct {
 // NewLineSegment creates a new line segment from two endpoints, a start [Point] and end [Point].
 //
 // This constructor function initializes a [LineSegment] with the specified starting and ending points.
-// The generic type parameter "T" must satisfy the [SignedNumber] constraint, allowing various numeric types
+// The generic type parameter "T" must satisfy the [types.SignedNumber] constraint, allowing various numeric types
 // (such as int or float64) to be used for the segment’s coordinates.
 //
 // Parameters:
@@ -135,7 +136,7 @@ type LineSegment[T SignedNumber] struct {
 //
 // Returns:
 //   - LineSegment[T] - A new line segment defined by the start and end points.
-func NewLineSegment[T SignedNumber](start, end Point[T]) LineSegment[T] {
+func NewLineSegment[T types.SignedNumber](start, end Point[T]) LineSegment[T] {
 	return LineSegment[T]{
 		start: start,
 		end:   end,
@@ -1287,7 +1288,7 @@ const (
 	IntersectionSegment
 )
 
-type LineSegmentIntersectionResult[T SignedNumber] struct {
+type LineSegmentIntersectionResult[T types.SignedNumber] struct {
 	IntersectionType    LineSegmentIntersectionType // Type of intersection
 	IntersectionPoint   Point[T]                    // Valid if Type == IntersectionPoint
 	IntersectionSegment LineSegment[T]              // Valid if Type == IntersectionSegment

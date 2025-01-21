@@ -2,6 +2,7 @@ package geom2d
 
 import (
 	"fmt"
+	"github.com/mikenye/geom2d/types"
 	"image"
 	"math"
 	"slices"
@@ -12,8 +13,8 @@ import (
 // calculations, making it versatile for computational geometry and graphics applications.
 //
 // Type Parameter:
-//   - T: The numeric type for the coordinates, constrained to signed number types by the [SignedNumber] interface.
-type Point[T SignedNumber] struct {
+//   - T: The numeric type for the coordinates, constrained to signed number types by the [types.SignedNumber] interface.
+type Point[T types.SignedNumber] struct {
 	x T
 	y T
 }
@@ -40,7 +41,7 @@ type Point[T SignedNumber] struct {
 //
 // [Graham Scan]: https://en.wikipedia.org/wiki/Graham_scan
 // [convex hull]: https://en.wikipedia.org/wiki/Convex_hull
-func ConvexHull[T SignedNumber](points []Point[T]) []Point[T] {
+func ConvexHull[T types.SignedNumber](points []Point[T]) []Point[T] {
 
 	var (
 		pt0Index, pt1Index, pt2Index int
@@ -82,7 +83,7 @@ func ConvexHull[T SignedNumber](points []Point[T]) []Point[T] {
 
 // NewPoint creates a new Point with the specified x and y coordinates.
 //
-// This function is generic and requires the x and y values to satisfy the [SignedNumber] constraint.
+// This function is generic and requires the x and y values to satisfy the [types.SignedNumber] constraint.
 //
 // Parameters:
 //   - x (T): The x-coordinate of the point.
@@ -90,7 +91,7 @@ func ConvexHull[T SignedNumber](points []Point[T]) []Point[T] {
 //
 // Returns:
 //   - Point[T]: A new Point instance with the given coordinates.
-func NewPoint[T SignedNumber](x, y T) Point[T] {
+func NewPoint[T types.SignedNumber](x, y T) Point[T] {
 	return Point[T]{
 		x: x,
 		y: y,
@@ -784,7 +785,7 @@ func (o PointOrientation) String() string {
 //	points := []Point[int]{{3, 4}, {1, 5}, {1, 4}}
 //	index, lowestPoint := findLowestLeftestPoint(points...)
 //	// lowestPoint is Point[int]{1, 4}, and index is 2
-func findLowestLeftestPoint[T SignedNumber](points ...Point[T]) (int, Point[T]) {
+func findLowestLeftestPoint[T types.SignedNumber](points ...Point[T]) (int, Point[T]) {
 	lowestPointIndex := 0
 	for i := range points {
 		switch {
@@ -819,7 +820,7 @@ func findLowestLeftestPoint[T SignedNumber](points ...Point[T]) (int, Point[T]) 
 //	lowestPoint := NewPoint(1, 2)
 //	orderPointsByAngleAboutLowestPoint(lowestPoint, points)
 //	// points are now sorted counterclockwise around lowestPoint, with collinear points ordered by distance.
-func orderPointsByAngleAboutLowestPoint[T SignedNumber](lowestPoint Point[T], points []Point[T]) {
+func orderPointsByAngleAboutLowestPoint[T types.SignedNumber](lowestPoint Point[T], points []Point[T]) {
 	slices.SortStableFunc(points, func(a Point[T], b Point[T]) int {
 
 		// Ensure lowestPoint is always the first point
@@ -872,7 +873,7 @@ func orderPointsByAngleAboutLowestPoint[T SignedNumber](lowestPoint Point[T], po
 //
 // The formula here uses the 2D cross product of vectors (p1 - p0) and (p2 - p0)
 // to compute twice the signed area of the triangle formed by p0, p1, p2.
-func triangleAreaX2Signed[T SignedNumber](p0, p1, p2 Point[T]) T {
+func triangleAreaX2Signed[T types.SignedNumber](p0, p1, p2 Point[T]) T {
 	return (p1.x-p0.x)*(p2.y-p0.y) - (p2.x-p0.x)*(p1.y-p0.y)
 }
 
@@ -894,7 +895,7 @@ func triangleAreaX2Signed[T SignedNumber](p0, p1, p2 Point[T]) T {
 // Notes:
 //   - This function modifies the input slice of points in place.
 //   - A zero area polygon is considered already clockwise and is left unchanged.
-func EnsureClockwise[T SignedNumber](points []Point[T]) {
+func EnsureClockwise[T types.SignedNumber](points []Point[T]) {
 	if SignedArea2X(points) < 0 {
 		return // Already clockwise
 	}
@@ -923,7 +924,7 @@ func EnsureClockwise[T SignedNumber](points []Point[T]) {
 //
 //   - This function modifies the input slice of points in place.
 //   - A zero area polygon is considered already counterclockwise and is left unchanged.
-func EnsureCounterClockwise[T SignedNumber](points []Point[T]) {
+func EnsureCounterClockwise[T types.SignedNumber](points []Point[T]) {
 	if SignedArea2X(points) > 0 {
 		return // Already counterclockwise
 	}
@@ -948,7 +949,7 @@ func EnsureCounterClockwise[T SignedNumber](points []Point[T]) {
 //   - "polygon must have at least 3 points"
 //   - "polygon has zero area"
 //   - "polygon has self-intersecting edges: edge1 and edge2"
-func IsWellFormedPolygon[T SignedNumber](points []Point[T]) (bool, error) {
+func IsWellFormedPolygon[T types.SignedNumber](points []Point[T]) (bool, error) {
 	// Check for minimum 3 points
 	if len(points) < 3 {
 		return false, fmt.Errorf("polygon must have at least 3 points")
@@ -991,7 +992,7 @@ func IsWellFormedPolygon[T SignedNumber](points []Point[T]) (bool, error) {
 //   - [PointsCounterClockwise] if the points form a counterclockwise turn,
 //   - [PointsClockwise] if the points form a clockwise turn,
 //   - [PointsCollinear] if the points are collinear (lie on a single line).
-func Orientation[T SignedNumber](p0, p1, p2 Point[T]) PointOrientation {
+func Orientation[T types.SignedNumber](p0, p1, p2 Point[T]) PointOrientation {
 	area2x := triangleAreaX2Signed(p0, p1, p2)
 	switch {
 	case area2x < 0:
@@ -1016,7 +1017,7 @@ func Orientation[T SignedNumber](p0, p1, p2 Point[T]) PointOrientation {
 // Returns:
 //
 //   - radians (float64): The angle between points A and B relative to the origin, in radians.
-func RelativeAngle[T SignedNumber](A, B Point[T], O ...Point[T]) (radians float64) {
+func RelativeAngle[T types.SignedNumber](A, B Point[T], O ...Point[T]) (radians float64) {
 	return math.Acos(RelativeCosineOfAngle(A, B, O...))
 }
 
@@ -1077,7 +1078,7 @@ func RelativeAngle[T SignedNumber](A, B Point[T], O ...Point[T]) (radians float6
 //   - Performing dot product-based calculations indirectly, as cos(θ) is derived from the dot product normalized by the vectors' magnitudes.
 //
 // [math.Acos]: https://pkg.go.dev/math#Acos
-func RelativeCosineOfAngle[T SignedNumber](A, B Point[T], O ...Point[T]) float64 {
+func RelativeCosineOfAngle[T types.SignedNumber](A, B Point[T], O ...Point[T]) float64 {
 	// Set origin point to (0,0) if not provided
 	origin := NewPoint[T](0, 0)
 	if len(O) > 0 {
@@ -1143,7 +1144,7 @@ func RoundPointToEpsilon(point Point[float64], epsilon float64) Point[float64] {
 //     or area of the intended polygon.
 //
 // [Shoelace Formula]: https://en.wikipedia.org/wiki/Shoelace_formula
-func SignedArea2X[T SignedNumber](points []Point[T]) T {
+func SignedArea2X[T types.SignedNumber](points []Point[T]) T {
 	var area T
 	n := len(points)
 	if n < 3 {

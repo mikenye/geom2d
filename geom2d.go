@@ -64,6 +64,7 @@ package geom2d
 
 import (
 	"fmt"
+	"github.com/mikenye/geom2d/types"
 	"math"
 )
 
@@ -210,23 +211,6 @@ func (r Relationship) String() string {
 	}
 }
 
-// SignedNumber is a generic interface representing signed numeric types supported by this package.
-// This interface allows functions and structs to operate generically on various numeric types,
-// including integer and floating-point types, while restricting to signed values only.
-//
-// Supported types:
-//   - int
-//   - int32
-//   - int64
-//   - float32
-//   - float64
-//
-// By using SignedNumber, functions can handle multiple numeric types without needing to be rewritten
-// for each specific type, enabling flexible and type-safe operations across different numeric data.
-type SignedNumber interface {
-	int | int32 | int64 | float32 | float64
-}
-
 // ReflectionAxis specifies the axis or line across which a point or line segment should be reflected.
 //
 // This type defines the possible axes for reflection, including the standard x-axis and y-axis,
@@ -341,7 +325,7 @@ func applyEpsilon(value, epsilon float64) float64 {
 //
 // Returns:
 //   - The absolute value of the input number.
-func abs[T SignedNumber](n T) T {
+func abs[T types.SignedNumber](n T) T {
 	if n < 0 {
 		return -n
 	}

@@ -2,6 +2,7 @@ package geom2d
 
 import (
 	"fmt"
+	"github.com/mikenye/geom2d/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"math"
@@ -9,13 +10,13 @@ import (
 	"testing"
 )
 
-type testPolyGeometry[T SignedNumber] struct {
+type testPolyGeometry[T types.SignedNumber] struct {
 	PolyA              [][]Point[T]
 	PolyB              [][]Point[T]
 	IntersectionPoints []Point[float64]
 }
 
-type createTestGeometryFunc[T SignedNumber] func() testPolyGeometry[T]
+type createTestGeometryFunc[T types.SignedNumber] func() testPolyGeometry[T]
 
 // test_poly_01.dxf
 var createTestPoly01 createTestGeometryFunc[int] = func() testPolyGeometry[int] {

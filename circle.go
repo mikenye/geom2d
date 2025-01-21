@@ -2,6 +2,7 @@ package geom2d
 
 import (
 	"fmt"
+	"github.com/mikenye/geom2d/types"
 	"math"
 )
 
@@ -10,7 +11,7 @@ import (
 // The Circle type provides methods for calculating its circumference and area,
 // determining if a point lies within the circle, checking if a line segment
 // intersects the circle, and checking the relationship between the circle and other geometric shapes.
-type Circle[T SignedNumber] struct {
+type Circle[T types.SignedNumber] struct {
 	center Point[T] // The center point of the circle
 	radius T        // The radius of the circle
 }
@@ -19,11 +20,11 @@ type Circle[T SignedNumber] struct {
 //
 // Parameters:
 //   - center ([Point][T]): The center [Point] of the [Circle].
-//   - radius (T): The radius of the circle, of generic type T, which must satisfy the [SignedNumber] constraint.
+//   - radius (T): The radius of the circle, of generic type T, which must satisfy the [types.SignedNumber] constraint.
 //
 // Returns:
 //   - Circle[T]: A new Circle with the specified center and radius.
-func NewCircle[T SignedNumber](center Point[T], radius T) Circle[T] {
+func NewCircle[T types.SignedNumber](center Point[T], radius T) Circle[T] {
 	return Circle[T]{
 		center: center,
 		radius: radius,
@@ -541,7 +542,7 @@ func (c Circle[int]) Bresenham(yield func(Point[int]) bool) {
 //     6. Octant 4: (xc - y, yc + x)
 //     7. Octant 6: (xc + y, yc - x)
 //     8. Octant 5: (xc - y, yc - x)
-func reflectAcrossCircleOctants[T SignedNumber](xc, yc, x, y T) []Point[T] {
+func reflectAcrossCircleOctants[T types.SignedNumber](xc, yc, x, y T) []Point[T] {
 	return []Point[T]{
 		NewPoint[T](xc+x, yc+y), // Octant 1
 		NewPoint[T](xc-x, yc+y), // Octant 2

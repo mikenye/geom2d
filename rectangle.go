@@ -2,11 +2,12 @@ package geom2d
 
 import (
 	"fmt"
+	"github.com/mikenye/geom2d/types"
 	"image"
 )
 
 // Rectangle represents an axis-aligned rectangle defined by its four corners.
-type Rectangle[T SignedNumber] struct {
+type Rectangle[T types.SignedNumber] struct {
 	topLeft     Point[T]
 	topRight    Point[T]
 	bottomLeft  Point[T]
@@ -505,7 +506,7 @@ func (r Rectangle[T]) Width() T {
 //
 // Panics:
 //   - If the provided points do not form an axis-aligned rectangle, the function panics.
-func NewRectangle[T SignedNumber](points []Point[T]) Rectangle[T] {
+func NewRectangle[T types.SignedNumber](points []Point[T]) Rectangle[T] {
 
 	if len(points) != 4 {
 		panic("NewRectangle requires exactly four points")
@@ -566,7 +567,7 @@ func NewRectangle[T SignedNumber](points []Point[T]) Rectangle[T] {
 //
 // Returns:
 //   - [Rectangle][T]: A new rectangle defined by the determined top-left and bottom-right corners.
-func newRectangleByOppositeCorners[T SignedNumber](corner, oppositeCorner Point[T]) Rectangle[T] {
+func newRectangleByOppositeCorners[T types.SignedNumber](corner, oppositeCorner Point[T]) Rectangle[T] {
 	return NewRectangle([]Point[T]{
 		NewPoint(min(corner.x, oppositeCorner.x), min(corner.y, oppositeCorner.y)),
 		NewPoint(min(corner.x, oppositeCorner.x), max(corner.y, oppositeCorner.y)),

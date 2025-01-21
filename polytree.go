@@ -2,6 +2,7 @@ package geom2d
 
 import (
 	"fmt"
+	"github.com/mikenye/geom2d/types"
 	"slices"
 	"strings"
 )
@@ -54,11 +55,11 @@ func (o *BooleanOperation) String() string {
 // configurations after the core properties have been set.
 //
 // Parameters:
-//   - T: The numeric type of the coordinates in the [PolyTree], constrained by the [SignedNumber] interface.
+//   - T: The numeric type of the coordinates in the [PolyTree], constrained by the [types.SignedNumber] interface.
 //
 // This pattern makes it easy to add optional properties to a PolyTree without requiring an extensive list
 // of parameters in the NewPolyTree function.
-type NewPolyTreeOption[T SignedNumber] func(*PolyTree[T]) error
+type NewPolyTreeOption[T types.SignedNumber] func(*PolyTree[T]) error
 
 // WithChildren is an option for the [NewPolyTree] function that assigns child polygons to the created [PolyTree].
 // It also sets up parent-child relationships and orders the children for consistency.
@@ -72,7 +73,7 @@ type NewPolyTreeOption[T SignedNumber] func(*PolyTree[T]) error
 //
 // Returns:
 //   - A [NewPolyTreeOption] that can be passed to the [NewPolyTree] function.
-func WithChildren[T SignedNumber](children ...*PolyTree[T]) NewPolyTreeOption[T] {
+func WithChildren[T types.SignedNumber](children ...*PolyTree[T]) NewPolyTreeOption[T] {
 	return func(p *PolyTree[T]) error {
 		for _, child := range children {
 			err := p.AddChild(child)
@@ -94,7 +95,7 @@ func WithChildren[T SignedNumber](children ...*PolyTree[T]) NewPolyTreeOption[T]
 //
 // Returns:
 //   - A [NewPolyTreeOption] that can be passed to the [NewPolyTree] function.
-func WithSiblings[T SignedNumber](siblings ...*PolyTree[T]) NewPolyTreeOption[T] {
+func WithSiblings[T types.SignedNumber](siblings ...*PolyTree[T]) NewPolyTreeOption[T] {
 	return func(p *PolyTree[T]) error {
 		for _, sibling := range siblings {
 			err := p.AddSibling(sibling)
@@ -393,7 +394,7 @@ type PolygonType uint8
 //
 // Note: Internal optimizations, such as convex hull caching and point indexing, are abstracted
 // away from the user.
-type PolyTree[T SignedNumber] struct {
+type PolyTree[T types.SignedNumber] struct {
 
 	// contour defines the complete outline of the polygon, including all vertices, intersection points,
 	// and midpoints added during boolean operations. The points in the contour are doubled to avoid
@@ -430,7 +431,7 @@ type PolyTree[T SignedNumber] struct {
 // operations. Contour within the contour are typically doubled to facilitate calculations
 // involving midpoints and to avoid precision issues when working with integer-based
 // coordinates.
-type contour[T SignedNumber] []polyTreePoint[T]
+type contour[T types.SignedNumber] []polyTreePoint[T]
 
 // insertIntersectionPoint inserts an intersection point into a contour between two specified indices.
 // The insertion position is determined based on the proximity of the intersection point to the
@@ -505,7 +506,7 @@ func (c *contour[T]) String() string {
 // This type is used internally for operations such as determining point-in-polygon
 // relationships and handling ray intersection tests. It provides both the edge's
 // geometric representation and its relationship with a ray used in algorithms.
-type polyEdge[T SignedNumber] struct {
+type polyEdge[T types.SignedNumber] struct {
 	// lineSegment represents the geometric edge of the polygon as a line segment.
 	// This field is used for geometric operations such as intersection checks and edge traversal.
 	lineSegment LineSegment[T]
@@ -534,7 +535,7 @@ type polyTraversalDirection uint8
 //
 // For example, `WithVisited` can be used to provide a map of visited nodes to avoid reprocessing
 // already-checked polygons in recursive structures.
-type polyTreeEqOption[T SignedNumber] func(*polyTreeEqConfig[T])
+type polyTreeEqOption[T types.SignedNumber] func(*polyTreeEqConfig[T])
 
 // polyTreeEqConfig is a configuration struct used to control the behaviour of the Eq method
 // on a PolyTree. It provides additional context and state to support complex comparisons,
@@ -545,7 +546,7 @@ type polyTreeEqOption[T SignedNumber] func(*polyTreeEqConfig[T])
 //   - visited: A map used to track which PolyTree nodes have already been visited during the
 //     comparison. This prevents infinite loops when comparing siblings or children that may
 //     reference each other in complex hierarchies.
-type polyTreeEqConfig[T SignedNumber] struct {
+type polyTreeEqConfig[T types.SignedNumber] struct {
 	visited map[*PolyTree[T]]bool // Tracks visited nodes to avoid infinite recursion.
 }
 
@@ -572,7 +573,7 @@ type polyTreeEqConfig[T SignedNumber] struct {
 // This struct is primarily used in [PolyTree]'s contour to represent the points
 // and their metadata, enabling advanced polygon operations such as union, intersection,
 // and subtraction.
-type polyTreePoint[T SignedNumber] struct {
+type polyTreePoint[T types.SignedNumber] struct {
 	// The geometric coordinates of the point in 2D space.
 	point Point[T]
 
@@ -600,7 +601,7 @@ type polyTreePoint[T SignedNumber] struct {
 //
 // As this is used internally, no checks are in place to enforce convexity.
 // The ConvexHull function returns this type.
-type simpleConvexPolygon[T SignedNumber] struct {
+type simpleConvexPolygon[T types.SignedNumber] struct {
 	// Points contains the ordered vertices of the convex polygon. The points are arranged
 	// sequentially in either clockwise or counterclockwise order, forming the boundary of the convex hull.
 	Points []Point[T]
@@ -629,7 +630,7 @@ type simpleConvexPolygon[T SignedNumber] struct {
 //   - Contour are doubled internally to avoid integer division/precision issues during midpoint calculations.
 //   - The polygon's convex hull is computed and stored for potential optimisations.
 //   - Child polygons must have the opposite [PolygonType] (e.g., holes for a solid polygon and solids for a hole polygon).
-func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPolyTreeOption[T]) (*PolyTree[T], error) {
+func NewPolyTree[T types.SignedNumber](points []Point[T], t PolygonType, opts ...NewPolyTreeOption[T]) (*PolyTree[T], error) {
 
 	// Validate the polygon
 	_, err := IsWellFormedPolygon(points)
@@ -714,7 +715,7 @@ func NewPolyTree[T SignedNumber](points []Point[T], t PolygonType, opts ...NewPo
 //	}
 //	scp := newSimpleConvexPolygon(points)
 //	// scp represents a convex polygon with the given points.
-func newSimpleConvexPolygon[T SignedNumber](points []Point[T]) simpleConvexPolygon[T] {
+func newSimpleConvexPolygon[T types.SignedNumber](points []Point[T]) simpleConvexPolygon[T] {
 	// Assume `points` is already ordered to form a convex polygon
 	return simpleConvexPolygon[T]{Points: points}
 }
@@ -2779,7 +2780,7 @@ func (scp *simpleConvexPolygon[T]) containsPoint(point Point[T]) bool {
 }
 
 // ApplyPointTransform applies a transformation function to each point in a [PolyTree] and produces a new [PolyTree]
-// with points of a different type. It supports transformation between numeric types in the [SignedNumber] constraint.
+// with points of a different type. It supports transformation between numeric types in the [types.SignedNumber] constraint.
 //
 // This function allows users to convert the points in a PolyTree using a custom transformation function, for example,
 // rounding float64 coordinates to int or scaling coordinates to another type.
@@ -2792,7 +2793,7 @@ func (scp *simpleConvexPolygon[T]) containsPoint(point Point[T]) bool {
 // Returns:
 //   - *[PolyTree][N]: A new [PolyTree] where all points have been transformed to type N.
 //   - error: Returns an error if any point transformation fails or if the new [PolyTree] cannot be created.
-func ApplyPointTransform[T, N SignedNumber](pt *PolyTree[T], transformFunc func(p Point[T]) (Point[N], error)) (*PolyTree[N], error) {
+func ApplyPointTransform[T, N types.SignedNumber](pt *PolyTree[T], transformFunc func(p Point[T]) (Point[N], error)) (*PolyTree[N], error) {
 	var (
 		err   error        // Stores any errors encountered during transformation.
 		ptOut *PolyTree[N] // The resulting PolyTree after transformation.
@@ -2851,7 +2852,7 @@ func ApplyPointTransform[T, N SignedNumber](pt *PolyTree[T], transformFunc func(
 //
 // Returns:
 //   - An integer indicating the relative order of the contours.
-func compareLowestLeftmost[T SignedNumber](a, b contour[T]) int {
+func compareLowestLeftmost[T types.SignedNumber](a, b contour[T]) int {
 	// Find the lowest, leftmost point in contour `a`
 	aMin := a.findLowestLeftmost()
 
@@ -2898,7 +2899,7 @@ func compareLowestLeftmost[T SignedNumber](a, b contour[T]) int {
 //	if err != nil {
 //	    log.Fatalf("Error: %v", err)
 //	}
-func nestPointsToPolyTrees[T SignedNumber](contours [][]Point[T]) (*PolyTree[T], error) {
+func nestPointsToPolyTrees[T types.SignedNumber](contours [][]Point[T]) (*PolyTree[T], error) {
 
 	// Sanity check: ensure contours exist
 	if len(contours) == 0 {
@@ -2965,7 +2966,7 @@ func nestPointsToPolyTrees[T SignedNumber](contours [][]Point[T]) (*PolyTree[T],
 	return rootTree, nil
 }
 
-func sortPointsByAreaDescending[T SignedNumber](a, b []Point[T]) int {
+func sortPointsByAreaDescending[T types.SignedNumber](a, b []Point[T]) int {
 
 	// get signed areas
 	areaA := SignedArea2X(a)
@@ -3044,7 +3045,7 @@ func togglePolyTraversalDirection(direction polyTraversalDirection) polyTraversa
 //	visitedNodes := make(map[*PolyTree[int]]bool)
 //	eqOption := withVisited(visitedNodes)
 //	match, mismatches := polyTree1.Eq(polyTree2, eqOption)
-func withVisited[T SignedNumber](visited map[*PolyTree[T]]bool) polyTreeEqOption[T] {
+func withVisited[T types.SignedNumber](visited map[*PolyTree[T]]bool) polyTreeEqOption[T] {
 	return func(cfg *polyTreeEqConfig[T]) {
 		// Update the visited map in the equality configuration
 		cfg.visited = visited
