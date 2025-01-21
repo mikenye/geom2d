@@ -72,39 +72,6 @@ func init() {
 	logDebugf("debug logging enabled")
 }
 
-// Option is a functional option type used to configure optional parameters
-// in geometric operations. Functions that accept an Option parameter allow
-// users to customize behavior without modifying the primary function signature.
-//
-// Option functions take a pointer to an geomOptions struct and modify its fields
-// to apply specific configurations.
-type Option func(*geomOptions)
-
-// WithEpsilon returns an [Option] that sets the Epsilon value for functions that support it.
-// Epsilon is a small positive value used to adjust for floating-point precision errors,
-// ensuring numerical stability in geometric calculations.
-//
-// Parameters:
-//   - epsilon: A small positive value specifying the tolerance range. Values within
-//     [-epsilon, epsilon] are treated as zero.
-//
-// Behavior:
-//   - When this option is applied, functions will use the specified Epsilon value
-//     to handle near-zero results caused by floating-point arithmetic.
-//   - If a negative epsilon is provided, it will default to 0 (no adjustment).
-//   - If not set (default), Epsilon remains 0, and no adjustment is applied.
-//
-// Returns:
-//   - An [Option] function that modifies the Epsilon field in the geomOptions struct.
-func WithEpsilon(epsilon float64) Option {
-	return func(opts *geomOptions) {
-		if epsilon < 0 {
-			epsilon = 0 // Default to no adjustment
-		}
-		opts.epsilon = epsilon
-	}
-}
-
 // Relationship defines the spatial or geometric relationship between two shapes or entities
 // in 2D space. This type is used across various functions to represent how one geometric
 // entity relates to another.
@@ -228,54 +195,6 @@ const (
 	// This line segment can be specified as an additional argument to the Reflect method.
 	ReflectAcrossCustomLine
 )
-
-// geomOptions defines a set of configurable parameters for geometric operations.
-// These options allow users to customize the behavior of functions in the library,
-// such as applying numerical stability adjustments or other optional features.
-type geomOptions struct {
-	// epsilon is a small positive value used to adjust for floating-point precision errors.
-	// When set, values within the range [-Epsilon, Epsilon] are treated as zero in
-	// calculations to improve numerical stability. A value of 0 disables this adjustment.
-	//
-	// For example:
-	//   - epsilon > 0: Small deviations caused by floating-point arithmetic are corrected.
-	//   - epsilon = 0: No adjustment is applied, leaving results as-is.
-	//
-	// Default: 0 (no epsilon adjustment)
-	epsilon float64
-}
-
-// applyOptions applies a set of functional options to a given options struct,
-// starting with a set of default values.
-//
-// Parameters:
-//   - defaults: The initial geomOptions struct containing default values.
-//   - opts: A variadic slice of Option functions that modify the geomOptions struct.
-//
-// Behavior:
-//   - Each Option function in the opts slice is applied in the order it is provided.
-//   - The defaults parameter serves as a base configuration, which can be
-//     overridden by the provided geomOptions.
-//
-// Returns:
-//
-// A new geomOptions struct that reflects the default values combined with any
-// modifications made by the Option functions.
-//
-// Example:
-//
-//	defaults := geomOptions{Epsilon: 0}
-//	geomOptions := applyOptions(defaults, WithEpsilon(1e-10))
-//	fmt.Println(geomOptions.Epsilon) // Output: 1e-10
-//
-// This function is used internally to provide a consistent way to handle
-// optional parameters across multiple functions.
-func applyOptions(defaults geomOptions, opts ...Option) geomOptions {
-	for _, opt := range opts {
-		opt(&defaults)
-	}
-	return defaults
-}
 
 // applyEpsilon adjusts a floating-point value to eliminate small numerical imprecisions
 // by snapping it to the nearest whole number if the difference is within a specified epsilon.
