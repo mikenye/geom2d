@@ -115,34 +115,6 @@ func (r detailedLineSegmentRelationship) String() string {
 	}
 }
 
-// LineSegment represents a line segment in a 2D space, defined by two endpoints, the start [Point] and end [Point].
-//
-// The generic type parameter T must satisfy the [types.SignedNumber] constraint, allowing the segment
-// to use various numeric types such as int or float64 for its coordinates.
-type LineSegment[T types.SignedNumber] struct {
-	start Point[T]
-	end   Point[T]
-}
-
-// NewLineSegment creates a new line segment from two endpoints, a start [Point] and end [Point].
-//
-// This constructor function initializes a [LineSegment] with the specified starting and ending points.
-// The generic type parameter "T" must satisfy the [types.SignedNumber] constraint, allowing various numeric types
-// (such as int or float64) to be used for the segment’s coordinates.
-//
-// Parameters:
-//   - start ([Point][T]): The starting [Point] of the LineSegment.
-//   - end ([Point][T]): The ending [Point] of the LineSegment.
-//
-// Returns:
-//   - LineSegment[T] - A new line segment defined by the start and end points.
-func NewLineSegment[T types.SignedNumber](start, end Point[T]) LineSegment[T] {
-	return LineSegment[T]{
-		start: start,
-		end:   end,
-	}
-}
-
 // AddLineSegment adds the start and end points of another line segment to this one.
 //
 // This method performs an element-wise addition, where the start and end points
@@ -155,59 +127,10 @@ func NewLineSegment[T types.SignedNumber](start, end Point[T]) LineSegment[T] {
 // Returns:
 //   - LineSegment[T] - A new line segment where each endpoint is the sum of the corresponding endpoints.
 func (l LineSegment[T]) AddLineSegment(other LineSegment[T]) LineSegment[T] {
-	return NewLineSegment(
+	return NewFromPoints(
 		l.start.Translate(other.start),
 		l.end.Translate(other.end),
 	)
-}
-
-// AsFloat32 converts the line segment to a LineSegment[float32] type.
-//
-// This function converts both endpoints of the LineSegment l to [Point][float32]
-// values, creating a new line segment with floating-point coordinates.
-// It is useful for precise calculations where floating-point accuracy is needed.
-//
-// Returns:
-//   - LineSegment[float32] - The line segment with both endpoints converted to float32.
-func (l LineSegment[T]) AsFloat32() LineSegment[float32] {
-	return NewLineSegment(l.start.AsFloat32(), l.end.AsFloat32())
-}
-
-// AsFloat64 converts the line segment to a LineSegment[float64] type.
-//
-// This function converts both endpoints of the LineSegment l to [Point][float64]
-// values, creating a new line segment with floating-point coordinates.
-// It is useful for precise calculations where floating-point accuracy is needed.
-//
-// Returns:
-//   - LineSegment[float64] - The line segment with both endpoints converted to float64.
-func (l LineSegment[T]) AsFloat64() LineSegment[float64] {
-	return NewLineSegment(l.start.AsFloat64(), l.end.AsFloat64())
-}
-
-// AsInt converts the line segment to a LineSegment[int] type.
-//
-// This function converts both endpoints of the line segment l to [Point][int]
-// by truncating any decimal places. It is useful for converting a floating-point
-// line segment to integer coordinates without rounding.
-//
-// Returns:
-//   - LineSegment[int] - The line segment with both endpoints converted to integer coordinates by truncation.
-func (l LineSegment[T]) AsInt() LineSegment[int] {
-	return NewLineSegment(l.start.AsInt(), l.end.AsInt())
-}
-
-// AsIntRounded converts the line segment to a LineSegment[int] type with rounded coordinates.
-//
-// This function converts both endpoints of the line segment l to [Point][int]
-// by rounding each coordinate to the nearest integer. It is useful when you need to
-// approximate the segment’s position with integer coordinates while minimizing the
-// rounding error.
-//
-// Returns:
-//   - LineSegment[int] - The line segment with both endpoints converted to integer coordinates by rounding.
-func (l LineSegment[T]) AsIntRounded() LineSegment[int] {
-	return NewLineSegment(l.start.AsIntRounded(), l.end.AsIntRounded())
 }
 
 // BoundingBox computes the smallest axis-aligned [Rectangle] that fully contains the LineSegment.
@@ -225,48 +148,6 @@ func (l LineSegment[T]) BoundingBox() Rectangle[T] {
 		l.end,
 	}
 	return NewRectangle(points)
-}
-
-// Center calculates the midpoint of the line segment, optionally applying an epsilon
-// threshold to adjust the precision of the result.
-//
-// Parameters:
-//   - opts: A variadic slice of [Option] functions to customize the behavior of the calculation.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for snapping near-integer or
-//     near-zero results to cleaner values, improving robustness in floating-point calculations.
-//
-// Behavior:
-//   - The midpoint is calculated by averaging the x and y coordinates of the start and end
-//     points of the line segment.
-//   - If [WithEpsilon] is provided, the resulting midpoint coordinates are adjusted such that
-//     small deviations due to floating-point precision errors are corrected.
-//
-// Returns:
-//   - [Point][float64]: The midpoint of the line segment as a point with floating-point coordinates,
-//     optionally adjusted based on epsilon.
-//
-// Notes:
-//   - Epsilon adjustment is particularly useful when working with floating-point coordinates
-//     where minor imprecision could affect the midpoint calculation.
-//   - The midpoint is always returned as [Point][float64], ensuring precision regardless of the
-//     coordinate type of the original line segment.
-func (l LineSegment[T]) Center(opts ...Option) Point[float64] {
-	// Apply geomOptions with defaults
-	options := applyOptions(geomOptions{epsilon: 0}, opts...)
-
-	start := l.start.AsFloat64()
-	end := l.end.AsFloat64()
-
-	midX := (start.x + end.x) / 2
-	midY := (start.y + end.y) / 2
-
-	// Apply epsilon if specified
-	if options.epsilon > 0 {
-		midX = applyEpsilon(midX, options.epsilon)
-		midY = applyEpsilon(midY, options.epsilon)
-	}
-
-	return NewPoint[float64](midX, midY)
 }
 
 // ContainsPoint determines whether the given [Point] lies on the LineSegment.
@@ -501,43 +382,6 @@ func (l LineSegment[T]) DistanceToPoint(p Point[T], opts ...Option) float64 {
 	return p.DistanceToLineSegment(l, opts...)
 }
 
-// End returns the ending [Point] of the line segment.
-//
-// This function provides access to the ending [Point] of the line segment l, typically representing
-// the endpoint of the segment.
-func (l LineSegment[T]) End() Point[T] {
-	return l.end
-}
-
-// Eq checks if two line segments are equal by comparing their start and end points.
-// Equality can be evaluated either exactly (default) or approximately using an epsilon threshold.
-//
-// Parameters:
-//   - other (LineSegment[T]): The line segment to compare with the current line segment.
-//   - opts: A variadic slice of [Option] functions to customize the equality check.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the start and end
-//     points of the line segments. If the absolute difference between the coordinates of
-//     the points is less than epsilon, they are considered equal.
-//
-// Behavior:
-//   - By default, the function performs an exact equality check, returning true only if
-//     both the start and end points of l and other are identical.
-//   - If [WithEpsilon] is provided, the function performs an approximate equality check,
-//     considering the points equal if their coordinate differences are within the specified
-//     epsilon threshold.
-//
-// Returns:
-//   - bool: Returns true if both line segments have identical (or approximately equal with epsilon) start
-//     and end points; otherwise, false.
-//
-// Notes:
-//   - Approximate equality is useful when comparing line segments with floating-point coordinates,
-//     where small precision errors might otherwise cause inequality.
-//   - This function relies on the [Point.Eq] method, which supports epsilon adjustments.
-func (l LineSegment[T]) Eq(other LineSegment[T], opts ...Option) bool {
-	return l.start.Eq(other.start, opts...) && l.end.Eq(other.end, opts...)
-}
-
 // IntersectionPoint calculates the intersection [Point] between two line segments, if one exists.
 //
 // This method checks if the LineSegment l and LineSegment other intersect within their boundaries
@@ -684,15 +528,6 @@ func (l LineSegment[T]) Normalize() LineSegment[T] {
 	}
 	// else, return original point
 	return l
-}
-
-// Points returns the two endpoints of the line segment as a slice of Points.
-// The order of the points is [start, end].
-//
-// Returns:
-//   - [][Point][T]: A slice containing the start and end points of the line segment.
-func (l LineSegment[T]) Points() []Point[T] {
-	return []Point[T]{l.start, l.end}
 }
 
 // Reflect reflects the line segment across the specified axis or custom line.
@@ -948,36 +783,6 @@ func (l LineSegment[T]) RelationshipToRectangle(r Rectangle[T], opts ...Option) 
 	return RelationshipDisjoint
 }
 
-// Rotate rotates the LineSegment around a given pivot [Point] by a specified angle in radians counterclockwise.
-// Optionally, an epsilon threshold can be applied to adjust the precision of the resulting coordinates.
-//
-// Parameters:
-//   - pivot ([Point][T]): The point around which to rotate the line segment.
-//   - radians (float64): The rotation angle in radians.
-//   - opts: A variadic slice of [Option] functions to customize the behavior of the rotation.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for snapping near-zero or near-integer
-//     values in the resulting coordinates to cleaner values, improving robustness.
-//
-// Behavior:
-//   - The function rotates the start and end points of the line segment around the given pivot
-//     point by the specified angle using the [Point.Rotate] method.
-//   - If [WithEpsilon] is provided, epsilon adjustments are applied to the rotated coordinates to
-//     handle floating-point precision errors.
-//
-// Returns:
-//   - LineSegment[float64]: A new line segment representing the rotated position, with floating-point coordinates.
-//
-// Notes:
-//   - Epsilon adjustment is particularly useful when the rotation involves floating-point
-//     calculations that could result in minor inaccuracies.
-//   - The returned line segment always has float64 coordinates, ensuring precision regardless
-//     of the coordinate type of the original line segment.
-func (l LineSegment[T]) Rotate(pivot Point[T], radians float64, opts ...Option) LineSegment[float64] {
-	newStart := l.start.Rotate(pivot, radians, opts...)
-	newEnd := l.end.Rotate(pivot, radians, opts...)
-	return NewLineSegment(newStart, newEnd)
-}
-
 // RoundToEpsilon returns a new LineSegment where the coordinates of both the start
 // and end points are rounded to the nearest multiple of the given epsilon.
 //
@@ -998,77 +803,6 @@ func (l LineSegment[T]) RoundToEpsilon(epsilon float64) LineSegment[float64] {
 	)
 }
 
-// Scale scales the line segment by a given factor from a specified reference point.
-//
-// Parameters:
-//   - ref ([Point][T]): The reference point from which the scaling is applied. Using the origin
-//     point (0, 0) scales the segment relative to the coordinate system's origin, while specifying
-//     a custom reference point scales the segment relative to that point.
-//   - factor ([T]): The scaling factor, where a value greater than 1 expands the segment,
-//     and a value between 0 and 1 shrinks it.
-//
-// Behavior:
-//   - The function scales both endpoints of the line segment relative to the specified
-//     reference point using the [Point.Scale] method.
-//   - The scaling operation preserves the relative orientation of the segment.
-//
-// Returns:
-//   - [LineSegment][T]: A new line segment, scaled relative to the specified reference point.
-//
-// Notes:
-//   - Scaling by a factor of 1 will return a line segment identical to the original.
-//   - Negative scaling factors will mirror the segment across the reference point
-//     and scale its length accordingly.
-//   - If the user wishes to shrink the segment (factor < 1), we recommend ensuring
-//     the line segment's type is floating-point to avoid precision loss. Use the [LineSegment.AsFloat64] method
-//     to safely convert the segment to floating-point type before scaling.
-func (l LineSegment[T]) Scale(ref Point[T], factor T) LineSegment[T] {
-	return NewLineSegment(
-		l.start.Scale(ref, factor),
-		l.end.Scale(ref, factor),
-	)
-}
-
-// Slope calculates the slope of the line segment.
-//
-// The slope is calculated as the change in y-coordinates (dy) divided by
-// the change in x-coordinates (dx) of the line segment. This function
-// returns the slope as a float64 and a boolean indicating whether the
-// slope is defined.
-//
-// Returns:
-//   - (float64, true): The calculated slope if the line segment is not vertical.
-//   - (0, false): Indicates the slope is undefined (the line segment is vertical).
-func (l LineSegment[T]) Slope() (float64, bool) {
-	dx := float64(l.end.x - l.start.x)
-	dy := float64(l.end.y - l.start.y)
-
-	if dx == 0 {
-		return 0, false // Vertical line, slope undefined
-	}
-	return dy / dx, true
-}
-
-// Start returns the starting point of the line segment.
-//
-// This function provides access to the starting point of the LineSegment l, typically representing
-// the beginning of the segment.
-func (l LineSegment[T]) Start() Point[T] {
-	return l.start
-}
-
-// String returns a formatted string representation of the line segment for debugging and logging purposes.
-//
-// The string representation includes the coordinates of the start and end points in the format:
-// "LineSegment[(x1, y1) -> (x2, y2)]", where (x1, y1) are the coordinates of the start point,
-// and (x2, y2) are the coordinates of the end point.
-//
-// Returns:
-//   - string: A string representing the line segment's start and end coordinates.
-func (l LineSegment[T]) String() string {
-	return fmt.Sprintf("LineSegment[(%v, %v) -> (%v, %v)]", l.start.x, l.start.y, l.end.x, l.end.y)
-}
-
 // SubLineSegment subtracts the start and end points of another line segment from this one.
 //
 // This function performs an element-wise subtraction, where the start and end points
@@ -1084,30 +818,6 @@ func (l LineSegment[T]) SubLineSegment(other LineSegment[T]) LineSegment[T] {
 	return NewLineSegment(
 		l.start.Translate(other.start.Negate()),
 		l.end.Translate(other.end.Negate()),
-	)
-}
-
-// Translate moves the line segment by a specified vector.
-//
-// This method shifts the line segment's position in the 2D plane by translating
-// both its start and end points by the given vector delta. The relative
-// orientation and length of the line segment remain unchanged.
-//
-// Parameters:
-//   - delta ([Point][T]): The vector by which to translate the line segment.
-//
-// Returns:
-//   - [LineSegment][T]: A new line segment translated by the specified vector.
-//
-// Notes:
-//   - Translating the line segment effectively adds the delta vector to both
-//     the start and end points of the segment.
-//   - This operation is equivalent to a uniform shift, maintaining the segment's
-//     shape and size while moving it to a new position.
-func (l LineSegment[T]) Translate(delta Point[T]) LineSegment[T] {
-	return NewLineSegment(
-		l.start.Translate(delta),
-		l.end.Translate(delta),
 	)
 }
 

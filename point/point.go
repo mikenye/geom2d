@@ -19,7 +19,7 @@ type Point[T types.SignedNumber] struct {
 	y T
 }
 
-// NewPoint creates a new Point with the specified x and y coordinates.
+// New creates a new Point with the specified x and y coordinates.
 //
 // This function is generic and requires the x and y values to satisfy the [types.SignedNumber] constraint.
 //
@@ -29,14 +29,14 @@ type Point[T types.SignedNumber] struct {
 //
 // Returns:
 //   - Point[T]: A new Point instance with the given coordinates.
-func NewPoint[T types.SignedNumber](x, y T) Point[T] {
+func New[T types.SignedNumber](x, y T) Point[T] {
 	return Point[T]{
 		x: x,
 		y: y,
 	}
 }
 
-// NewPointFromImagePoint creates and returns a new Point with integer x and y coordinates
+// NewFromImagePoint creates and returns a new Point with integer x and y coordinates
 // based on an [image.Point]. This function is useful for converting between graphics and
 // computational geometry representations of points.
 //
@@ -45,7 +45,7 @@ func NewPoint[T types.SignedNumber](x, y T) Point[T] {
 //
 // Returns:
 //   - Point[int]: A new Point with coordinates corresponding to the x and y values of the provided [image.Point].
-func NewPointFromImagePoint(q image.Point) Point[int] {
+func NewFromImagePoint(q image.Point) Point[int] {
 	return Point[int]{
 		x: q.X,
 		y: q.Y,
@@ -100,6 +100,11 @@ func (p Point[T]) AsIntRounded() Point[int] {
 		x: int(math.Round(float64(p.x))),
 		y: int(math.Round(float64(p.y))),
 	}
+}
+
+// todo: doc comments, unit test, example func
+func (p Point[T]) Coordinates() (x, y T) {
+	return p.x, p.y
 }
 
 // DotProduct calculates the dot product of the vector represented by Point p with the vector represented by Point q.
@@ -163,7 +168,7 @@ func (p Point[T]) Eq(q Point[T], opts ...options.GeometryOptionsFunc) bool {
 //   - The returned point has the same type as the calling point.
 //   - This method does not modify the original point but returns a new instance.
 func (p Point[T]) Negate() Point[T] {
-	return NewPoint[T](-p.x, -p.y)
+	return New[T](-p.x, -p.y)
 }
 
 // Rotate rotates the point by a specified angle (in radians), counter-clockwise, around a given pivot point.
@@ -212,7 +217,7 @@ func (p Point[T]) Rotate(pivot Point[T], radians float64, opts ...options.Geomet
 	newX := rotatedX + originf.x
 	newY := rotatedY + originf.y
 
-	return NewPoint(newX, newY)
+	return New(newX, newY)
 }
 
 // Scale scales the point by a factor k relative to a reference point ref.
@@ -224,20 +229,20 @@ func (p Point[T]) Rotate(pivot Point[T], radians float64, opts ...options.Geomet
 // Returns:
 //   - Point[float64] - A new point scaled relative to the reference point.
 func (p Point[T]) Scale(ref Point[T], k T) Point[T] {
-	return NewPoint(
+	return New(
 		ref.x+(p.x-ref.x)*k,
 		ref.y+(p.y-ref.y)*k,
 	)
 }
 
-// String returns a string representation of the Point p in the format "Point[(x, y)]".
+// String returns a string representation of the Point p in the format "(x, y)".
 // This provides a readable format for the point’s coordinates, useful for debugging
 // and displaying points in logs or output.
 //
 // Returns:
-//   - string: A string representation of the Point in the format "Point[(x, y)]".
+//   - string: A string representation of the Point in the format "(x, y)".
 func (p Point[T]) String() string {
-	return fmt.Sprintf("Point[(%v, %v)]", p.x, p.y)
+	return fmt.Sprintf("(%v,%v)", p.x, p.y)
 }
 
 // Translate moves the Point by a given displacement vector.
@@ -248,7 +253,7 @@ func (p Point[T]) String() string {
 // Returns:
 //   - Point[T]: A new Point resulting from the translation.
 func (p Point[T]) Translate(delta Point[T]) Point[T] {
-	return NewPoint[T](p.x+delta.x, p.y+delta.y)
+	return New[T](p.x+delta.x, p.y+delta.y)
 }
 
 // X returns the x-coordinate of the Point p.

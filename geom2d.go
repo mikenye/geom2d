@@ -64,7 +64,6 @@ package geom2d
 
 import (
 	"fmt"
-	"github.com/mikenye/geom2d/types"
 	"math"
 )
 
@@ -232,21 +231,4 @@ func applyEpsilon(value, epsilon float64) float64 {
 	}
 	// Otherwise, return the original value
 	return value
-}
-
-// abs computes the absolute value of a signed number.
-//
-// This function is generic and works for any type that satisfies the
-// [SignedNumber] constraint (e.g., int, int32, int64, float32, float64).
-//
-// Parameters:
-//   - n (T): The signed number whose absolute value is to be computed.
-//
-// Returns:
-//   - The absolute value of the input number.
-func abs[T types.SignedNumber](n T) T {
-	if n < 0 {
-		return -n
-	}
-	return n
 }

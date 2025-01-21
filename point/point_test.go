@@ -17,17 +17,17 @@ func TestPoint_AsFloat32(t *testing.T) {
 	}{
 		{
 			name:     "Integer point conversion",
-			point:    NewPoint(3, 4),
+			point:    New(3, 4),
 			expected: Point[float32]{3.0, 4.0},
 		},
 		{
 			name:     "Negative integer point conversion",
-			point:    NewPoint(-7, -5),
+			point:    New(-7, -5),
 			expected: Point[float32]{-7.0, -5.0},
 		},
 		{
 			name:     "Zero point conversion",
-			point:    NewPoint(0, 0),
+			point:    New(0, 0),
 			expected: Point[float32]{0.0, 0.0},
 		},
 	}
@@ -50,17 +50,17 @@ func TestPoint_AsFloat64(t *testing.T) {
 	}{
 		{
 			name:     "Integer point conversion",
-			point:    NewPoint(3, 4),
+			point:    New(3, 4),
 			expected: Point[float64]{3.0, 4.0},
 		},
 		{
 			name:     "Negative integer point conversion",
-			point:    NewPoint(-7, -5),
+			point:    New(-7, -5),
 			expected: Point[float64]{-7.0, -5.0},
 		},
 		{
 			name:     "Zero point conversion",
-			point:    NewPoint(0, 0),
+			point:    New(0, 0),
 			expected: Point[float64]{0.0, 0.0},
 		},
 	}
@@ -169,28 +169,28 @@ func TestPoint_DotProduct(t *testing.T) {
 		// Integer points
 		{
 			name:     "int: (2,3) . (4,5)",
-			p:        NewPoint(2, 3),
-			q:        NewPoint(4, 5),
+			p:        New(2, 3),
+			q:        New(4, 5),
 			expected: 23,
 		},
 		{
 			name:     "int: (3,4) . (1,2)",
-			p:        NewPoint(3, 4),
-			q:        NewPoint(1, 2),
+			p:        New(3, 4),
+			q:        New(1, 2),
 			expected: 11,
 		},
 
 		// Float64 points
 		{
 			name:     "float64: (2.0,3.0) . (4.0,5.0)",
-			p:        NewPoint(2.0, 3.0),
-			q:        NewPoint(4.0, 5.0),
+			p:        New(2.0, 3.0),
+			q:        New(4.0, 5.0),
 			expected: 23.0,
 		},
 		{
 			name:     "float64: (1.5,2.5) . (3.5,4.5)",
-			p:        NewPoint(1.5, 2.5),
-			q:        NewPoint(3.5, 4.5),
+			p:        New(1.5, 2.5),
+			q:        New(3.5, 4.5),
 			expected: 16.5,
 		},
 	}
@@ -221,18 +221,18 @@ func TestPoint_Eq(t *testing.T) {
 		expected bool // Expected result of equality comparison
 	}{
 		"(2.0,3.0) == (4.0,5.0)": {
-			p:        NewPoint(2.0, 3.0),
-			q:        NewPoint(4.0, 5.0),
+			p:        New(2.0, 3.0),
+			q:        New(4.0, 5.0),
 			expected: false,
 		},
 		"(2.0,3.0) == (2.0,3.0)": {
-			p:        NewPoint(2.0, 3.0),
-			q:        NewPoint(2.0, 3.0),
+			p:        New(2.0, 3.0),
+			q:        New(2.0, 3.0),
 			expected: true,
 		},
 		"(2.0,3.0) ~= (1.999999999,2.999999999)": {
-			p:        NewPoint(2.0, 3.0),
-			q:        NewPoint(1.999999999, 2.999999999),
+			p:        New(2.0, 3.0),
+			q:        New(1.999999999, 2.999999999),
 			opts:     []options.GeometryOptionsFunc{options.WithEpsilon(1e-8)},
 			expected: true,
 		},
@@ -255,34 +255,34 @@ func TestPoint_Rotate(t *testing.T) {
 		inDelta  float64
 	}{
 		"rotate 90 degrees around origin": {
-			point:    NewPoint[float64](1, 0),
-			origin:   NewPoint[float64](0, 0),
+			point:    New[float64](1, 0),
+			origin:   New[float64](0, 0),
 			angle:    math.Pi / 2,
-			expected: NewPoint[float64](0, 1),
+			expected: New[float64](0, 1),
 			opts:     []options.GeometryOptionsFunc{options.WithEpsilon(1e-9)},
 			inDelta:  0.0001,
 		},
 		"rotate 180 degrees around origin": {
-			point:    NewPoint[float64](1, 1),
-			origin:   NewPoint[float64](0, 0),
+			point:    New[float64](1, 1),
+			origin:   New[float64](0, 0),
 			angle:    math.Pi,
-			expected: NewPoint[float64](-1, -1),
+			expected: New[float64](-1, -1),
 			opts:     []options.GeometryOptionsFunc{options.WithEpsilon(1e-9)},
 			inDelta:  0.0001,
 		},
 		"rotate 90 degrees around (1,1)": {
-			point:    NewPoint[float64](2, 1),
-			origin:   NewPoint[float64](1, 1),
+			point:    New[float64](2, 1),
+			origin:   New[float64](1, 1),
 			angle:    math.Pi / 2,
-			expected: NewPoint[float64](1, 2),
+			expected: New[float64](1, 2),
 			opts:     []options.GeometryOptionsFunc{options.WithEpsilon(1e-9)},
 			inDelta:  0.0001,
 		},
 		"rotate 45 degrees around (2,2)": {
-			point:    NewPoint[float64](3, 2),
-			origin:   NewPoint[float64](2, 2),
+			point:    New[float64](3, 2),
+			origin:   New[float64](2, 2),
 			angle:    math.Pi / 4,
-			expected: NewPoint[float64](2.7071, 2.7071),
+			expected: New[float64](2.7071, 2.7071),
 			opts:     []options.GeometryOptionsFunc{options.WithEpsilon(1e-4)},
 			inDelta:  0.0001,
 		},
@@ -298,8 +298,8 @@ func TestPoint_Rotate(t *testing.T) {
 }
 
 func TestPoint_Negate(t *testing.T) {
-	p := NewPoint(1, 2)
-	assert.Equal(t, NewPoint(-1, -2), p.Negate())
+	p := New(1, 2)
+	assert.Equal(t, New(-1, -2), p.Negate())
 }
 
 func TestPoint_Scale(t *testing.T) {
@@ -311,30 +311,30 @@ func TestPoint_Scale(t *testing.T) {
 	}{
 		// Integer test cases
 		"int: Scale point from reference by factor 2": {
-			point:    NewPoint(3, 4),
-			refPoint: NewPoint(1, 1),
+			point:    New(3, 4),
+			refPoint: New(1, 1),
 			scale:    2.0,
-			expected: NewPoint[float64](5, 7),
+			expected: New[float64](5, 7),
 		},
 		"int: Scale point from reference by factor 0.5": {
-			point:    NewPoint(3, 4),
-			refPoint: NewPoint(1, 1),
+			point:    New(3, 4),
+			refPoint: New(1, 1),
 			scale:    0.5,
-			expected: NewPoint[float64](2, 2.5),
+			expected: New[float64](2, 2.5),
 		},
 
 		// Float64 test cases
 		"float64: Scale point from reference by factor 1.5": {
-			point:    NewPoint(2.0, 3.0),
-			refPoint: NewPoint(1.0, 1.0),
+			point:    New(2.0, 3.0),
+			refPoint: New(1.0, 1.0),
 			scale:    1.5,
-			expected: NewPoint[float64](2.5, 4.0),
+			expected: New[float64](2.5, 4.0),
 		},
 		"float64: Scale point from reference by factor 0.25": {
-			point:    NewPoint(4.0, 8.0),
-			refPoint: NewPoint(2.0, 2.0),
+			point:    New(4.0, 8.0),
+			refPoint: New(2.0, 2.0),
 			scale:    0.25,
-			expected: NewPoint[float64](2.5, 3.5),
+			expected: New[float64](2.5, 3.5),
 		},
 	}
 
@@ -358,46 +358,41 @@ func TestPoint_Scale(t *testing.T) {
 }
 
 func TestPoint_String(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		p        any    // Supports different Point types with `any`
 		expected string // Expected string representation of the point
 	}{
 		// Integer points
-		{
-			name:     "int: (1,2)",
-			p:        NewPoint(1, 2),
-			expected: "Point[(1, 2)]",
+		"int: (1,2)": {
+			p:        New(1, 2),
+			expected: "(1,2)",
 		},
-		{
-			name:     "int: (0,-3)",
-			p:        NewPoint(0, -3),
-			expected: "Point[(0, -3)]",
+		"int: (0,-3)": {
+			p:        New(0, -3),
+			expected: "(0,-3)",
 		},
 
 		// Float64 points
-		{
-			name:     "float64: (1.2,3.4)",
-			p:        NewPoint(1.2, 3.4),
-			expected: "Point[(1.2, 3.4)]",
+		"float64: (1.2,3.4)": {
+			p:        New(1.2, 3.4),
+			expected: "(1.2,3.4)",
 		},
-		{
-			name:     "float64: (-1.5,-2.5)",
-			p:        NewPoint(-1.5, -2.5),
-			expected: "Point[(-1.5, -2.5)]",
+		"float64: (-1.5,-2.5)": {
+			p:        New(-1.5, -2.5),
+			expected: "(-1.5,-2.5)",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			switch p := tt.p.(type) {
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			switch p := tc.p.(type) {
 			case Point[int]:
 				actual := p.String()
-				assert.Equal(t, tt.expected, actual)
+				assert.Equal(t, tc.expected, actual)
 
 			case Point[float64]:
 				actual := p.String()
-				assert.Equal(t, tt.expected, actual)
+				assert.Equal(t, tc.expected, actual)
 			}
 		})
 	}
@@ -412,35 +407,35 @@ func TestPoint_Translate(t *testing.T) {
 		// Integer points
 		{
 			name:     "int: (1,2)+(0,0)",
-			p:        NewPoint(1, 2),
-			q:        NewPoint(0, 0),
-			expected: NewPoint(1, 2),
+			p:        New(1, 2),
+			q:        New(0, 0),
+			expected: New(1, 2),
 		},
 		{
 			name:     "int: (1,2)+(3,4)",
-			p:        NewPoint(1, 2),
-			q:        NewPoint(3, 4),
-			expected: NewPoint(4, 6),
+			p:        New(1, 2),
+			q:        New(3, 4),
+			expected: New(4, 6),
 		},
 		{
 			name:     "int: (-1,-2)+(3,4)",
-			p:        NewPoint(-1, -2),
-			q:        NewPoint(3, 4),
-			expected: NewPoint(2, 2),
+			p:        New(-1, -2),
+			q:        New(3, 4),
+			expected: New(2, 2),
 		},
 
 		// Float64 points
 		{
 			name:     "float64: (1.0,2.0)+(3.0,4.0)",
-			p:        NewPoint(1.0, 2.0),
-			q:        NewPoint(3.0, 4.0),
-			expected: NewPoint(4.0, 6.0),
+			p:        New(1.0, 2.0),
+			q:        New(3.0, 4.0),
+			expected: New(4.0, 6.0),
 		},
 		{
 			name:     "float64: (-1.5,-2.5)+(3.5,4.5)",
-			p:        NewPoint(-1.5, -2.5),
-			q:        NewPoint(3.5, 4.5),
-			expected: NewPoint(2.0, 2.0),
+			p:        New(-1.5, -2.5),
+			q:        New(3.5, 4.5),
+			expected: New(2.0, 2.0),
 		},
 	}
 
@@ -472,34 +467,34 @@ func TestPoint_X(t *testing.T) {
 		// Integer points
 		{
 			name:     "int: Positive coordinates",
-			point:    NewPoint(3, 4),
+			point:    New(3, 4),
 			expected: 3,
 		},
 		{
 			name:     "int: Negative coordinates",
-			point:    NewPoint(-7, -5),
+			point:    New(-7, -5),
 			expected: -7,
 		},
 		{
 			name:     "int: Zero x-coordinate",
-			point:    NewPoint(0, 4),
+			point:    New(0, 4),
 			expected: 0,
 		},
 
 		// Float64 points
 		{
 			name:     "float64: Positive coordinates",
-			point:    NewPoint(3.5, 4.5),
+			point:    New(3.5, 4.5),
 			expected: 3.5,
 		},
 		{
 			name:     "float64: Negative coordinates",
-			point:    NewPoint(-7.1, -5.2),
+			point:    New(-7.1, -5.2),
 			expected: -7.1,
 		},
 		{
 			name:     "float64: Zero x-coordinate",
-			point:    NewPoint(0.0, 4.5),
+			point:    New(0.0, 4.5),
 			expected: 0.0,
 		},
 	}
@@ -528,34 +523,34 @@ func TestPoint_Y(t *testing.T) {
 		// Integer points
 		{
 			name:     "int: Positive coordinates",
-			point:    NewPoint(3, 4),
+			point:    New(3, 4),
 			expected: 4,
 		},
 		{
 			name:     "int: Negative coordinates",
-			point:    NewPoint(-7, -5),
+			point:    New(-7, -5),
 			expected: -5,
 		},
 		{
 			name:     "int: Zero y-coordinate",
-			point:    NewPoint(3, 0),
+			point:    New(3, 0),
 			expected: 0,
 		},
 
 		// Float64 points
 		{
 			name:     "float64: Positive coordinates",
-			point:    NewPoint(3.5, 4.5),
+			point:    New(3.5, 4.5),
 			expected: 4.5,
 		},
 		{
 			name:     "float64: Negative coordinates",
-			point:    NewPoint(-7.1, -5.2),
+			point:    New(-7.1, -5.2),
 			expected: -5.2,
 		},
 		{
 			name:     "float64: Zero y-coordinate",
-			point:    NewPoint(3.0, 0.0),
+			point:    New(3.0, 0.0),
 			expected: 0.0,
 		},
 	}
@@ -602,7 +597,7 @@ func TestNewPointFromImagePoint(t *testing.T) {
 	// Run test cases
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := NewPointFromImagePoint(tt.imgPoint)
+			result := NewFromImagePoint(tt.imgPoint)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
