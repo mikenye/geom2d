@@ -125,8 +125,8 @@ func (p Point[T]) DotProduct(q Point[T]) T {
 //
 // Parameters:
 //   - q (Point[T]): The Point to compare with the calling Point.
-//   - opts: A variadic slice of [Option] functions to customize the equality check.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for comparing the coordinates
+//   - opts: A variadic slice of [options.GeometryOptionsFunc] functions to customize the equality check.
+//     [options.WithEpsilon](epsilon float64): Specifies a tolerance for comparing the coordinates
 //     of p and q. If the absolute difference between the coordinates of p and q is less
 //     than epsilon, they are considered equal.
 //
