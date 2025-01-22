@@ -2,11 +2,75 @@ package point
 
 import (
 	"github.com/mikenye/geom2d/options"
+	"github.com/mikenye/geom2d/types"
 	"github.com/stretchr/testify/assert"
 	"image"
 	"math"
 	"testing"
 )
+
+func TestPoint_AngleBetween(t *testing.T) {
+	tests := map[string]struct {
+		origin, a, b    Point[float64] // The points for the test
+		expected        float64        // The expected angle in radians
+		shouldReturnNaN bool           // Whether the result should be NaN
+		epsilon         float64        // Optional epsilon for numerical precision
+	}{
+		"basic angle between points": {
+			origin:          New[float64](0, 0),
+			a:               New[float64](1, 0),
+			b:               New[float64](0, 1),
+			expected:        math.Pi / 2, // 90 degrees
+			shouldReturnNaN: false,
+			epsilon:         1e-9,
+		},
+		"collinear points": {
+			origin:          New[float64](0, 0),
+			a:               New[float64](1, 1),
+			b:               New[float64](-1, -1),
+			expected:        math.Pi, // 180 degrees
+			shouldReturnNaN: false,
+			epsilon:         1e-9,
+		},
+		"identical points": {
+			origin:          New[float64](0, 0),
+			a:               New[float64](1, 1),
+			b:               New[float64](1, 1),
+			expected:        0,
+			shouldReturnNaN: false,
+			epsilon:         1e-9,
+		},
+		"zero vector (a or b equal to origin)": {
+			origin:          New[float64](0, 0),
+			a:               New[float64](0, 0),
+			b:               New[float64](1, 1),
+			expected:        math.NaN(),
+			shouldReturnNaN: true,
+			epsilon:         1e-9,
+		},
+		"small angle": {
+			origin:          New[float64](0, 0),
+			a:               New[float64](1, 0),
+			b:               New[float64](1, 0.01),
+			expected:        0.01, // Small angle in radians
+			shouldReturnNaN: false,
+			epsilon:         1e-6,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			opts := options.WithEpsilon(tc.epsilon)
+			result := tc.origin.AngleBetween(tc.a, tc.b, opts)
+
+			if tc.shouldReturnNaN {
+				assert.True(t, math.IsNaN(result), "expected NaN but got %v", result)
+			} else {
+				assert.InDelta(t, tc.expected, result, tc.epsilon, "unexpected angle")
+			}
+		})
+	}
+}
 
 func TestPoint_AsFloat32(t *testing.T) {
 	// Define test cases with various point types
@@ -160,6 +224,112 @@ func TestPoint_AsIntRounded(t *testing.T) {
 	}
 }
 
+func TestPoint_CrossProduct(t *testing.T) {
+	tests := []struct {
+		name     string
+		p, q     any // Support different Point types with `any`
+		expected any // Expected result for different types
+	}{
+		// Integer points
+		{
+			name:     "int: (2,3) x (4,5)",
+			p:        New(2, 3),
+			q:        New(4, 5),
+			expected: -2,
+		},
+		{
+			name:     "int: (3,2) x (4,6)",
+			p:        New(3, 2),
+			q:        New(4, 6),
+			expected: 10,
+		},
+
+		// Float64 points
+		{
+			name:     "float64: (2.0,3.0) x (4.0,5.0)",
+			p:        New(2.0, 3.0),
+			q:        New(4.0, 5.0),
+			expected: -2.0,
+		},
+		{
+			name:     "float64: (3.5,2.5) x (4.0,6.0)",
+			p:        New(3.5, 2.5),
+			q:        New(4.0, 6.0),
+			expected: 11.0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			switch p := tt.p.(type) {
+			case Point[int]:
+				q := tt.q.(Point[int])
+				expected := tt.expected.(int)
+				actual := p.CrossProduct(q)
+				assert.Equal(t, expected, actual)
+
+			case Point[float64]:
+				q := tt.q.(Point[float64])
+				expected := tt.expected.(float64)
+				actual := p.CrossProduct(q)
+				assert.Equal(t, expected, actual)
+			}
+		})
+	}
+}
+
+func TestPoint_DistanceToPoint(t *testing.T) {
+	tests := []struct {
+		name     string
+		p, q     any     // Use `any` to handle different Point types
+		expected float64 // Expected distance as a float64
+	}{
+		// Integer points
+		{
+			name:     "int: distance between (2,10) and (10,2)",
+			p:        New(2, 10),
+			q:        New(10, 2),
+			expected: 11.3137,
+		},
+		{
+			name:     "int: distance between (0,0) and (3,4)",
+			p:        New(0, 0),
+			q:        New(3, 4),
+			expected: 5.0,
+		},
+
+		// Float64 points
+		{
+			name:     "float64: distance between (2.0,10.0) and (10.0,2.0)",
+			p:        New(2.0, 10.0),
+			q:        New(10.0, 2.0),
+			expected: 11.3137,
+		},
+		{
+			name:     "float64: distance between (0.0,0.0) and (3.0,4.0)",
+			p:        New(0.0, 0.0),
+			q:        New(3.0, 4.0),
+			expected: 5.0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			switch p := tt.p.(type) {
+			case Point[int]:
+				q := tt.q.(Point[int])
+				actual := p.DistanceToPoint(q)
+				assert.InDelta(t, tt.expected, actual, 0.0001)
+
+			case Point[float64]:
+				q := tt.q.(Point[float64])
+				actual := p.DistanceToPoint(q)
+				assert.InDelta(t, tt.expected, actual, 0.0001)
+			}
+		})
+	}
+}
+
 func TestPoint_DotProduct(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -300,6 +470,32 @@ func TestPoint_Rotate(t *testing.T) {
 func TestPoint_Negate(t *testing.T) {
 	p := New(1, 2)
 	assert.Equal(t, New(-1, -2), p.Negate())
+}
+
+func TestPoint_RelationshipToPoint(t *testing.T) {
+	tests := map[string]struct {
+		pointA      Point[int]
+		pointB      Point[int]
+		expectedRel types.Relationship
+	}{
+		"Points are equal": {
+			pointA:      New(5, 5),
+			pointB:      New(5, 5),
+			expectedRel: types.RelationshipEqual,
+		},
+		"Points are disjoint": {
+			pointA:      New(5, 5),
+			pointB:      New(10, 10),
+			expectedRel: types.RelationshipDisjoint,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			rel := tc.pointA.RelationshipToPoint(tc.pointB, options.WithEpsilon(1e-8))
+			assert.Equal(t, tc.expectedRel, rel, "unexpected relationship")
+		})
+	}
 }
 
 func TestPoint_Scale(t *testing.T) {

@@ -263,6 +263,84 @@ func TestLineSegment_Center(t *testing.T) {
 	}
 }
 
+func TestLineSegment_DistanceToPoint(t *testing.T) {
+	tests := map[string]struct {
+		point    any     // Point to be projected (can be int or float64)
+		segment  any     // Line segment for projection (can be int or float64)
+		expected float64 // Expected distance
+	}{
+		// Integer points test cases
+		"Project onto segment from inside (int)": {
+			point:    point.New(5, 5),
+			segment:  New[int](2, 3, 8, 7),
+			expected: 0.0, // Point is on the segment
+		},
+		"Project onto segment from above (int)": {
+			point:    point.New(4, 6),
+			segment:  New[int](2, 3, 8, 7),
+			expected: 1.386,
+		},
+		"Project onto segment from below (int)": {
+			point:    point.New(4, 2),
+			segment:  New[int](2, 3, 8, 7),
+			expected: 1.941,
+		},
+		"Project off the start of segment (int)": {
+			point:    point.New(0, 5),
+			segment:  New[int](2, 3, 8, 7),
+			expected: 2.8284,
+		},
+		"Project off the end of segment (int)": {
+			point:    point.New(10, 5),
+			segment:  New[int](2, 3, 8, 7),
+			expected: 2.8284,
+		},
+
+		// Float64 points test cases
+		"Project onto segment from inside (float64)": {
+			point:    point.New(5.5, 5.5),
+			segment:  New[float64](2.0, 3.0, 8.0, 7.0),
+			expected: 0.1387,
+		},
+		"Project onto segment from above (float64)": {
+			point:    point.New(4.0, 6.0),
+			segment:  New[float64](2.0, 3.0, 8.0, 7.0),
+			expected: 1.386,
+		},
+		"Project onto segment from below (float64)": {
+			point:    point.New(4.0, 2.0),
+			segment:  New[float64](2.0, 3.0, 8.0, 7.0),
+			expected: 1.941,
+		},
+		"Project off the start of segment (float64)": {
+			point:    point.New(0.0, 5.0),
+			segment:  New[float64](2.0, 3.0, 8.0, 7.0),
+			expected: 2.8284,
+		},
+		"Project off the end of segment (float64)": {
+			point:    point.New(10.0, 5.0),
+			segment:  New[float64](2.0, 3.0, 8.0, 7.0),
+			expected: 2.8284,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			switch p := tt.point.(type) {
+			case point.Point[int]:
+				seg := tt.segment.(LineSegment[int])
+				actual := seg.DistanceToPoint(p)
+				assert.InDelta(t, tt.expected, actual, 0.001, "Expected distance does not match actual distance for int points")
+
+			case point.Point[float64]:
+				seg := tt.segment.(LineSegment[float64])
+				actual := seg.DistanceToPoint(p)
+				assert.InDelta(t, tt.expected, actual, 0.001, "Expected distance does not match actual distance for float64 points")
+			}
+		})
+	}
+}
+
 func TestLineSegment_Eq(t *testing.T) {
 	tests := map[string]struct {
 		segment1 any  // First line segment (can be int or float64)
@@ -344,6 +422,130 @@ func TestLineSegment_Points(t *testing.T) {
 			actualStart, actualEnd := tc.segment.Points()
 			assert.Equal(t, tc.expected[0], actualStart)
 			assert.Equal(t, tc.expected[1], actualEnd)
+		})
+	}
+}
+
+func TestLineSegmemt_ProjectPoint(t *testing.T) {
+	tests := map[string]struct {
+		point    any                  // Point to be projected (can be int or float64)
+		segment  any                  // Line segment for projection (can be int or float64)
+		expected point.Point[float64] // Expected projected point (float64 type)
+	}{
+		// Integer points test cases
+		"int: Project onto segment from inside": {
+			point:    point.New(5, 5),
+			segment:  New[int](2, 3, 8, 7),
+			expected: point.New[float64](5, 5), // Should project onto the line segment itself
+		},
+		"int: Project onto segment from above": {
+			point:    point.New(4, 6),
+			segment:  New[int](2, 3, 8, 7),
+			expected: point.New[float64](4.769, 4.846),
+		},
+		"int: Project onto segment from below": {
+			point:    point.New(4, 2),
+			segment:  New[int](2, 3, 8, 7),
+			expected: point.New[float64](2.9231, 3.6154),
+		},
+		"int: Project off the start of segment": {
+			point:    point.New(0, 5),
+			segment:  New[int](2, 3, 8, 7),
+			expected: point.New[float64](2, 3), // Should return a point of the segment
+		},
+		"int: Project off the end of segment": {
+			point:    point.New(10, 5),
+			segment:  New[int](2, 3, 8, 7),
+			expected: point.New[float64](8, 7), // Should return end point of the segment
+		},
+
+		// Float64 points test cases
+		"float64: Project onto segment from inside": {
+			point:    point.New(5.5, 5.5),
+			segment:  New[float64](2.0, 3.0, 8.0, 7.0),
+			expected: point.New[float64](5.5772, 5.3848), // Should project onto the line segment itself
+		},
+		"float64: Project off the start of segment": {
+			point:    point.New(0.0, 5.0),
+			segment:  New[float64](2.0, 3.0, 8.0, 7.0),
+			expected: point.New[float64](2.0, 3.0), // Should return a point of the segment
+		},
+		"float64: Project off the end of segment": {
+			point:    point.New(10.0, 5.0),
+			segment:  New[float64](2.0, 3.0, 8.0, 7.0),
+			expected: point.New[float64](8.0, 7.0), // Should return end point of the segment
+		},
+
+		// Zero-length segment test cases
+		"int: Project onto zero-length segment": {
+			point:    point.New(3, 4),
+			segment:  New[int](2, 2, 2, 2),     // Zero-length segment
+			expected: point.New[float64](2, 2), // Should return point A (or End), since the segment is a single point
+		},
+		"float64: Project onto zero-length segment": {
+			point:    point.New(5.0, 5.0),
+			segment:  New[float64](2.5, 2.5, 2.5, 2.5), // Zero-length segment
+			expected: point.New[float64](2.5, 2.5),     // Should return point A (or End), since the segment is a single point
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			switch p := tt.point.(type) {
+			case point.Point[int]:
+				seg := tt.segment.(LineSegment[int])
+				actual := seg.ProjectPoint(p)
+				assert.InDelta(t, tt.expected.X(), actual.X(), 0.001)
+				assert.InDelta(t, tt.expected.Y(), actual.Y(), 0.001)
+
+			case point.Point[float64]:
+				seg := tt.segment.(LineSegment[float64])
+				actual := seg.ProjectPoint(p)
+				assert.InDelta(t, tt.expected.X(), actual.X(), 0.001)
+				assert.InDelta(t, tt.expected.Y(), actual.Y(), 0.001)
+			}
+		})
+	}
+}
+
+func TestLineSegment_ReflectPoint(t *testing.T) {
+	tests := map[string]struct {
+		point    point.Point[float64] // The point to reflect
+		axis     LineSegment[float64] // Axis for reflection
+		expected point.Point[float64] // Expected reflected point
+	}{
+		"reflect across x-axis": {
+			point:    point.New[float64](3, 4),
+			axis:     New[float64](0, 0, 1, 0),
+			expected: point.New[float64](3, -4),
+		},
+		"reflect across y-axis": {
+			point:    point.New[float64](3, 4),
+			axis:     New[float64](0, 0, 0, 1),
+			expected: point.New[float64](-3, 4),
+		},
+		"reflect across y = x line (ReflectAcrossCustomLine)": {
+			point:    point.New[float64](3, 4),
+			axis:     New[float64](0, 0, 1, 1),
+			expected: point.New[float64](4, 3),
+		},
+		"reflect across y = -x line (ReflectAcrossCustomLine)": {
+			point:    point.New[float64](3, 4),
+			axis:     New[float64](0, 0, -1, 1),
+			expected: point.New[float64](-4, -3),
+		},
+		"reflect across degenerate line segment": {
+			point:    point.New[float64](3, 4),
+			axis:     New[float64](1, 1, 1, 1), // Degenerate line
+			expected: point.New[float64](3, 4), // Expect the point to remain unchanged
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := tc.axis.ReflectPoint(tc.point)
+			assert.InDelta(t, tc.expected.X(), result.X(), 0.001)
+			assert.InDelta(t, tc.expected.Y(), result.Y(), 0.001)
 		})
 	}
 }

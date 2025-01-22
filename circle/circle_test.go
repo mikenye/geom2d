@@ -3,6 +3,7 @@ package circle
 import (
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
+	"github.com/mikenye/geom2d/types"
 	"github.com/stretchr/testify/assert"
 	"math"
 	"testing"
@@ -342,6 +343,36 @@ func TestCircle_Radius(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			result := tc.circle.Radius()
 			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestCircle_RelationshipToPoint(t *testing.T) {
+	testCases := map[string]struct {
+		point       point.Point[float64]
+		circle      Circle[float64]
+		expectedRel types.Relationship
+	}{
+		"Point inside circle": {
+			point:       point.New[float64](2, 2),
+			circle:      New[float64](0, 0, 5),
+			expectedRel: types.RelationshipContainedBy,
+		},
+		"Point on circle boundary": {
+			point:       point.New[float64](3, 4),
+			circle:      New[float64](0, 0, 5),
+			expectedRel: types.RelationshipIntersection,
+		},
+		"Point outside circle": {
+			point:       point.New[float64](6, 8),
+			circle:      New[float64](0, 0, 5),
+			expectedRel: types.RelationshipDisjoint,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.expectedRel, tc.circle.RelationshipToPoint(tc.point, options.WithEpsilon(1e-8)), "unexpected relationship")
 		})
 	}
 }

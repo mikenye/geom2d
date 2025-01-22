@@ -382,97 +382,6 @@ func (l LineSegment[T]) DistanceToPoint(p Point[T], opts ...Option) float64 {
 	return p.DistanceToLineSegment(l, opts...)
 }
 
-// IntersectionPoint calculates the intersection [Point] between two line segments, if one exists.
-//
-// This method checks if the LineSegment l and LineSegment other intersect within their boundaries
-// and, if so, calculates and returns the intersection point. If the segments do not intersect
-// or are parallel, it returns a zero-value [Point] and false.
-//
-// It uses the parametric form of the line segments to solve for intersection parameters t and u.
-// If t and u are both in the range [0, 1], the intersection point lies within the bounds of
-// both segments.
-//
-// Parameters:
-//   - other (LineSegment[T]): The second line segment to check for an intersection.
-//
-// Returns:
-//   - [Point][T]: The intersection point.
-//   - bool: If true, the first element is the intersection point. If false, there is
-//     no intersection within the segments’ bounds or the segments are parallel.
-//
-// todo: update doc comments and reorder
-func (l LineSegment[T]) IntersectionGeometry(other LineSegment[T], opts ...Option) LineSegmentIntersectionResult[float64] {
-
-	// Apply options with defaults
-	options := applyOptions(geomOptions{epsilon: 1e-10}, opts...)
-
-	// Define segment endpoints for AB (l) and CD (other)
-	A, B := l.start.AsFloat64(), l.end.AsFloat64()
-	C, D := other.start.AsFloat64(), other.end.AsFloat64()
-
-	// Calculate the direction vectors
-	dir1 := B.Translate(A.Negate())
-	dir2 := D.Translate(C.Negate())
-
-	// Calculate the determinants
-	denominator := dir1.CrossProduct(dir2)
-
-	// Handle collinear case (denominator == 0)
-	if denominator == 0 {
-		// Check if the segments are collinear
-		AC := C.Translate(A.Negate())
-		if AC.CrossProduct(dir1) != 0 {
-			return LineSegmentIntersectionResult[float64]{IntersectionType: IntersectionNone} // Parallel but not collinear
-		}
-
-		// Check overlap by projecting points onto the line
-		tStart := (C.Translate(A.Negate())).DotProduct(dir1) / dir1.DotProduct(dir1)
-		tEnd := (D.Translate(A.Negate())).DotProduct(dir1) / dir1.DotProduct(dir1)
-
-		// Ensure tStart < tEnd for consistency
-		if tStart > tEnd {
-			tStart, tEnd = tEnd, tStart
-		}
-
-		// Check for overlap
-		tOverlapStart := max(0.0, tStart)
-		tOverlapEnd := min(1.0, tEnd)
-
-		if tOverlapStart > tOverlapEnd {
-			return LineSegmentIntersectionResult[float64]{IntersectionType: IntersectionNone} // No overlap
-		}
-
-		// Calculate the overlapping segment
-		overlapStart := RoundPointToEpsilon(A.Translate(dir1.Scale(NewPoint[float64](0, 0), tOverlapStart)), options.epsilon)
-		overlapEnd := RoundPointToEpsilon(A.Translate(dir1.Scale(NewPoint[float64](0, 0), tOverlapEnd)), options.epsilon)
-
-		return LineSegmentIntersectionResult[float64]{
-			IntersectionType:    IntersectionSegment,
-			IntersectionSegment: NewLineSegment(overlapStart, overlapEnd),
-		}
-	}
-
-	// Calculate parameters t and u for non-collinear case
-	AC := C.Translate(A.Negate())
-	tNumerator := AC.CrossProduct(dir2)
-	uNumerator := AC.CrossProduct(dir1)
-
-	t := tNumerator / denominator
-	u := uNumerator / denominator
-
-	// Check if intersection occurs within the segment bounds
-	if t < 0 || t > 1 || u < 0 || u > 1 {
-		return LineSegmentIntersectionResult[float64]{IntersectionType: IntersectionNone} // Intersection is outside the segments
-	}
-
-	// Calculate the intersection point
-	intersection := RoundPointToEpsilon(A.Translate(dir1.Scale(NewPoint[float64](0, 0), t)), options.epsilon)
-	return LineSegmentIntersectionResult[float64]{
-		IntersectionType:  IntersectionPoint,
-		IntersectionPoint: intersection,
-	}
-}
-
 // IntersectsLineSegment checks whether there is any intersection or overlap between LineSegment l and LineSegment other.
 //
 // This function returns true if segments l and other have an intersecting spatial relationship, such as intersection,
@@ -988,18 +897,4 @@ func (l LineSegment[int]) Bresenham(yield func(Point[int]) bool) {
 			y1 += sy
 		}
 	}
-}
-
-type LineSegmentIntersectionType uint8
-
-const (
-	IntersectionNone LineSegmentIntersectionType = iota
-	IntersectionPoint
-	IntersectionSegment
-)
-
-type LineSegmentIntersectionResult[T types.SignedNumber] struct {
-	IntersectionType    LineSegmentIntersectionType // Type of intersection
-	IntersectionPoint   Point[T]                    // Valid if Type == IntersectionPoint
-	IntersectionSegment LineSegment[T]              // Valid if Type == IntersectionSegment
 }

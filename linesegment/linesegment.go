@@ -204,11 +204,40 @@ func (l LineSegment[T]) Center(opts ...options.GeometryOptionsFunc) point.Point[
 
 	// Apply epsilon if specified
 	if geoOpts.Epsilon > 0 {
-		midX = types.SnapToEpsilon(midX, geoOpts.Epsilon)
-		midY = types.SnapToEpsilon(midY, geoOpts.Epsilon)
+		midX = numeric.SnapToEpsilon(midX, geoOpts.Epsilon)
+		midY = numeric.SnapToEpsilon(midY, geoOpts.Epsilon)
 	}
 
 	return point.New[float64](midX, midY)
+}
+
+// DistanceToPoint calculates the orthogonal (shortest) distance from the [LineSegment] l to the [point.Point] p.
+// This distance is the length of the perpendicular line from p to the closest point on l.
+//
+// Parameters:
+//   - p ([point.Point][T]): The [point.Point] to which the distance is calculated from [LineSegment] l.
+//   - opts: A variadic slice of [options.GeometryOptionsFunc] functions to customize the calculation behavior.
+//     [options.WithEpsilon](epsilon float64): Adjusts the result by snapping small floating-point
+//     deviations to cleaner values based on the specified epsilon threshold.
+//
+// Behavior:
+//   - The function first computes the projection of p onto the given [LineSegment] l. This is
+//     the closest point on l to p, whether it falls within the line segment or on one of its endpoints.
+//   - The distance is then calculated as the Euclidean distance from p to the projected point,
+//     using the [point.Point.DistanceToPoint] method for precision.
+//
+// Returns:
+//   - float64: The shortest distance between the point p and the line segment l, optionally
+//     adjusted based on epsilon if provided.
+//
+// Notes:
+//   - If the point p lies exactly on the line segment, the distance will be zero (or adjusted
+//     to zero if within epsilon).
+//   - This method ensures precision by converting points to float64 before performing calculations.
+func (l LineSegment[T]) DistanceToPoint(p point.Point[T], opts ...options.GeometryOptionsFunc) float64 {
+	projectedPoint := l.ProjectPoint(p)
+	pf := p.AsFloat64()
+	return pf.DistanceToPoint(projectedPoint, opts...)
 }
 
 // End returns the ending [point.Point] of the LineSegment.
@@ -255,6 +284,116 @@ func (l LineSegment[T]) Eq(other LineSegment[T], opts ...options.GeometryOptions
 //   - end ([Point][T]): The end [point.Point] of the LineSegment.
 func (l LineSegment[T]) Points() (start, end point.Point[T]) {
 	return l.start, l.end
+}
+
+// ProjectPoint projects the [point.Point] p onto a given [LineSegment] l.
+//
+// The function calculates the closest point on the LineSegment to the Point p.
+// It utilizes vector mathematics to determine the projection of Point p onto the infinite line
+// represented by the [LineSegment]. If the projected point falls beyond the ends of the
+// [LineSegment], the function returns the closest endpoint of the segment.
+//
+// Parameters:
+//   - p ([point.Point][T]): The point to be projected onto line segment l
+//
+// Returns:
+//   - A [point.Point][float64] representing the coordinates of the projected point.
+//     If the [LineSegment] is degenerate (both endpoints are the same),
+//     the function returns the coordinates of the Start() Point of the LineSegment.
+func (l LineSegment[T]) ProjectPoint(p point.Point[T]) point.Point[float64] {
+
+	// the direction vector of the line segment
+	vecAB := l.end.Translate(l.start.Negate())
+
+	// the vector from line segment start to point
+	vecAP := p.Translate(l.start.Negate())
+
+	// Calculate the dot products
+	ABdotAB := vecAB.DotProduct(vecAB) // |vecAB|^2
+	APdotAB := vecAP.DotProduct(vecAB) // vecAP • vecAB
+
+	// Calculate the projection length as a fraction of the length of vecAB
+	if ABdotAB == 0 { // Avoid division by zero; A and End are the same point
+		return l.start.AsFloat64()
+	}
+	projLen := float64(APdotAB) / float64(ABdotAB)
+
+	// Clamp the projection length to the segment
+	if projLen < 0 {
+		return l.start.AsFloat64() // Closest to line segment start
+	} else if projLen > 1 {
+		return l.end.AsFloat64() // Closest to line segment end
+	}
+
+	// return the projection point
+	return point.New(
+		float64(l.start.X())+(projLen*float64(vecAB.X())),
+		float64(l.start.Y())+(projLen*float64(vecAB.Y())),
+	)
+}
+
+// ReflectPoint reflects the [point.Point] across the axis defined by LineSegment l.
+//
+// Parameters:
+//   - p ([point.Point][T]): The [point.Point] to be reflected about LineSegment l.
+//
+// Returns:
+//   - Point[float64] - A new point representing the reflection of the original point.
+func (l LineSegment[T]) ReflectPoint(p point.Point[T]) point.Point[float64] {
+	pFloat := p.AsFloat64()
+	lFloat := l.AsFloat64()
+
+	// Extract points from the line segment
+	x1, y1 := lFloat.start.X(), lFloat.start.Y()
+	x2, y2 := lFloat.end.X(), lFloat.end.Y()
+
+	// Calculate the line's slope and intercept for projection
+	dx, dy := x2-x1, y2-y1
+	if dx == 0 && dy == 0 {
+		return pFloat // Degenerate line segment; return point unchanged
+	}
+
+	// Calculate the reflection using vector projection
+	a := (dx*dx - dy*dy) / (dx*dx + dy*dy)
+	b := 2 * dx * dy / (dx*dx + dy*dy)
+
+	newX := a*(pFloat.X()-x1) + b*(pFloat.Y()-y1) + x1
+	newY := b*(pFloat.X()-x1) - a*(pFloat.Y()-y1) + y1
+
+	return point.New(newX, newY)
+}
+
+// RelationshipToPoint determines the spatial relationship of the current Point to a given [LineSegment].
+//
+// The function calculates the orthogonal (shortest) distance from the point to the line segment
+// and determines the relationship based on this distance.
+//
+// Relationships:
+//   - [types.RelationshipIntersection]: The point lies on the line segment.
+//   - [types.RelationshipDisjoint]: The point does not lie on the line segment.
+//
+// Parameters:
+//   - p ([point.Point][T]): The point to analyse the relationship with.
+//   - opts: A variadic slice of [options.GeometryOptionsFunc] functions to customize the calculation.
+//     [options.WithEpsilon](epsilon float64): Adjusts the precision for distance comparisons, enabling robust handling of floating-point errors.
+//
+// Returns:
+//   - [types.Relationship]: The spatial relationship of the point to the line segment.
+//
+// Behavior:
+//   - If the shortest distance between the point and the line segment is zero (or within the epsilon threshold),
+//     the function returns [types.RelationshipIntersection].
+//   - Otherwise, it returns [types.RelationshipDisjoint].
+//
+// Notes:
+//   - This method is useful for determining if a point lies on a line segment, including endpoints and interior points.
+//   - Epsilon adjustment is particularly useful for floating-point coordinates to avoid precision errors.
+func (l LineSegment[T]) RelationshipToPoint(p point.Point[T], opts ...options.GeometryOptionsFunc) types.Relationship {
+	distancePointToLineSegment := l.DistanceToPoint(p, opts...)
+	if distancePointToLineSegment == 0 {
+		return types.RelationshipIntersection
+	}
+	return types.RelationshipDisjoint
 }
 
 // Rotate rotates the LineSegment around a given pivot [point.Point] by a specified angle in radians counterclockwise.

@@ -177,6 +177,47 @@ func (c Circle[T]) Circumference() float64 {
 	return 2 * math.Pi * float64(c.radius)
 }
 
+// RelationshipToPoint determines the spatial relationship between the Circle and a [point.Point].
+//
+// This function evaluates whether the point lies outside, on the boundary of, or inside the given circle.
+// The possible relationships are:
+//   - [types.RelationshipDisjoint]: The point lies outside the circle.
+//   - [types.RelationshipIntersection]: The point lies exactly on the circle's boundary.
+//   - [types.RelationshipContainedBy]: The point is inside the circle.
+//
+// Parameters:
+//   - p ([point.Point][T]): The point to compare with the current Circle
+//   - opts: A variadic slice of [options.GeometryOptionsFunc] functions to customize the equality check.
+//     [options.WithEpsilon](epsilon float64): Specifies a tolerance for comparing distances to handle floating-point
+//     precision errors.
+//
+// Returns:
+//   - [types.Relationship]: The relationship of the point to the circle, indicating whether the point is disjoint from,
+//     on the boundary of, or contained within the circle.
+//
+// Behavior:
+//   - The function computes the Euclidean distance between the point and the circle's center.
+//   - It compares this distance to the circle's radius (converted to float64 for precision).
+//   - If the distance equals the radius, the relationship is [types.RelationshipIntersection].
+//   - If the distance is less than the radius, the relationship is [types.RelationshipContainedBy].
+//   - Otherwise, the relationship is [types.RelationshipDisjoint].
+//
+// Notes:
+//   - Epsilon adjustments can be used to account for floating-point precision issues when comparing the distance
+//     to the circle's radius.
+func (c Circle[T]) RelationshipToPoint(p point.Point[T], opts ...options.GeometryOptionsFunc) types.Relationship {
+	distancePointToCircleCenter := p.DistanceToPoint(c.center, opts...)
+	circleFloat := c.AsFloat64()
+	switch {
+	case distancePointToCircleCenter == circleFloat.radius:
+		return types.RelationshipIntersection
+	case distancePointToCircleCenter < circleFloat.radius:
+		return types.RelationshipContainedBy
+	default:
+		return types.RelationshipDisjoint
+	}
+}
+
 // Eq determines whether the calling Circle (c) is equal to another Circle (other), either exactly (default)
 // or approximately using an epsilon threshold.
 //

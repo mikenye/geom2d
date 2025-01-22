@@ -207,6 +207,22 @@ func (r Rectangle[T]) Edges() (bottom, right, top, left linesegment.LineSegment[
 		linesegment.NewFromPoints(r.topLeft, r.bottomLeft)
 }
 
+// todo: doc comments, unit test, example func
+func (r Rectangle[T]) EdgesIter(yield func(segment linesegment.LineSegment[T]) bool) {
+	if !yield(linesegment.NewFromPoints(r.bottomLeft, r.bottomRight)) {
+		return
+	}
+	if !yield(linesegment.NewFromPoints(r.bottomRight, r.topRight)) {
+		return
+	}
+	if !yield(linesegment.NewFromPoints(r.topRight, r.topLeft)) {
+		return
+	}
+	if !yield(linesegment.NewFromPoints(r.topLeft, r.bottomLeft)) {
+		return
+	}
+}
+
 // Eq checks if two [Rectangle] instances are equal.
 //
 // Parameters:
@@ -248,6 +264,38 @@ func (r Rectangle[T]) Height() T {
 //   - T: The perimeter of the rectangle, calculated as 2 * (Width + Height).
 func (r Rectangle[T]) Perimeter() T {
 	return 2 * (r.Width() + r.Height())
+}
+
+// RelationshipToPoint determines the spatial relationship between the current [Rectangle] and a [point.Point].
+//
+// Relationships:
+//   - [types.RelationshipIntersection]: The point lies on one of the rectangle's edges.
+//   - [types.RelationshipContainedBy]: The point is inside the rectangle but not on its boundary.
+//   - [types.RelationshipDisjoint]: The point lies entirely outside the rectangle.
+//
+// Parameters:
+//   - p ([point.Point][T]): The [point.Point] to analyze the relationship with.
+//   - opts: A variadic slice of [options.GeometryOptionsFunc] functions to customize the behavior of the calculation.
+//     [options.WithEpsilon](epsilon float64): Specifies a tolerance for comparing the point's location relative
+//     to the rectangle, improving robustness in floating-point calculations.
+//
+// Returns:
+//   - [types.Relationship]: The spatial relationship between the point and the rectangle.
+//
+// Behavior:
+//   - The function checks if the point lies on any of the rectangle's edges. If so, it returns [types.RelationshipIntersection].
+//   - If the point is not on an edge but is inside the rectangle, it returns [types.RelationshipContainedBy].
+//   - If the point is neither on an edge nor inside the rectangle, it returns [types.RelationshipDisjoint].
+func (r Rectangle[T]) RelationshipToPoint(p point.Point[T], opts ...options.GeometryOptionsFunc) types.Relationship {
+	for edge := range r.EdgesIter {
+		if edge.RelationshipToPoint(p, opts...) == types.RelationshipIntersection {
+			return types.RelationshipIntersection
+		}
+	}
+	if r.ContainsPoint(p) {
+		return types.RelationshipContainedBy
+	}
+	return types.RelationshipDisjoint
 }
 
 // Scale scales the [Rectangle] relative to a specified reference [point.Point] by a given scalar factor.

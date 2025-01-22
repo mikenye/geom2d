@@ -644,52 +644,6 @@ func TestLineSegment_DistanceToPoint(t *testing.T) {
 	}
 }
 
-func TestLineSegment_IntersectionGeometry(t *testing.T) {
-	tests := map[string]struct {
-		AB, CD                   LineSegment[int]
-		expectedIntersectionType LineSegmentIntersectionType
-		expectedResult           any
-	}{
-		"Intersecting segments returning point": {
-			AB:                       NewLineSegment(NewPoint(0, 0), NewPoint(10, 10)),
-			CD:                       NewLineSegment(NewPoint(0, 10), NewPoint(10, 0)),
-			expectedIntersectionType: IntersectionPoint,
-			expectedResult:           NewPoint(5.0, 5.0),
-		},
-		"Intersecting collinear segments returning line segment": {
-			AB:                       NewLineSegment(NewPoint(0, 0), NewPoint(10, 0)),
-			CD:                       NewLineSegment(NewPoint(-5, 0), NewPoint(5, 0)),
-			expectedIntersectionType: IntersectionSegment,
-			expectedResult:           NewLineSegment(NewPoint(0.0, 0.0), NewPoint(5.0, 0.0)),
-		},
-		"Non-intersecting segments": {
-			AB:                       NewLineSegment(NewPoint(0, 0), NewPoint(5, 5)),
-			CD:                       NewLineSegment(NewPoint(6, 6), NewPoint(10, 10)),
-			expectedIntersectionType: IntersectionNone,
-		},
-	}
-
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			actual := tc.AB.IntersectionGeometry(tc.CD)
-			switch tc.expectedIntersectionType {
-			case IntersectionNone:
-				assert.Equal(t, IntersectionNone, actual.IntersectionType)
-				assert.Equal(t, Point[float64]{}, actual.IntersectionPoint)
-				assert.Equal(t, LineSegment[float64]{}, actual.IntersectionSegment)
-			case IntersectionPoint:
-				assert.Equal(t, IntersectionPoint, actual.IntersectionType)
-				assert.Equal(t, tc.expectedResult, actual.IntersectionPoint)
-				assert.Equal(t, LineSegment[float64]{}, actual.IntersectionSegment)
-			case IntersectionSegment:
-				assert.Equal(t, IntersectionSegment, actual.IntersectionType)
-				assert.Equal(t, Point[float64]{}, actual.IntersectionPoint)
-				assert.Equal(t, tc.expectedResult, actual.IntersectionSegment)
-			}
-		})
-	}
-}
-
 func TestLineSegment_Length(t *testing.T) {
 	tests := map[string]struct {
 		start, end     any

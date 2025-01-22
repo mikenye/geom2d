@@ -4,6 +4,7 @@ import (
 	"github.com/mikenye/geom2d/linesegment"
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
+	"github.com/mikenye/geom2d/types"
 	"github.com/stretchr/testify/assert"
 	"image"
 	"testing"
@@ -328,6 +329,34 @@ func TestRectangle_Perimeter(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			actual := tt.rect.Perimeter()
 			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestRectangle_RelationshipToPoint(t *testing.T) {
+	rect := New(0, 0, 10, 10)
+
+	tests := map[string]struct {
+		point       point.Point[int]
+		expectedRel types.Relationship
+	}{
+		"Point inside rectangle": {
+			point:       point.New(5, 5),
+			expectedRel: types.RelationshipContainedBy,
+		},
+		"Point on rectangle edge": {
+			point:       point.New(10, 5),
+			expectedRel: types.RelationshipIntersection,
+		},
+		"Point outside rectangle": {
+			point:       point.New(15, 5),
+			expectedRel: types.RelationshipDisjoint,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tt.expectedRel, rect.RelationshipToPoint(tt.point, options.WithEpsilon(1e-8)), "unexpected relationship")
 		})
 	}
 }
