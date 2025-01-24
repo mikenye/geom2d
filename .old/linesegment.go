@@ -1,4 +1,4 @@
-package geom2d
+package _old
 
 import (
 	"fmt"
@@ -150,29 +150,6 @@ func (l LineSegment[T]) BoundingBox() Rectangle[T] {
 	return NewRectangle(points)
 }
 
-// ContainsPoint determines whether the given [Point] lies on the LineSegment.
-//
-// This method first checks if the [Point] is collinear with the endpoints of the
-// [LineSegment] using an [Orientation]. If the [Point] is not collinear, it
-// cannot be on the segment. If the [Point] is collinear, the function then verifies
-// if the [Point] lies within the bounding box defined by the segment's endpoints.
-//
-// Parameters:
-//   - p ([Point][T]): The [Point] to test against the LineSegment
-//
-// Returns:
-//   - bool: true if the [Point] lies on the LineSegment, false otherwise.
-func (l LineSegment[T]) ContainsPoint(p Point[T]) bool {
-	// Check collinearity first; if not collinear, point is not on the line segment
-	if Orientation(p, l.start, l.end) != PointsCollinear {
-		return false
-	}
-
-	// Check if the point lies within the bounding box defined by A and End
-	return p.x >= min(l.start.x, l.end.x) && p.x <= max(l.start.x, l.end.x) &&
-		p.y >= min(l.start.y, l.end.y) && p.y <= max(l.start.y, l.end.y)
-}
-
 // detailedRelationshipToLineSegment determines the spatial relationship between two line segments, l and other.
 //
 //   - Let A = l.Start()
@@ -294,94 +271,6 @@ func (l LineSegment[T]) detailedRelationshipToLineSegment(other LineSegment[T], 
 	return lsrMiss
 }
 
-// DistanceToLineSegment calculates the minimum distance between two line segments, l and other.
-//
-// If the segments intersect or touch at any point, the function returns 0, as the distance is effectively zero.
-// Otherwise, it calculates the shortest distance by considering distances between segment endpoints and the
-// perpendicular projections of each endpoint onto the opposite segment.
-//
-// Parameters:
-//   - other (LineSegment[T]): The line segment to compare with l.
-//   - opts: A variadic slice of [Option] functions to customize the behavior of the calculation.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for snapping near-zero results to zero or
-//     for handling small floating-point deviations in distance calculations.
-//
-// Behavior:
-//   - The function checks whether the segments intersect or touch. If so, the distance is immediately returned as 0.
-//   - For non-intersecting segments, the function calculates the shortest distance using the following steps:
-//     1. Compute direct distances between the endpoints of l and other.
-//     2. Compute distances to the perpendicular projections of each endpoint onto the opposite segment.
-//     3. Track the minimum distance among all calculations and return this value.
-//   - If [WithEpsilon] is provided, epsilon adjustments are applied to the calculated distances and projections
-//     to ensure robustness against floating-point precision errors.
-//
-// Returns:
-//   - float64: The minimum distance between the two segments. If the segments intersect or touch, this value is 0.
-func (l LineSegment[T]) DistanceToLineSegment(other LineSegment[T], opts ...Option) float64 {
-	// If line segments intersect, the distance is zero.
-	if l.IntersectsLineSegment(other) {
-		return 0
-	}
-
-	// Convert segments to float for precise calculations.
-	ABf, CDf := l.AsFloat64(), other.AsFloat64()
-
-	// Track the minimum distance.
-	minDist := math.MaxFloat64
-
-	// Helper function to update minimum distance.
-	updateMinDist := func(d float64) {
-		if d < minDist {
-			minDist = d
-		}
-	}
-
-	// Calculate distances between endpoints.
-	updateMinDist(ABf.start.DistanceToPoint(CDf.start, opts...))
-	updateMinDist(ABf.start.DistanceToPoint(CDf.end, opts...))
-	updateMinDist(ABf.end.DistanceToPoint(CDf.start, opts...))
-	updateMinDist(ABf.end.DistanceToPoint(CDf.end, opts...))
-
-	// Calculate distances to projections on the opposite segment.
-	updateMinDist(ABf.start.DistanceToPoint(ABf.start.ProjectOntoLineSegment(CDf), opts...))
-	updateMinDist(ABf.end.DistanceToPoint(ABf.end.ProjectOntoLineSegment(CDf), opts...))
-	updateMinDist(CDf.start.DistanceToPoint(CDf.start.ProjectOntoLineSegment(ABf), opts...))
-	updateMinDist(CDf.end.DistanceToPoint(CDf.end.ProjectOntoLineSegment(ABf), opts...))
-
-	return minDist
-}
-
-// DistanceToPoint calculates the orthogonal (shortest) distance from a specified [Point] p
-// to the LineSegment l. This distance is determined by projecting the [Point] p onto the
-// LineSegment and measuring the distance from p to the projected [Point].
-//
-// Parameters:
-//   - p ([Point][T]): The [Point] for which the distance to the LineSegment l is calculated.
-//   - opts: A variadic slice of [Option] functions to customize the behavior of the calculation.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for snapping near-zero results to zero
-//     or handling small floating-point deviations in distance calculations.
-//
-// Behavior:
-//   - The function computes the projection of p onto the given LineSegment l. This is the closest
-//     point on l to p, whether it lies within the segment bounds or at an endpoint.
-//   - The orthogonal distance is then calculated as the Euclidean distance between p and the
-//     projected point.
-//   - If [WithEpsilon] is provided, epsilon adjustments are applied to the calculated distance
-//     to ensure robustness against floating-point precision errors.
-//
-// Returns:
-//   - float64: The shortest distance between the [Point] p and the LineSegment l, optionally
-//     adjusted based on epsilon.
-//
-// Notes:
-//   - This function leverages the [Point.DistanceToLineSegment] method to perform the calculation,
-//     ensuring precision and consistency across related operations.
-//   - Epsilon adjustment is particularly useful for applications involving floating-point data,
-//     where small deviations can affect the accuracy of results.
-func (l LineSegment[T]) DistanceToPoint(p Point[T], opts ...Option) float64 {
-	return p.DistanceToLineSegment(l, opts...)
-}
-
 // IntersectsLineSegment checks whether there is any intersection or overlap between LineSegment l and LineSegment other.
 //
 // This function returns true if segments l and other have an intersecting spatial relationship, such as intersection,
@@ -394,31 +283,6 @@ func (l LineSegment[T]) DistanceToPoint(p Point[T], opts ...Option) float64 {
 //   - bool: Returns true if l and other intersect, overlap, or share any form of intersecting relationship, and false if they are completely disjoint.
 func (l LineSegment[T]) IntersectsLineSegment(other LineSegment[T]) bool {
 	return l.detailedRelationshipToLineSegment(other) > lsrMiss
-}
-
-// Length calculates the length of the line segment, optionally using an epsilon threshold
-// to adjust the precision of the calculation.
-//
-// Parameters:
-//   - opts: A variadic slice of [Option] functions to customize the behavior of the calculation.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for snapping small floating-point
-//     deviations in the calculated length to cleaner values, improving robustness.
-//
-// Behavior:
-//   - The function computes the Euclidean distance between the start and end points of the
-//     line segment using the [LineSegment.DistanceToPoint] method.
-//   - If [WithEpsilon] is provided, the resulting length is adjusted such that small deviations
-//     due to floating-point precision errors are corrected.
-//
-// Returns:
-//   - float64: The length of the line segment, optionally adjusted based on epsilon.
-//
-// Notes:
-//   - This function relies on [LineSegment.DistanceToPoint], which supports epsilon adjustments for distance
-//     calculations. Epsilon is particularly useful for floating-point coordinates where minor
-//     imprecision might affect the result.
-func (l LineSegment[T]) Length(opts ...Option) float64 {
-	return l.start.DistanceToPoint(l.end, opts...)
 }
 
 // Normalize returns a "normalized" version of the line segment where the start point
@@ -437,43 +301,6 @@ func (l LineSegment[T]) Normalize() LineSegment[T] {
 	}
 	// else, return original point
 	return l
-}
-
-// Reflect reflects the line segment across the specified axis or custom line.
-//
-// Parameters:
-//   - axis ([ReflectionAxis]): The axis or line to reflect across ([ReflectAcrossXAxis], [ReflectAcrossYAxis], or [ReflectAcrossCustomLine]).
-//   - line (LineSegment[float64]): Optional. The line segment for [ReflectAcrossCustomLine] reflection.
-//
-// Returns:
-//   - LineSegment[float64] - A new line segment where both endpoints are reflected accordingly.
-func (l LineSegment[T]) Reflect(axis ReflectionAxis, line ...LineSegment[float64]) LineSegment[float64] {
-	var startReflected, endReflected Point[float64]
-	switch axis {
-	case ReflectAcrossXAxis:
-		// Reflect across the x-axis
-		startReflected = l.start.Reflect(ReflectAcrossXAxis)
-		endReflected = l.end.Reflect(ReflectAcrossXAxis)
-	case ReflectAcrossYAxis:
-		// Reflect across the y-axis
-		startReflected = l.start.Reflect(ReflectAcrossYAxis)
-		endReflected = l.end.Reflect(ReflectAcrossYAxis)
-	case ReflectAcrossCustomLine:
-		// Reflect across a custom line if provided
-		if len(line) > 0 {
-			startReflected = l.start.Reflect(ReflectAcrossCustomLine, line[0])
-			endReflected = l.end.Reflect(ReflectAcrossCustomLine, line[0])
-		} else {
-			// No custom line provided; return the original line segment unchanged
-			return l.AsFloat64()
-		}
-	default:
-		// Invalid axis, return the line segment unchanged
-		return l.AsFloat64()
-	}
-
-	// Return a new line segment with reflected points
-	return NewLineSegment(startReflected, endReflected)
 }
 
 // RelationshipToCircle determines the spatial relationship between the current LineSegment and a Circle.
