@@ -982,7 +982,7 @@ func TestLineSegment_Translate(t *testing.T) {
 func TestLineSegment_XAtY(t *testing.T) {
 	tests := map[string]struct {
 		lineSegment LineSegment[int]
-		y           int
+		y           float64
 		expected    float64
 	}{
 		"positive slope": {
@@ -1027,7 +1027,7 @@ func TestLineSegment_XAtY(t *testing.T) {
 func TestLineSegment_YAtX(t *testing.T) {
 	tests := map[string]struct {
 		lineSegment LineSegment[int]
-		x           int
+		x           float64
 		expected    float64
 	}{
 		"positive slope": {

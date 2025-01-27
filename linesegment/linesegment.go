@@ -380,6 +380,11 @@ func (l LineSegment[T]) Eq(other LineSegment[T], opts ...options.GeometryOptions
 	return l.start.Eq(other.start, opts...) && l.end.Eq(other.end, opts...)
 }
 
+// todo: doc comments, unit test, example
+func (l LineSegment[T]) Flip() LineSegment[T] {
+	return NewFromPoints(l.End(), l.Start())
+}
+
 // Length calculates the Euclidean distance (length) between the start and end points of the line segment.
 //
 // Parameters:
@@ -405,6 +410,24 @@ func (l LineSegment[T]) Eq(other LineSegment[T], opts ...options.GeometryOptions
 //   - O(1): The calculation involves a single distance computation.
 func (l LineSegment[T]) Length(opts ...options.GeometryOptionsFunc) float64 {
 	return l.start.DistanceToPoint(l.end, opts...)
+}
+
+// normalize ensures that the line segment's coordinates match the expected ordering for the sweep line algorithm in FindIntersections.
+// makes l.Start() the "upper" point, and seg.End() the "lower" point
+// todo: doc comment, unit test, example
+func (l LineSegment[T]) normalize() LineSegment[T] {
+
+	// if start Y is smaller than end Y, then flip (top-to-bottom)
+	if l.Start().Y() < l.End().Y() {
+		return l.Flip()
+	}
+
+	// if Ys are equal, then order by X, with smallest X first (left-to-right
+	if l.Start().Y() == l.End().Y() && l.Start().X() > l.End().X() {
+		return l.Flip()
+	}
+
+	return l
 }
 
 // Points returns the start [point.Point] and end [point.Point] of the LineSegment.
@@ -695,7 +718,7 @@ func (l LineSegment[T]) Translate(delta point.Point[T]) LineSegment[T] {
 //
 // Example:
 //   - For a line segment from (1, 2) to (4, 6), calling XAtY(4) will return 2.5.
-func (l LineSegment[T]) XAtY(y T) float64 {
+func (l LineSegment[T]) XAtY(y float64) float64 {
 	slope := l.Slope()
 
 	// If the slope is NaN, the line is vertical; return x
@@ -714,12 +737,12 @@ func (l LineSegment[T]) XAtY(y T) float64 {
 	if yMin > yMax {
 		yMin, yMax = yMax, yMin
 	}
-	if y < yMin || y > yMax {
+	if y < float64(yMin) || y > float64(yMax) {
 		return math.NaN()
 	}
 
 	// Calculate x using the equation of the line
-	return float64(l.start.X()) + (float64(y-l.start.Y()) * slope)
+	return l.Start().AsFloat64().X() + (y - l.Start().AsFloat64().Y()*slope)
 }
 
 // YAtX calculates the y-coordinate on the line segment at a given x-coordinate.
@@ -738,7 +761,7 @@ func (l LineSegment[T]) XAtY(y T) float64 {
 //
 // Example:
 //   - For a line segment from (1, 2) to (4, 6), calling YAtX(2.5) will return 3.5.
-func (l LineSegment[T]) YAtX(x T) float64 {
+func (l LineSegment[T]) YAtX(x float64) float64 {
 	slope := l.Slope()
 
 	// If the slope is NaN, the line is vertical; return NaN because y is constant
@@ -757,10 +780,10 @@ func (l LineSegment[T]) YAtX(x T) float64 {
 	if xMin > xMax {
 		xMin, xMax = xMax, xMin
 	}
-	if x < xMin || x > xMax {
+	if x < float64(xMin) || x > float64(xMax) {
 		return math.NaN()
 	}
 
 	// Calculate y using the equation of the line
-	return float64(l.start.Y()) + (float64(x-l.start.X()) * slope)
+	return l.Start().AsFloat64().Y() + float64(x-l.Start().AsFloat64().X())*slope
 }

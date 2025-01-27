@@ -154,14 +154,14 @@ type sweeplineEventQueue struct {
 // Behaviour:
 //   - If there is no intersection ([IntersectionNone]), the function does nothing.
 //   - If the intersection is a single point ([IntersectionPoint]), an intersection event is created and added to the queue.
-//   - If the intersection is a line segment ([IntersectionSegment]), the function will panic, as this case is not yet implemented.
+//   - If the intersection is a line segment ([OverlappingSegment]), the function will panic, as this case is not yet implemented.
 //
 // Notes:
 //   - The intersection calculation is delegated to the [LineSegment.IntersectionGeometry] method of the [LineSegment] type.
 //   - The event is pushed onto the priority queue, maintaining the correct event order for the Bentley-Ottmann algorithm.
 //
 // Panics:
-// - This function panics if the intersection type is [IntersectionSegment], as that scenario is not yet implemented.
+// - This function panics if the intersection type is [OverlappingSegment], as that scenario is not yet implemented.
 func (pq *sweeplineEventQueue) AddIntersectionEvent(A, B LineSegment[float64], opts ...Option) {
 	intersection := A.IntersectionGeometry(B, opts...)
 

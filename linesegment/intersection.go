@@ -1,41 +1,12 @@
 package linesegment
 
 import (
-	"fmt"
 	"github.com/mikenye/geom2d/numeric"
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
 	"math"
 )
-
-type IntersectionType uint8
-
-const (
-	IntersectionNone IntersectionType = iota
-	IntersectionPoint
-	IntersectionSegment
-)
-
-func (t IntersectionType) String() string {
-	switch t {
-	case IntersectionNone:
-		return "IntersectionNone"
-	case IntersectionPoint:
-		return "IntersectionPoint"
-	case IntersectionSegment:
-		return "IntersectionSegment"
-	default:
-		panic(fmt.Errorf("unsupported line segment intersection type"))
-	}
-}
-
-type IntersectionResult[T types.SignedNumber] struct {
-	IntersectionType    IntersectionType     // Type of intersection
-	IntersectionPoint   point.Point[float64] // Valid if Type == IntersectionPoint
-	IntersectionSegment LineSegment[float64] // Valid if Type == IntersectionSegment
-	InputLineSegments   []LineSegment[T]     // Input line segments
-}
 
 // FindIntersectionsSlow performs a naive O(n^2) check to find all intersections
 // between the given line segments, considering the provided geometry options.
@@ -56,27 +27,18 @@ type IntersectionResult[T types.SignedNumber] struct {
 // Note:
 //   - This is a naive implementation and should be used for small input sizes or as a baseline
 //     for benchmarking more efficient algorithms.
-func FindIntersectionsSlow[T types.SignedNumber](segments []LineSegment[T], opts ...options.GeometryOptionsFunc) []IntersectionResult[T] {
-	results := make([]IntersectionResult[T], 0)
+func FindIntersectionsSlow[T types.SignedNumber](segments []LineSegment[T], opts ...options.GeometryOptionsFunc) []IntersectionResult[float64] {
+	R := newIntersectionResults[float64]()
 
 	// Compare each segment with every other segment
 	for i := 0; i < len(segments); i++ {
 		for j := i + 1; j < len(segments); j++ { // Start at i+1 to avoid duplicate checks
-
 			// Check for intersection
-			result := segments[i].Intersection(segments[j], opts...)
-
-			// If no intersection, continue
-			if result.IntersectionType == IntersectionNone {
-				continue
-			}
-
-			// Add intersection to results
-			results = append(results, result)
+			R.Add(segments[i].AsFloat64().Intersection(segments[j].AsFloat64(), opts...))
 		}
 	}
 
-	return results
+	return R.Results()
 }
 
 // Intersection calculates the intersection between two [LineSegment] instances.
@@ -97,7 +59,7 @@ func FindIntersectionsSlow[T types.SignedNumber](segments []LineSegment[T], opts
 //     (point, segment, or none) and any relevant intersection geometry.
 //
 // Behavior:
-//   - If the segments are collinear and overlap, the function returns an IntersectionSegment type
+//   - If the segments are collinear and overlap, the function returns an IntersectionOverlappingSegment type
 //     with the overlapping segment.
 //   - If the segments intersect at a single point, the function returns an IntersectionPoint type
 //     with the intersection coordinates.
@@ -166,9 +128,9 @@ func (l LineSegment[T]) Intersection(other LineSegment[T], opts ...options.Geome
 		)
 
 		return IntersectionResult[T]{
-			IntersectionType:    IntersectionSegment,
-			IntersectionSegment: NewFromPoints(overlapStart, overlapEnd),
-			InputLineSegments:   []LineSegment[T]{l, other},
+			IntersectionType:   IntersectionOverlappingSegment,
+			OverlappingSegment: NewFromPoints(overlapStart, overlapEnd),
+			InputLineSegments:  []LineSegment[T]{l, other},
 		}
 	}
 
