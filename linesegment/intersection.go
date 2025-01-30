@@ -33,6 +33,12 @@ func FindIntersectionsSlow[T types.SignedNumber](segments []LineSegment[T], opts
 	// Compare each segment with every other segment
 	for i := 0; i < len(segments); i++ {
 		for j := i + 1; j < len(segments); j++ { // Start at i+1 to avoid duplicate checks
+
+			// skip degenerate line segments
+			if segments[i].Start().Eq(segments[i].End()) || segments[j].Start().Eq(segments[j].End()) {
+				continue
+			}
+
 			// Check for intersection
 			R.Add(segments[i].AsFloat64().Intersection(segments[j].AsFloat64(), opts...))
 		}
@@ -127,6 +133,16 @@ func (l LineSegment[T]) Intersection(other LineSegment[T], opts ...options.Geome
 			numeric.SnapToEpsilon(A.Y()+tOverlapEnd*dir1.Y(), geoOpts.Epsilon),
 		)
 
+		// if resulting line segment is degenerate, and is a point, then return a point
+		if overlapStart.Eq(overlapEnd, opts...) {
+			return IntersectionResult[T]{
+				IntersectionType:  IntersectionPoint,
+				IntersectionPoint: overlapStart,
+				InputLineSegments: []LineSegment[T]{l, other},
+			}
+		}
+
+		// otherwise, return the overlap
 		return IntersectionResult[T]{
 			IntersectionType:   IntersectionOverlappingSegment,
 			OverlappingSegment: NewFromPoints(overlapStart, overlapEnd),

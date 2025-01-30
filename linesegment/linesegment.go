@@ -719,30 +719,20 @@ func (l LineSegment[T]) Translate(delta point.Point[T]) LineSegment[T] {
 // Example:
 //   - For a line segment from (1, 2) to (4, 6), calling XAtY(4) will return 2.5.
 func (l LineSegment[T]) XAtY(y float64) float64 {
-	slope := l.Slope()
+	A, B := l.Start().AsFloat64(), l.End().AsFloat64()
 
-	// If the slope is NaN, the line is vertical; return x
-	if math.IsNaN(slope) {
-		return l.Start().AsFloat64().X()
-	}
-
-	// If the slope is 0, the line is horizontal; return NaN because y is constant
-	if slope == 0 {
+	// Ensure y is within bounds
+	if (y < A.Y() && y < B.Y()) || (y > A.Y() && y > B.Y()) {
 		return math.NaN()
 	}
 
-	// Check if y is within the bounds of the segment, accounting for ascending or descending y-values
-	yMin := l.start.Y()
-	yMax := l.end.Y()
-	if yMin > yMax {
-		yMin, yMax = yMax, yMin
-	}
-	if y < float64(yMin) || y > float64(yMax) {
-		return math.NaN()
+	// Handle vertical line case: x is constant for all y values in range
+	if A.X() == B.X() {
+		return A.X() // Valid as long as y is within bounds
 	}
 
-	// Calculate x using the equation of the line
-	return l.Start().AsFloat64().X() + (y - l.Start().AsFloat64().Y()*slope)
+	// Compute x using interpolation
+	return A.X() + (y-A.Y())*(B.X()-A.X())/(B.Y()-A.Y())
 }
 
 // YAtX calculates the y-coordinate on the line segment at a given x-coordinate.
@@ -762,28 +752,18 @@ func (l LineSegment[T]) XAtY(y float64) float64 {
 // Example:
 //   - For a line segment from (1, 2) to (4, 6), calling YAtX(2.5) will return 3.5.
 func (l LineSegment[T]) YAtX(x float64) float64 {
-	slope := l.Slope()
+	A, B := l.Start().AsFloat64(), l.End().AsFloat64()
 
-	// If the slope is NaN, the line is vertical; return NaN because y is constant
-	if math.IsNaN(slope) {
+	// Ensure x is within bounds
+	if (x < A.X() && x < B.X()) || (x > A.X() && x > B.X()) {
 		return math.NaN()
 	}
 
-	// If the slope is 0, the line is horizontal; return y
-	if slope == 0 {
-		return l.Start().AsFloat64().Y()
+	// Handle horizontal line case: y is constant for all x values in range
+	if A.Y() == B.Y() {
+		return A.Y()
 	}
 
-	// Check if x is within the bounds of the segment, accounting for ascending or descending x-values
-	xMin := l.start.X()
-	xMax := l.end.X()
-	if xMin > xMax {
-		xMin, xMax = xMax, xMin
-	}
-	if x < float64(xMin) || x > float64(xMax) {
-		return math.NaN()
-	}
-
-	// Calculate y using the equation of the line
-	return l.Start().AsFloat64().Y() + float64(x-l.Start().AsFloat64().X())*slope
+	// Compute y using interpolation
+	return A.Y() + (x-A.X())*(B.Y()-A.Y())/(B.X()-A.X())
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
 	"slices"
+	"strings"
 )
 
 type IntersectionType uint8
@@ -34,6 +35,22 @@ type IntersectionResult[T types.SignedNumber] struct {
 	IntersectionPoint  point.Point[float64] // Valid if Type == IntersectionPoint
 	OverlappingSegment LineSegment[float64] // Valid if Type == OverlappingSegment
 	InputLineSegments  []LineSegment[T]     // Input line segments
+}
+
+func (ir IntersectionResult[T]) String() string {
+	builder := strings.Builder{}
+	builder.WriteString(fmt.Sprintf("Intersection type: %s", ir.IntersectionType.String()))
+	switch ir.IntersectionType {
+	case IntersectionNone:
+	case IntersectionPoint:
+		builder.WriteString(fmt.Sprintf(": %s from segments:\n", ir.IntersectionPoint.String()))
+	case IntersectionOverlappingSegment:
+		builder.WriteString(fmt.Sprintf(": %s from segments:\n", ir.OverlappingSegment.String()))
+	}
+	for _, seg := range ir.InputLineSegments {
+		builder.WriteString(fmt.Sprintf("  - %s\n", seg.String()))
+	}
+	return builder.String()
 }
 
 type intersectionResults[T types.SignedNumber] struct {
