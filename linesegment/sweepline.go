@@ -75,10 +75,10 @@ func findLeftmostAndRightmostSegmentAndNeighbors(
 		bIsVertical := b.Start().X() == b.End().X()
 
 		// **1. Vertical segments should always come first**
-		if aIsVertical && !bIsVertical {
+		if aIsVertical && !bIsVertical && a.Start().X() == p.X() {
 			return -1
 		}
-		if bIsVertical && !aIsVertical {
+		if bIsVertical && !aIsVertical && b.Start().X() == p.X() {
 			return 1
 		}
 
@@ -364,11 +364,11 @@ func sortStatusBySweepLine(S []statusItem, p qItem) {
 		//fmt.Printf("aIsVertical: %t, bIsVertical: %t\n", aIsVertical, bIsVertical)
 
 		// **1. Vertical segments should always come first**
-		if aIsVertical && !bIsVertical {
+		if aIsVertical && !bIsVertical && a.segment.Start().X() == p.point.X() {
 			//fmt.Println("Vertical segments come first: aIsVertical && !bIsVertical")
 			return -1
 		}
-		if bIsVertical && !aIsVertical {
+		if bIsVertical && !aIsVertical && b.segment.Start().X() == p.point.X() {
 			//fmt.Println("Vertical segments come first: bIsVertical && !aIsVertical")
 			return 1
 		}
@@ -633,6 +633,9 @@ func handleEventPoint(p qItem, Q *btree.BTreeG[qItem], S []statusItem, R *inters
 		// Let s'' be the rightmost segment of U(p) ∪ C(p) in S.
 		// Let sr be the right neighbor of s'' in S.
 		sPrime, sDoublePrime, sL, sR := findLeftmostAndRightmostSegmentAndNeighbors(p.point, UofP, CofP, S, opts...)
+
+		UCofP := append(UofP, CofP...)
+		fmt.Println("U(p) ∪ C(p):", UCofP)
 
 		if sPrime != nil {
 			fmt.Println("s': ", sPrime.String())
