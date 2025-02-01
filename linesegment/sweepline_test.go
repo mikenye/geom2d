@@ -140,6 +140,45 @@ func FuzzFindIntersections_Int_3Segments(f *testing.F) {
 	})
 }
 
+func FuzzFindIntersections_Int_4Segments(f *testing.F) {
+	// Seed with sample inputs
+	f.Add(0, 5, 5, 10, 5, 10, 10, 5, 10, 5, 5, 0, 5, 0, 0, 5)     // diamond shape
+	f.Add(0, 0, 10, 0, 10, 0, 10, 10, 10, 10, 0, 10, 10, 0, 0, 0) // square shape
+	f.Add(0, 0, 5, 10, 5, 10, 10, 0, 0, 10, 5, 0, 5, 0, 10, 10)   // crisscrossing W shape
+	f.Add(0, 7, 10, 7, 0, 3, 10, 3, 3, 10, 3, 0, 7, 10, 7, 0)     // octothorpe shape ("#")
+	f.Fuzz(func(t *testing.T, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6, x7, y7, x8, y8 int) {
+		// Ensure valid segments
+		if x1 == x2 && y1 == y2 {
+			return // skip degenerate (don't use t.Skip() or fuzz will store the test
+		}
+		if x3 == x4 && y3 == y4 {
+			return // skip degenerate (don't use t.Skip() or fuzz will store the test
+		}
+		if x5 == x6 && y5 == y6 {
+			return // skip degenerate (don't use t.Skip() or fuzz will store the test
+		}
+		if x7 == x7 && y8 == y8 {
+			return // skip degenerate (don't use t.Skip() or fuzz will store the test
+		}
+
+		segments := []LineSegment[int]{
+			New(x1, y1, x2, y2),
+			New(x3, y3, x4, y4),
+			New(x5, y5, x6, y6),
+			New(x7, y7, x8, y8),
+		}
+
+		naiveResults := FindIntersectionsSlow(segments, options.WithEpsilon(1e-8))
+		sweepResults := FindIntersections(segments, options.WithEpsilon(1e-8))
+
+		ok, reason := compareIntersectionResults(naiveResults, sweepResults, 1e-8)
+
+		if !ok {
+			t.Fatalf("Mismatch found!\nSegments: %v\nNaive: %v\nSweep Line: %v\nReason: %v\n", segments, naiveResults, sweepResults, reason)
+		}
+	})
+}
+
 func TestDeleteSegmentsFromStatus(t *testing.T) {
 	// Define the status structure as a sorted slice
 	status := []statusItem{
