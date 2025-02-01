@@ -839,14 +839,24 @@ func TestLineSegment_Slope(t *testing.T) {
 		expected    float64
 		isNaN       bool
 	}{
-		"positive slope": {
+		"positive slope bottom left to top right": {
 			lineSegment: NewFromPoints(point.New(1, 1), point.New(3, 3)),
 			expected:    1.0,
 			isNaN:       false,
 		},
-		"negative slope": {
+		"positive slope top right to bottom left": {
 			lineSegment: NewFromPoints(point.New(3, 3), point.New(1, 1)),
 			expected:    1.0,
+			isNaN:       false,
+		},
+		"negative slope bottom right to top left": {
+			lineSegment: New(10, 0, 0, 10),
+			expected:    -1.0,
+			isNaN:       false,
+		},
+		"negative slope top left to bottom right": {
+			lineSegment: New(0, 10, 10, 0),
+			expected:    -1.0,
 			isNaN:       false,
 		},
 		"zero slope (horizontal)": {
@@ -856,7 +866,6 @@ func TestLineSegment_Slope(t *testing.T) {
 		},
 		"undefined slope (vertical)": {
 			lineSegment: NewFromPoints(point.New(2, 1), point.New(2, 5)),
-			expected:    0.0, // This value is irrelevant because isNaN will be true
 			isNaN:       true,
 		},
 	}

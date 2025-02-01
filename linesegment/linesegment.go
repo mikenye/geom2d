@@ -246,7 +246,10 @@ func (l LineSegment[T]) ContainsPoint(p point.Point[T], opts ...options.Geometry
 	}
 
 	// Check distance to the segment
-	return numeric.SnapToEpsilon(l.DistanceToPoint(p, opts...), geoOpts.Epsilon) == 0
+	d := numeric.SnapToEpsilon(l.DistanceToPoint(p, opts...), geoOpts.Epsilon)
+
+	// if d == 0 then point is on the segment
+	return d == 0
 }
 
 // DistanceToLineSegment calculates the minimum distance between two line segments, l and other.

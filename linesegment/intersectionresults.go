@@ -118,9 +118,13 @@ func (R *intersectionResults[T]) addOverlappingSegment(result IntersectionResult
 }
 
 func (R *intersectionResults[T]) addPoint(result IntersectionResult[T], opts ...options.GeometryOptionsFunc) {
+	fmt.Printf("\n\nENTERING addPoint\n")
+	defer fmt.Printf("\n\nEXITING addPoint\n")
 	if result.IntersectionType != IntersectionPoint {
 		panic(fmt.Errorf("IntersectionResult is not type IntersectionPoint"))
 	}
+
+	geoOpts := options.ApplyGeometryOptions(options.GeometryOptions{Epsilon: 0}, opts...)
 
 	// check for existing points
 	index := slices.IndexFunc(R.results, func(i IntersectionResult[T]) bool {
@@ -130,10 +134,13 @@ func (R *intersectionResults[T]) addPoint(result IntersectionResult[T], opts ...
 		}
 
 		// skip if existing intersection point does not match new point
+		fmt.Printf("checking %s == %s (epsilon: %f): ", i.IntersectionPoint.String(), result.IntersectionPoint.String(), geoOpts.Epsilon)
 		if !i.IntersectionPoint.Eq(result.IntersectionPoint, opts...) {
+			fmt.Printf("false")
 			return false
 		}
 
+		fmt.Printf("true")
 		return true
 	})
 

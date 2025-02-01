@@ -5,6 +5,13 @@ import (
 	"testing"
 )
 
+func TestFloatEquals(t *testing.T) {
+	a := 2.759493670886076
+	b := 2.75949367088608
+	o := FloatEquals(a, b, 1e-14)
+	assert.True(t, o)
+}
+
 func TestRoundToEpsilon(t *testing.T) {
 	tests := map[string]struct {
 		value    float64

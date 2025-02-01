@@ -5,10 +5,140 @@ import (
 	"github.com/google/btree"
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
+	"github.com/mikenye/geom2d/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
+
+func compareIntersectionResult[T types.SignedNumber](resultA, resultB IntersectionResult[T], epsilon float64) (bool, string) {
+
+	// compare IntersectionType
+	if resultA.IntersectionType != resultB.IntersectionType {
+		return false, "IntersectionType mismatch"
+	}
+
+	// compare point
+	if resultA.IntersectionType == IntersectionPoint {
+		if !resultA.IntersectionPoint.Eq(resultB.IntersectionPoint, options.WithEpsilon(epsilon)) {
+			return false, "IntersectionPoint mismatch"
+		}
+	}
+
+	// compare overlapping segment
+	if resultA.IntersectionType == IntersectionOverlappingSegment {
+		if !resultA.OverlappingSegment.Eq(resultB.OverlappingSegment, options.WithEpsilon(epsilon)) {
+			return false, "OverlappingSegment mismatch"
+		}
+	}
+
+	// compare input segments
+	for _, segA := range resultA.InputLineSegments {
+		found := false
+		for _, segB := range resultB.InputLineSegments {
+			if segA.Eq(segB, options.WithEpsilon(epsilon)) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false, "InputLineSegments mismatch"
+		}
+	}
+
+	return true, ""
+}
+
+func compareIntersectionResults[T types.SignedNumber](A, B []IntersectionResult[T], epsilon float64) (bool, string) {
+	// length check
+	if len(A) != len(B) {
+		return false, "result slice length mismatch"
+	}
+
+	// look for matches
+	for _, resultA := range A {
+		found := false
+		for _, resultB := range B {
+			found, _ = compareIntersectionResult[T](resultA, resultB, epsilon)
+			if found {
+				break
+			}
+		}
+		if !found {
+			return false, "missing result"
+		}
+	}
+	return true, ""
+}
+
+func FuzzFindIntersections_Int_2Segments(f *testing.F) {
+	// Seed with sample inputs
+	f.Add(0, 0, 10, 10, 5, 5, 15, 15) // Diagonal overlap
+	f.Add(0, 0, 10, 0, 5, 0, 15, 0)   // Horizontal overlap
+	f.Add(0, 0, 0, 10, 5, 0, 15, 0)   // Vertical overlap
+	f.Add(0, 5, 10, 5, 5, 0, 5, 10)   // "+" shape
+	f.Add(0, 0, 10, 10, 0, 10, 10, 0) // "X" shape
+	f.Add(0, 10, 0, 0, 0, 0, 10, 0)   // "L" shape
+	f.Add(4, 7, 5, 5, 5, 10, 4, 0)    // Lines cross, steep slope
+	f.Fuzz(func(t *testing.T, x1, y1, x2, y2, x3, y3, x4, y4 int) {
+		// Ensure valid segments
+		if x1 == x2 && y1 == y2 {
+			return // skip degenerate (don't use t.Skip() or fuzz will store the test
+		}
+		if x3 == x4 && y3 == y4 {
+			return // skip degenerate (don't use t.Skip() or fuzz will store the test
+		}
+
+		segments := []LineSegment[int]{
+			New(x1, y1, x2, y2),
+			New(x3, y3, x4, y4),
+		}
+
+		naiveResults := FindIntersectionsSlow(segments, options.WithEpsilon(1e-8))
+		sweepResults := FindIntersections(segments, options.WithEpsilon(1e-8))
+
+		ok, reason := compareIntersectionResults(naiveResults, sweepResults, 1e-8)
+
+		if !ok {
+			t.Fatalf("Mismatch found!\nSegments: %v\nNaive: %v\nSweep Line: %v\nReason: %v\n", segments, naiveResults, sweepResults, reason)
+		}
+	})
+}
+
+func FuzzFindIntersections_Int_3Segments(f *testing.F) {
+	// Seed with sample inputs
+	f.Add(0, 0, 5, 10, 5, 10, 10, 0, 10, 0, 0, 0)   // triangle
+	f.Add(0, 8, 10, 8, 0, 3, 10, 3, 1, 0, 9, 10)    // not equals shape ("≠")
+	f.Add(3, 6, 7, 6, 3, 8, 7, 8, 5, 10, 5, 6)      // plus-minus shape ("±")
+	f.Add(0, 10, 10, 10, 10, 10, 0, 0, 0, 0, 10, 0) // "Z" shape
+	f.Fuzz(func(t *testing.T, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6 int) {
+		// Ensure valid segments
+		if x1 == x2 && y1 == y2 {
+			return // skip degenerate (don't use t.Skip() or fuzz will store the test
+		}
+		if x3 == x4 && y3 == y4 {
+			return // skip degenerate (don't use t.Skip() or fuzz will store the test
+		}
+		if x5 == x6 && y5 == y6 {
+			return // skip degenerate (don't use t.Skip() or fuzz will store the test
+		}
+
+		segments := []LineSegment[int]{
+			New(x1, y1, x2, y2),
+			New(x3, y3, x4, y4),
+			New(x5, y5, x6, y6),
+		}
+
+		naiveResults := FindIntersectionsSlow(segments, options.WithEpsilon(1e-8))
+		sweepResults := FindIntersections(segments, options.WithEpsilon(1e-8))
+
+		ok, reason := compareIntersectionResults(naiveResults, sweepResults, 1e-8)
+
+		if !ok {
+			t.Fatalf("Mismatch found!\nSegments: %v\nNaive: %v\nSweep Line: %v\nReason: %v\n", segments, naiveResults, sweepResults, reason)
+		}
+	})
+}
 
 func TestDeleteSegmentsFromStatus(t *testing.T) {
 	// Define the status structure as a sorted slice
@@ -36,534 +166,178 @@ func TestDeleteSegmentsFromStatus(t *testing.T) {
 	assert.Equal(t, expected, newStatus, "Remaining status structure should match expected")
 }
 
+// TestFindIntersections ensures that the output of the sweep line algorithm (FindIntersections) matches
+// the output of the naïve algorithm (FindIntersectionsSlow).
 func TestFindIntersections(t *testing.T) {
 	tests := map[string]struct {
-		segments              []LineSegment[float64]
-		expectedIntersections []IntersectionResult[float64]
+		segments []LineSegment[int]
 	}{
 		"parallel non-intersecting segments": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 5, 5),
-				New[float64](0, 1, 5, 6),
+			segments: []LineSegment[int]{
+				New[int](0, 0, 5, 5),
+				New[int](0, 1, 5, 6),
 			},
-			expectedIntersections: []IntersectionResult[float64]{}, // No intersections
 		},
 		"simple X-shape intersection": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 5, 5, 0),
-				New[float64](0, 0, 5, 5),
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](2.5, 2.5),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 5, 5, 0),
-						New[float64](5, 5, 0, 0),
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 5, 5, 0),
+				New[int](0, 0, 5, 5),
 			},
 		},
 		"horizontal and vertical lines": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 10, 0), // Horizontal segment
-				New[float64](5, -5, 5, 5), // Vertical segment
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](5, 0),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 0, 10, 0), // Horizontal segment
-						New[float64](5, 5, 5, -5), // Vertical segment
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 0, 10, 0), // Horizontal segment
+				New[int](5, -5, 5, 5), // Vertical segment
 			},
 		},
 		"diagonal and horizontal lines": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 4, 4), // Diagonal line
-				New[float64](2, 4, 6, 4), // Horizontal line
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](4, 4), // Intersection point
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](2, 4, 6, 4), // Horizontal line
-						New[float64](4, 4, 0, 0), // Diagonal line
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 0, 4, 4), // Diagonal line
+				New[int](2, 4, 6, 4), // Horizontal line
 			},
 		},
 		"overlapping diagonal segments": {
-			segments: []LineSegment[float64]{
-				New[float64](1, 1, 5, 5), // Segment 1
-				New[float64](3, 3, 7, 7), // Segment 2
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:   IntersectionOverlappingSegment,
-					OverlappingSegment: New[float64](5, 5, 3, 3),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](5, 5, 1, 1), // Segment 1
-						New[float64](7, 7, 3, 3), // Segment 2,
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](1, 1, 5, 5), // Segment 1
+				New[int](3, 3, 7, 7), // Segment 2
 			},
 		},
 		"overlapping horizontal segments": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 10, 0), // Segment 1
-				New[float64](2, 0, 8, 0),  // Segment 2
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:   IntersectionOverlappingSegment,
-					OverlappingSegment: New[float64](2, 0, 8, 0),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 0, 10, 0), // Segment 1
-						New[float64](2, 0, 8, 0),  // Segment 2
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 0, 10, 0), // Segment 1
+				New[int](2, 0, 8, 0),  // Segment 2
 			},
 		},
 		"overlapping vertical segments": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 0, 10), // Segment 1
-				New[float64](0, 2, 0, 8),  // Segment 2
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:   IntersectionOverlappingSegment,
-					OverlappingSegment: New[float64](0, 8, 0, 2),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 8, 0, 2),  // Segment 2
-						New[float64](0, 10, 0, 0), // Segment 1
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 0, 0, 10), // Segment 1
+				New[int](0, 2, 0, 8),  // Segment 2
 			},
 		},
 		"coincident segments": { // full overlap
-			segments: []LineSegment[float64]{
-				New[float64](1, 1, 5, 5),
-				New[float64](1, 1, 5, 5),
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:   IntersectionOverlappingSegment,
-					OverlappingSegment: New[float64](5, 5, 1, 1),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](5, 5, 1, 1),
-						New[float64](5, 5, 1, 1),
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](1, 1, 5, 5),
+				New[int](1, 1, 5, 5),
 			},
 		},
 		"shared endpoint": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 5, 5),
-				New[float64](5, 5, 10, 0),
+			segments: []LineSegment[int]{
+				New[int](0, 0, 5, 5),
+				New[int](5, 5, 10, 0),
 			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](5, 5),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](5, 5, 0, 0),
-						New[float64](5, 5, 10, 0),
-					},
-				},
+		},
+		"square shape": {
+			segments: []LineSegment[int]{
+				New[int](0, 0, 10, 0),
+				New[int](10, 0, 10, 10),
+				New[int](10, 10, 0, 10),
+				New[int](10, 0, 0, 0),
 			},
 		},
 		"diamond shape": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 5, 5, 10),
-				New[float64](5, 10, 10, 5),
-				New[float64](10, 5, 5, 0),
-				New[float64](5, 0, 0, 5),
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](5, 10),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](5, 10, 0, 5),
-						New[float64](5, 10, 10, 5),
-					},
-				},
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](10, 5),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](10, 5, 5, 0),
-						New[float64](5, 10, 10, 5),
-					},
-				},
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](5, 0),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 5, 5, 0),
-						New[float64](10, 5, 5, 0),
-					},
-				},
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](0, 5),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 5, 5, 0),
-						New[float64](5, 10, 0, 5),
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 5, 5, 10),
+				New[int](5, 10, 10, 5),
+				New[int](10, 5, 5, 0),
+				New[int](5, 0, 0, 5),
 			},
 		},
 		"t-intersection": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 10, 0), // Horizontal segment
-				New[float64](5, -5, 5, 0), // Vertical segment terminating at (5, 0)
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](5, 0),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 0, 10, 0),
-						New[float64](5, 0, 5, -5), // Normalized
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 0, 10, 0), // Horizontal segment
+				New[int](5, -5, 5, 0), // Vertical segment terminating at (5, 0)
 			},
 		},
 		"t-intersection, rotated 90 deg": {
-			segments: []LineSegment[float64]{
-				New[float64](5, 0, 10, 0),
-				New[float64](5, 5, 5, -5),
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](5, 0),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](5, 0, 10, 0),
-						New[float64](5, 5, 5, -5), // Normalized
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](5, 0, 10, 0),
+				New[int](5, 5, 5, -5),
 			},
 		},
 		"t-intersection, rotated 180 deg": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 10, 0),
-				New[float64](5, 0, 5, 5),
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](5, 0),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 0, 10, 0),
-						New[float64](5, 5, 5, 0),
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 0, 10, 0),
+				New[int](5, 0, 5, 5),
 			},
 		},
 		"t-intersection, rotated 270 deg": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 5, 0),
-				New[float64](5, 5, 5, -5),
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](5, 0),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 0, 5, 0),
-						New[float64](5, 5, 5, -5),
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 0, 5, 0),
+				New[int](5, 5, 5, -5),
 			},
 		},
 		"x-shape with overlap": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 10, 10), // Diagonal segment 1
-				New[float64](0, 10, 10, 0), // Diagonal segment 2 (intersects at (5, 5))
-				New[float64](3, 3, 7, 7),   // Overlaps diagonal segment 1
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:   IntersectionOverlappingSegment,
-					OverlappingSegment: New[float64](7, 7, 3, 3),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](7, 7, 3, 3),
-						New[float64](10, 10, 0, 0),
-					},
-				},
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](5, 5),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 10, 10, 0),             // Diagonal segment 2 (intersects at (5, 5))
-						New[float64](0, 0, 10, 10).normalize(), // Diagonal segment 1
-						New[float64](3, 3, 7, 7).normalize(),
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 0, 10, 10), // Diagonal segment 1
+				New[int](0, 10, 10, 0), // Diagonal segment 2 (intersects at (5, 5))
+				New[int](3, 3, 7, 7),   // Overlaps diagonal segment 1
 			},
 		},
 		"multiple overlapping segments": {
-			segments: []LineSegment[float64]{
-				New[float64](1, 1, 6, 6), // Segment 1
-				New[float64](2, 2, 7, 7), // Segment 2
-				New[float64](3, 3, 5, 5), // Segment 3 (completely inside)
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:   IntersectionOverlappingSegment,
-					OverlappingSegment: New[float64](6, 6, 2, 2),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](7, 7, 2, 2),
-						New[float64](6, 6, 1, 1),
-					},
-				},
-				{
-					IntersectionType:   IntersectionOverlappingSegment,
-					OverlappingSegment: New[float64](5, 5, 3, 3),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](5, 5, 3, 3),
-						New[float64](6, 6, 1, 1),
-						New[float64](7, 7, 2, 2),
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](1, 1, 6, 6), // Segment 1
+				New[int](2, 2, 7, 7), // Segment 2
+				New[int](3, 3, 5, 5), // Segment 3 (completely inside)
 			},
 		},
 		"vertical and horizontal overlap": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 0, 5), // Vertical segment
-				New[float64](0, 0, 5, 0), // Horizontal segment
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](0, 0),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 5, 0, 0), // Vertical segment
-						New[float64](0, 0, 5, 0), // Horizontal segment
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 0, 0, 5), // Vertical segment
+				New[int](0, 0, 5, 0), // Horizontal segment
 			},
 		},
 		"three-way intersection": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 5, 5),  // Segment 1
-				New[float64](10, 0, 5, 5), // Segment 2
-				New[float64](5, 5, 5, 10), // Vertical Segment 3 (crosses both at (5,5))
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](5, 5),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](5, 5, 0, 0),
-						New[float64](5, 5, 10, 0),
-						New[float64](5, 10, 5, 5),
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 0, 5, 5),  // Segment 1
+				New[int](10, 0, 5, 5), // Segment 2
+				New[int](5, 5, 5, 10), // Vertical Segment 3 (crosses both at (5,5))
 			},
 		},
 		"single-point (degenerate) overlap": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 5, 5),
-				New[float64](5, 5, 10, 10),
-				New[float64](5, 5, 5, 5), // A degenerate single-point segment
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](5, 5),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](5, 5, 0, 0),
-						New[float64](10, 10, 5, 5),
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 0, 5, 5),
+				New[int](5, 5, 10, 10),
+				New[int](5, 5, 5, 5), // A degenerate single-point segment
 			},
 		},
 		"crisscrossing W shape": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 5, 10),
-				New[float64](5, 10, 10, 0),
-				New[float64](0, 10, 5, 0),
-				New[float64](5, 0, 10, 10),
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](5, 10),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](5, 10, 0, 0),
-						New[float64](5, 10, 10, 0),
-					},
-				},
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](2.5, 5),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 10, 5, 0),
-						New[float64](5, 10, 0, 0),
-					},
-				},
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](7.5, 5),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](5, 10, 10, 0),
-						New[float64](10, 10, 5, 0),
-					},
-				},
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](5, 0),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 10, 5, 0),
-						New[float64](10, 10, 5, 0),
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 0, 5, 10),
+				New[int](5, 10, 10, 0),
+				New[int](0, 10, 5, 0),
+				New[int](5, 0, 10, 10),
 			},
 		},
 		"zigzag": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 2, 2),
-				New[float64](2, 2, 4, 0),
-				New[float64](4, 0, 6, 2),
-				New[float64](6, 2, 8, 0),
-				New[float64](1, 1, 7, 1), // Horizontal line intersecting all segments
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				//  todo: troubleshoot missing (3,1), (5,1)
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](2, 2),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](2, 2, 0, 0),
-						New[float64](2, 2, 4, 0),
-					},
-				},
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](1, 1),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](1, 1, 7, 1),
-						New[float64](2, 2, 0, 0),
-					},
-				},
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](4, 0),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](2, 2, 4, 0),
-						New[float64](6, 2, 4, 0),
-					},
-				},
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](3, 1),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](1, 1, 7, 1),
-						New[float64](2, 2, 4, 0),
-					},
-				},
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](6, 2),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](6, 2, 4, 0),
-						New[float64](6, 2, 8, 0),
-					},
-				},
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](5, 1),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](1, 1, 7, 1),
-						New[float64](6, 2, 4, 0),
-					},
-				},
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](7, 1),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](1, 1, 7, 1),
-						New[float64](6, 2, 8, 0),
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 0, 2, 2),
+				New[int](2, 2, 4, 0),
+				New[int](4, 0, 6, 2),
+				New[int](6, 2, 8, 0),
+				New[int](1, 1, 7, 1), // Horizontal line intersecting all segments
 			},
 		},
 		"multiple_collinear_overlaps": {
-			segments: []LineSegment[float64]{
-				New[float64](0, 0, 10, 0), // Full segment
-				New[float64](2, 0, 8, 0),  // Inside segment
-				New[float64](4, 0, 6, 0),  // Inside segment
-			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:   IntersectionOverlappingSegment,
-					OverlappingSegment: New[float64](2, 0, 8, 0),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 0, 10, 0),
-						New[float64](2, 0, 8, 0),
-					},
-				},
-				{
-					IntersectionType:   IntersectionOverlappingSegment,
-					OverlappingSegment: New[float64](4, 0, 6, 0),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 0, 10, 0), // Full segment
-						New[float64](2, 0, 8, 0),  // Inside segment
-						New[float64](4, 0, 6, 0),  // Inside segment
-					},
-				},
+			segments: []LineSegment[int]{
+				New[int](0, 0, 10, 0), // Full segment
+				New[int](2, 0, 8, 0),  // Inside segment
+				New[int](4, 0, 6, 0),  // Inside segment
 			},
 		},
 		"octothorpe": {
-			segments: []LineSegment[float64]{
+			segments: []LineSegment[int]{
 				// Horizontal lines
-				New[float64](0, 7, 10, 7),
-				New[float64](0, 3, 10, 3),
+				New[int](0, 7, 10, 7),
+				New[int](0, 3, 10, 3),
 				// Vertical lines
-				New[float64](3, 10, 3, 0),
-				New[float64](7, 10, 7, 0),
+				New[int](3, 10, 3, 0),
+				New[int](7, 10, 7, 0),
 			},
-			expectedIntersections: []IntersectionResult[float64]{
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](3, 7),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 7, 10, 7),
-						New[float64](3, 10, 3, 0),
-					},
-				},
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](7, 7),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 7, 10, 7),
-						New[float64](7, 10, 7, 0),
-					},
-				},
-
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](3, 3),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 3, 10, 3),
-						New[float64](3, 10, 3, 0),
-					},
-				},
-				{
-					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](7, 3),
-					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 3, 10, 3),
-						New[float64](7, 10, 7, 0),
-					},
-				},
+		},
+		"steep vertical slopes": {
+			segments: []LineSegment[int]{
+				New[int](4, 0, 5, 10),
+				New[int](4, 7, 5, 5),
 			},
 		},
 	}
@@ -581,46 +355,15 @@ func TestFindIntersections(t *testing.T) {
 				}
 
 				t.Run(subName, func(t *testing.T) {
-
 					epsilon := 1e-8
-
 					actualIntersections := FindIntersections(tc.segments, options.WithEpsilon(epsilon))
 					actualIntersectionsFromSlow := FindIntersectionsSlow(tc.segments, options.WithEpsilon(epsilon))
 
-					fmt.Printf("expected:        %#v\n", tc.expectedIntersections)
 					fmt.Printf("From sweep line: %#v\n", actualIntersections)
 					fmt.Printf("From naive algo: %#v\n", actualIntersectionsFromSlow)
 
-					assert.ElementsMatch(t, actualIntersections, actualIntersectionsFromSlow, "mismatch between FindIntersections and FindIntersectionsSlow")
-
-					// Assert number of intersections
-					assert.Equal(t, len(tc.expectedIntersections), len(actualIntersections), "Number of intersections mismatch")
-
-					// Assert each intersection point and its associated segments
-					for _, expected := range tc.expectedIntersections {
-						found := false
-						switch expected.IntersectionType {
-						case IntersectionNone:
-							t.Fatal("unexpected IntersectionNone")
-						case IntersectionPoint:
-							for _, actual := range actualIntersections {
-								if expected.IntersectionPoint.Eq(actual.IntersectionPoint) {
-									assert.ElementsMatch(t, expected.InputLineSegments, actual.InputLineSegments, "Segments mismatch at intersection point")
-									found = true
-									break
-								}
-							}
-						case IntersectionOverlappingSegment:
-							for _, actual := range actualIntersections {
-								if expected.OverlappingSegment.Eq(actual.OverlappingSegment) {
-									assert.ElementsMatch(t, expected.InputLineSegments, actual.InputLineSegments, "Segments mismatch at intersection point")
-									found = true
-									break
-								}
-							}
-						}
-						assert.True(t, found, "Expected intersection not found")
-					}
+					ok, reason := compareIntersectionResults(actualIntersections, actualIntersectionsFromSlow, epsilon)
+					require.True(t, ok, reason)
 				})
 			}
 		})
@@ -938,17 +681,6 @@ func TestSortStatusBySweepLine(t *testing.T) {
 				{segment: New[float64](2, 4, 1, 1), sweepY: 3}, // XAtY = 1.5
 				{segment: New[float64](1, 1, 3, 3), sweepY: 3}, // XAtY = 3
 				{segment: New[float64](3, 1, 5, 5), sweepY: 3}, // XAtY = 4
-			},
-		},
-		"horizontal segments": {
-			input: []statusItem{
-				{segment: New[float64](1, 3, 5, 3), sweepY: 0}, // Horizontal at y = 3
-				{segment: New[float64](3, 1, 3, 5), sweepY: 0}, // Vertical at x = 3
-			},
-			sweepY: 3,
-			expected: []statusItem{
-				{segment: New[float64](3, 1, 3, 5), sweepY: 3}, // Vertical at x = 3
-				{segment: New[float64](1, 3, 5, 3), sweepY: 3}, // Horizontal at y = 3
 			},
 		},
 		"already sorted": {

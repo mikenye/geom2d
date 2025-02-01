@@ -317,10 +317,11 @@ func (p Point[T]) DotProduct(q Point[T]) T {
 func (p Point[T]) Eq(q Point[T], opts ...options.GeometryOptionsFunc) bool {
 	// Apply options with defaults
 	geoOpts := options.ApplyGeometryOptions(options.GeometryOptions{Epsilon: 0}, opts...)
-
+	pf := p.AsFloat64()
+	qf := q.AsFloat64()
 	if geoOpts.Epsilon > 0 {
-		return math.Abs(float64(p.x)-float64(q.x)) < geoOpts.Epsilon &&
-			math.Abs(float64(p.y)-float64(q.y)) < geoOpts.Epsilon
+		return numeric.FloatEquals(pf.x, qf.x, geoOpts.Epsilon) &&
+			numeric.FloatEquals(pf.y, qf.y, geoOpts.Epsilon)
 	}
 
 	// Exact equality for default behavior
