@@ -1,3 +1,39 @@
+// Package point defines the foundational geometric primitive in the geom2d library, the Point type.
+// All other geometric types—such as line segments, rectangles, polygons, etc. are built upon this type.
+//
+// # Overview
+//
+// The [Point] type represents a two-dimensional point with generic numeric coordinates, constrained to signed number
+// types via [types.SignedNumber]. It provides fundamental geometric operations such as translation, distance measurement,
+// vector arithmetic, and angle calculations. Points are essential building blocks in computational geometry, enabling
+// higher-level constructs such as line segments and polygons.
+//
+// # Key Features
+//
+// Creation & Type Conversion
+//   - Points can be created using [New] and [NewFromImagePoint].
+//   - Conversion methods (AsFloat32, AsFloat64, AsInt, AsIntRounded) allow working with different numeric types.
+//
+// Vector Operations
+//   - Basic operations like Translate and Negate enable geometric transformations.
+//   - Scale allows uniform scaling around a reference point.
+//
+// Distance & Angle Measurements
+//   - DistanceToPoint and DistanceSquaredToPoint provide Euclidean distance calculations.
+//   - AngleBetween and CosineOfAngleBetween help determine angular relationships between points.
+//   - CrossProduct and DotProduct support vector orientation and projection calculations.
+//
+// Equality & Relationships
+//   - Eq checks exact or approximate equality (with epsilon-based tolerance).
+//   - RelationshipToPoint determines if two points are equal or disjoint.
+//
+// # Notes
+//
+//   - Floating-point operations may introduce precision errors. Use [options.WithEpsilon] where supported when working
+//     with approximate comparisons.
+//   - This package is optimized for computational geometry applications, balancing precision, performance, and ease of use.
+//
+// The [Point] type serves as the core building block for all geometric structures in geom2d.
 package point
 
 import (
@@ -53,11 +89,11 @@ func NewFromImagePoint(q image.Point) Point[int] {
 	}
 }
 
-// AngleBetween calculates the angle in radians between two points, `a` and `b`,
-// relative to the current [Point] `origin`.
+// AngleBetween calculates the angle in radians between two points, a and b,
+// relative to the current [Point] origin.
 //
-// The angle is measured counterclockwise from the line segment connecting `origin` to `a`
-// to the line segment connecting `origin` to `b`.
+// The angle is measured counterclockwise from the line segment connecting origin to a
+// to the line segment connecting origin to b.
 //
 // Parameters:
 //   - a ([Point][T]): The first [Point] forming one side of the angle.
@@ -66,14 +102,13 @@ func NewFromImagePoint(q image.Point) Point[int] {
 //     for numerical stability.
 //
 // Returns:
-//   - float64: The angle in radians between the two points relative to the current [Point] `origin`.
-//     If either `a` or `b` is identical to `origin`, or if the vectors `origin->a` or `origin->b` have zero
-//     magnitude, the function returns `math.NaN()`.
+//   - float64: The angle in radians between the two points relative to the current [Point] origin.
+//     If either a or b is identical to origin, or if the vectors origin->a or origin->b have zero
+//     magnitude, the function returns math.NaN().
 //
 // Note:
-//   - This function internally calls [CosineOfAngleBetween] and applies `math.Acos` to
-//     compute the angle. As such, its performance depends on the computational cost
-//     of the cosine and arccosine operations.
+//   - This function internally calls CosineOfAngleBetween and applies math.Acos to
+//     compute the angle.
 func (p Point[T]) AngleBetween(a, b Point[T], opts ...options.GeometryOptionsFunc) (radians float64) {
 	geoOpts := options.ApplyGeometryOptions(options.GeometryOptions{Epsilon: 0}, opts...)
 	return numeric.SnapToEpsilon(math.Acos(p.CosineOfAngleBetween(a, b, opts...)), geoOpts.Epsilon)
@@ -129,16 +164,21 @@ func (p Point[T]) AsIntRounded() Point[int] {
 	}
 }
 
-// todo: doc comments, unit test, example func
+// Coordinates returns the X and Y coordinates of the Point as separate values.
+// This function allows convenient access to the individual components of a Point.
+//
+// Returns:
+//   - x (T): The X-coordinate of the point.
+//   - y (T): The Y-coordinate of the point.
 func (p Point[T]) Coordinates() (x, y T) {
 	return p.x, p.y
 }
 
-// CosineOfAngleBetween calculates the cosine of the angle between two points, `a` and `b`,
-// relative to the origin [Point] `origin`.
+// CosineOfAngleBetween calculates the cosine of the angle between two points, a and b,
+// relative to the origin [Point] origin.
 //
 // This function directly computes the cosine of the angle using the dot product and vector magnitudes, avoiding the
-// computational overhead of [math.Acos]. This is useful in scenarios where the cosine value alone is sufficient.
+// computational overhead of math.Acos. This is useful in scenarios where the cosine value alone is sufficient.
 //
 // Parameters:
 //   - a ([Point][T]): The first [Point] forming one side of the angle.
@@ -147,11 +187,11 @@ func (p Point[T]) Coordinates() (x, y T) {
 //     to handle numerical imprecision.
 //
 // Returns:
-//   - float64: The cosine of the angle between points `a` and `b` relative to the origin `origin`.
-//     Returns `math.NaN()` if either vector has zero length.
+//   - float64: The cosine of the angle between points a and b relative to the origin.
+//     Returns math.NaN() if either vector has zero length.
 //
 // Behavior:
-//   - If either vector `OA` (from `origin` to `a`) or `OB` (from `origin` to `b`) has zero length, the function returns `math.NaN()`.
+//   - If either vector OA (from origin to a) or OB (from origin to b) has zero length, the function returns math.NaN().
 //   - The function applies an optional epsilon for numerical stability when calculating vector magnitudes.
 //
 // Why Use the Cosine of the Angle?
@@ -211,19 +251,20 @@ func (p Point[T]) CosineOfAngleBetween(a, b Point[T], opts ...options.GeometryOp
 	return numeric.SnapToEpsilon(float64(OAdotOB)/(magnitudeOA*magnitudeOB), geoOpts.Epsilon)
 }
 
-// CrossProduct calculates the cross product of the vector from the origin to Point origin and the vector from the origin
-// to Point q. The result is useful in determining the relative orientation of two vectors:
+// CrossProduct calculates the 2D cross product of two vectors (origin → a) and (origin → b).
+// This function is useful in computational geometry for determining relative orientation:
 //   - A positive result indicates a counterclockwise turn (left turn),
 //   - A negative result indicates a clockwise turn (right turn),
 //   - A result of zero indicates that the points are collinear.
 //
 // Parameters:
-//   - q (Point[T]): The Point with which to compute the cross product relative to the calling Point.
+//   - a (Point[T]): The first vector endpoint (relative to the calling Point).
+//   - b (Point[T]): The second vector endpoint (relative to the calling Point).
 //
 // Returns:
-//   - T: The cross product of the vectors from the origin to origin and q, indicating their relative orientation.
-func (p Point[T]) CrossProduct(q Point[T]) T {
-	return (p.x * q.y) - (p.y * q.x)
+//   - T: The signed cross product value.
+func (p Point[T]) CrossProduct(a, b Point[T]) T {
+	return (a.x-p.x)*(b.y-p.y) - (a.y-p.y)*(b.x-p.x)
 }
 
 // DistanceSquaredToPoint calculates the squared Euclidean distance between Point origin and another Point q.

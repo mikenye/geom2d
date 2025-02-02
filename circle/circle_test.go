@@ -481,15 +481,15 @@ func TestCircle_String(t *testing.T) {
 	}{
 		"positive center and radius": {
 			circle:   New[float64](3.5, 4.5, 5.5),
-			expected: "(3.5,4.5,5.5)",
+			expected: "(3.5,4.5; r=5.5)",
 		},
 		"zero center and radius": {
 			circle:   New[float64](0, 0, 0),
-			expected: "(0,0,0)",
+			expected: "(0,0; r=0)",
 		},
 		"negative center and radius": {
 			circle:   New[float64](-3.5, -4.5, -5.5),
-			expected: "(-3.5,-4.5,-5.5)",
+			expected: "(-3.5,-4.5; r=-5.5)",
 		},
 	}
 

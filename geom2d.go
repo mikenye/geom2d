@@ -1,7 +1,8 @@
 // Package geom2d provides a comprehensive set of tools for computational geometry in two dimensions.
 //
-// The geom2d package is built around core types like [Point], [LineSegment], [Circle], [Rectangle], and [PolyTree],
+// The geom2d package is built around core types like point.Point, linesegment.LineSegment, circle.Circle, rectangle.Rectangle,
 // supporting a wide range of operations including transformations, boolean geometry, and spatial relationships.
+// TODO: add polygon core type when implemented.
 //
 // Designed for both performance and clarity, geom2d leverages Go generics to handle various numeric types
 // and provides intuitive APIs for working with 2D geometric data.
@@ -16,12 +17,12 @@
 //
 // The library includes support for the following 2D geometric types:
 //
-//   - [Point]: Represents a single coordinate in 2D space.
-//   - [LineSegment]: Represents a straight line segment defined by two endpoints.
-//   - [Rectangle]: Represents an axis-aligned rectangle, defined by its corners.
-//   - [Circle]: Represents a circle defined by a center point and radius.
-//   - [PolyTree]: Represents a hierarchical structure of polygons, supporting sibling polygons,
-//     nested holes and nested islands.
+//   - point.Point: Represents a single coordinate in 2D space.
+//   - linesegment.LineSegment: Represents a straight line segment defined by two endpoints.
+//   - rectangle.Rectangle: Represents an axis-aligned rectangle, defined by its corners.
+//   - circle.Circle: Represents a circle defined by a center point and radius.
+//
+// TODO: add polygon core type when implemented.
 //
 // # Support for Generics
 //
@@ -40,10 +41,14 @@
 // This library provides methods to compute relationships between geometric types using a standardized set of relationships:
 // [RelationshipDisjoint], [RelationshipIntersection], [RelationshipContainedBy], [RelationshipContains], and [RelationshipEqual].
 //
+// TODO: requires re-implementing after implementation of polygone core types
+//
 // # Acknowledgments
 //
 // geom2d builds upon the work of others and is grateful for the foundations they have laid. Specifically:
 //
+//   - Mark de Berg, Otfried Cheong, Marc van Kreveld, and Mark Overmars: Their book [Computational Geometry: Algorithms and Applications]
+//     has been an invaluable resource, providing rigorous explanations and guiding the implementation of fundamental geometric algorithms.
 //   - Martínez et al.: Their paper on Boolean operations on polygons has been instrumental in the implementation of
 //     the Martínez algorithm in this library. See [A simple algorithm for Boolean operations on polygons].
 //   - Tom Wright: The inspiration for starting this library came from Tom Wright’s repository
@@ -56,12 +61,9 @@
 //   - This project is a collaborative effort, with assistance from [OpenAI's Assistant] for brainstorming, debugging,
 //     and refining implementations.
 //
+// [Computational Geometry: Algorithms and Applications]: https://www.springer.com/gp/book/9783540779735
 // [A simple algorithm for Boolean operations on polygons]: https://web.archive.org/web/20230514184409/https://www.sciencedirect.com/science/article/abs/pii/S0925772199000124
 // [Provably Correct Polygon Algorithms]: https://github.com/TooOldCoder/Provably-Correct-Polygon-Algorithms
 // ["Algorithm for computer control of a digital plotter." IBM Systems Journal, 1965.]: https://dl.acm.org/doi/10.1147/sj.41.025
 // [OpenAI's Assistant]: https://openai.com/
 package geom2d
-
-func init() {
-	logDebugf("debug logging enabled")
-}

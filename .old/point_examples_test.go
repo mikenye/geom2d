@@ -105,40 +105,6 @@ func ExampleRoundPointToEpsilon() {
 	// Rounded point: (1.2000, 5.7000)
 }
 
-func ExampleNewPoint() {
-	// Create a new point with integer coordinates
-	pointInt := geom2d.NewPoint[int](10, 20)
-	fmt.Printf("Integer Point: (%d, %d)\n", pointInt.X(), pointInt.Y())
-
-	// Create a new point with floating-point coordinates
-	pointFloat := geom2d.NewPoint[float64](10.5, 20.25)
-	fmt.Printf("Floating-Point Point: (%.2f, %.2f)\n", pointFloat.X(), pointFloat.Y())
-
-	// Create a new point with type inference.
-	// As x and y are given as integer values, pointInferred will be of type Point[int].
-	pointInferred := geom2d.NewPoint(10, 20)
-	fmt.Printf("Inferred Point: (%v, %v)\n", pointInferred.X(), pointInferred.Y())
-	// Output:
-	// Integer Point: (10, 20)
-	// Floating-Point Point: (10.50, 20.25)
-	// Inferred Point: (10, 20)
-}
-
-func ExampleNewPointFromImagePoint() {
-	// Define an image.Point
-	imgPoint := image.Point{X: 10, Y: 20}
-
-	// Convert the image.Point to a geom2d.Point[int]
-	geomPoint := geom2d.NewPointFromImagePoint(imgPoint)
-
-	// Print the result
-	fmt.Printf("Image Point: %v\n", imgPoint)
-	fmt.Printf("Geometry Point: %v\n", geomPoint)
-	// Output:
-	// Image Point: (10,20)
-	// Geometry Point: Point[(10, 20)]
-}
-
 func ExampleOrientation() {
 	// Define three sets of points to test different orientations
 
@@ -215,20 +181,6 @@ func ExamplePoint_CrossProduct() {
 	// The points indicate a clockwise turn (right turn).
 }
 
-func ExamplePoint_DistanceSquaredToPoint() {
-	// Define two points
-	p := geom2d.NewPoint[int](3, 4)
-	q := geom2d.NewPoint[int](6, 8)
-
-	// Calculate the squared Euclidean distance between the points
-	distanceSquared := p.DistanceSquaredToPoint(q)
-
-	// Display the result
-	fmt.Printf("The squared distance between %v and %v is %d.\n", p, q, distanceSquared)
-	// Output:
-	// The squared distance between Point[(3, 4)] and Point[(6, 8)] is 25.
-}
-
 func ExamplePoint_DistanceToLineSegment() {
 	// Define a point
 	p := geom2d.NewPoint[float64](3, 4)
@@ -246,34 +198,6 @@ func ExamplePoint_DistanceToLineSegment() {
 	fmt.Printf("The shortest distance from %v to %v is %.2f.\n", p, lineSegment, distance)
 	// Output:
 	// The shortest distance from Point[(3, 4)] to LineSegment[(0, 0) -> (6, 0)] is 4.00.
-}
-
-func ExamplePoint_DistanceToPoint() {
-	// Define two points
-	p1 := geom2d.NewPoint[float64](3, 4)
-	p2 := geom2d.NewPoint[float64](0, 0)
-
-	// Calculate the Euclidean distance between the points
-	distance := p1.DistanceToPoint(p2, geom2d.WithEpsilon(1e-10))
-
-	// Display the result
-	fmt.Printf("The Euclidean distance between %v and %v is %.2f.\n", p1, p2, distance)
-	// Output:
-	// The Euclidean distance between Point[(3, 4)] and Point[(0, 0)] is 5.00.
-}
-
-func ExamplePoint_DotProduct() {
-	// Define two vectors as points
-	p1 := geom2d.NewPoint[float64](3, 4)
-	p2 := geom2d.NewPoint[float64](1, 2)
-
-	// Calculate the dot product of the vectors
-	dotProduct := p1.DotProduct(p2)
-
-	// Display the result
-	fmt.Printf("The dot product of vector %v and vector %v is %.2f.\n", p1, p2, dotProduct)
-	// Output:
-	// The dot product of vector Point[(3, 4)] and vector Point[(1, 2)] is 11.00.
 }
 
 func ExamplePoint_Eq() {
@@ -487,26 +411,6 @@ func ExamplePoint_RelationshipToRectangle() {
 	// RelationshipContainedBy
 	// RelationshipIntersection
 	// RelationshipDisjoint
-}
-
-func ExamplePoint_Rotate() {
-	pivot := geom2d.NewPoint(1.0, 1.0)
-	circle := geom2d.NewCircle(geom2d.NewPoint(3.0, 3.0), 5.0)
-
-	// Rotates the circle 90 degrees around (1.0, 1.0)
-	rotatedCircle := circle.Rotate(pivot, math.Pi/2, geom2d.WithEpsilon(1e-10))
-	fmt.Println(rotatedCircle)
-	// Output:
-	// Circle[center=(-1, 3), radius=5]
-}
-
-func ExamplePoint_Scale() {
-	p := geom2d.NewPoint(3, 4)
-	ref := geom2d.NewPoint(1, 1)
-	scaled := p.Scale(ref, 2)
-	fmt.Println(scaled)
-	// Output:
-	// Point[(5, 7)]
 }
 
 func ExamplePoint_String() {

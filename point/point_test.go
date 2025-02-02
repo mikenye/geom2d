@@ -224,6 +224,28 @@ func TestPoint_AsIntRounded(t *testing.T) {
 	}
 }
 
+func TestPoint_Coordinates(t *testing.T) {
+	tests := map[string]struct {
+		point Point[int]
+		wantX int
+		wantY int
+	}{
+		"origin":          {New(0, 0), 0, 0},
+		"positive values": {New(3, 4), 3, 4},
+		"negative values": {New(-5, -10), -5, -10},
+		"mixed values":    {New(-7, 9), -7, 9},
+		"large values":    {New(1000000, -999999), 1000000, -999999},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			x, y := tc.point.Coordinates()
+			assert.Equal(t, tc.wantX, x, "X coordinate mismatch")
+			assert.Equal(t, tc.wantY, y, "Y coordinate mismatch")
+		})
+	}
+}
+
 func TestPoint_CrossProduct(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -265,13 +287,13 @@ func TestPoint_CrossProduct(t *testing.T) {
 			case Point[int]:
 				q := tt.q.(Point[int])
 				expected := tt.expected.(int)
-				actual := p.CrossProduct(q)
+				actual := New[int](0, 0).CrossProduct(p, q)
 				assert.Equal(t, expected, actual)
 
 			case Point[float64]:
 				q := tt.q.(Point[float64])
 				expected := tt.expected.(float64)
-				actual := p.CrossProduct(q)
+				actual := New[float64](0, 0).CrossProduct(p, q)
 				assert.Equal(t, expected, actual)
 			}
 		})

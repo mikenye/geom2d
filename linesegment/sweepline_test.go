@@ -95,7 +95,7 @@ func FuzzFindIntersections_Int_2Segments(f *testing.F) {
 		}
 
 		naiveResults := FindIntersectionsSlow(segments, options.WithEpsilon(1e-8))
-		sweepResults := FindIntersections(segments, options.WithEpsilon(1e-8))
+		sweepResults := FindIntersectionsFast(segments, options.WithEpsilon(1e-8))
 
 		ok, reason := compareIntersectionResults(naiveResults, sweepResults, 1e-8)
 
@@ -130,7 +130,7 @@ func FuzzFindIntersections_Int_3Segments(f *testing.F) {
 		}
 
 		naiveResults := FindIntersectionsSlow(segments, options.WithEpsilon(1e-8))
-		sweepResults := FindIntersections(segments, options.WithEpsilon(1e-8))
+		sweepResults := FindIntersectionsFast(segments, options.WithEpsilon(1e-8))
 
 		ok, reason := compareIntersectionResults(naiveResults, sweepResults, 1e-8)
 
@@ -169,7 +169,7 @@ func FuzzFindIntersections_Int_4Segments(f *testing.F) {
 		}
 
 		naiveResults := FindIntersectionsSlow(segments, options.WithEpsilon(1e-8))
-		sweepResults := FindIntersections(segments, options.WithEpsilon(1e-8))
+		sweepResults := FindIntersectionsFast(segments, options.WithEpsilon(1e-8))
 
 		ok, reason := compareIntersectionResults(naiveResults, sweepResults, 1e-8)
 
@@ -205,7 +205,7 @@ func TestDeleteSegmentsFromStatus(t *testing.T) {
 	assert.Equal(t, expected, newStatus, "Remaining status structure should match expected")
 }
 
-// TestFindIntersections ensures that the output of the sweep line algorithm (FindIntersections) matches
+// TestFindIntersections ensures that the output of the sweep line algorithm (FindIntersectionsFast) matches
 // the output of the naïve algorithm (FindIntersectionsSlow).
 func TestFindIntersections(t *testing.T) {
 	tests := map[string]struct {
@@ -395,7 +395,7 @@ func TestFindIntersections(t *testing.T) {
 
 				t.Run(subName, func(t *testing.T) {
 					epsilon := 1e-8
-					actualIntersections := FindIntersections(tc.segments, options.WithEpsilon(epsilon))
+					actualIntersections := FindIntersectionsFast(tc.segments, options.WithEpsilon(epsilon))
 					actualIntersectionsFromSlow := FindIntersectionsSlow(tc.segments, options.WithEpsilon(epsilon))
 
 					fmt.Printf("From sweep line: %#v\n", actualIntersections)
@@ -433,7 +433,7 @@ func TestFindLeftmostAndRightmostSegmentAndNeighbors(t *testing.T) {
 				New[float64](2, 2, 3, 3),
 			},
 			CofP:                 nil,
-			statusItems:          []statusItem{{segment: New[float64](2, 2, 3, 3), sweepY: 3}},
+			statusItems:          []statusItem{{segment: New[float64](2, 2, 3, 3)}},
 			expectedSL:           nil,
 			expectedSR:           nil,
 			expectedSPrime:       linSegPtr(2, 2, 3, 3),
@@ -446,11 +446,11 @@ func TestFindLeftmostAndRightmostSegmentAndNeighbors(t *testing.T) {
 				New[float64](4, 4, 3, 3),
 			},
 			statusItems: []statusItem{
-				{segment: New[float64](4, 4, 3, 3), sweepY: 3}, // C(p)
-				{segment: New[float64](5, 5, 3, 3), sweepY: 3}, // Right neighbor
+				{segment: New[float64](4, 4, 3, 3)}, // C(p)
+				{segment: New[float64](5, 5, 3, 3)}, // Right neighbor
 			},
 			expectedSL:           nil,
-			expectedSR:           &statusItem{segment: New[float64](5, 5, 3, 3), sweepY: 3},
+			expectedSR:           &statusItem{segment: New[float64](5, 5, 3, 3)},
 			expectedSPrime:       linSegPtr(4, 4, 3, 3),
 			expectedSDoublePrime: linSegPtr(4, 4, 3, 3),
 		},
@@ -502,35 +502,35 @@ func TestFindNeighbors(t *testing.T) {
 	}{
 		"point with both neighbors": {
 			statusItems: []statusItem{
-				{segment: New[float64](2, 4, 1, 1), sweepY: 3}, // Left neighbor
-				{segment: New[float64](4, 6, 3, 3), sweepY: 3}, // Matching segment
-				{segment: New[float64](4, 4, 5, 2), sweepY: 3}, // Right neighbor
+				{segment: New[float64](2, 4, 1, 1)}, // Left neighbor
+				{segment: New[float64](4, 6, 3, 3)}, // Matching segment
+				{segment: New[float64](4, 4, 5, 2)}, // Right neighbor
 			},
 			point:         qItem{point: point.New[float64](3, 3)},
-			expectedLeft:  &statusItem{segment: New[float64](2, 4, 1, 1), sweepY: 3},
-			expectedRight: &statusItem{segment: New[float64](4, 4, 5, 2), sweepY: 3},
+			expectedLeft:  &statusItem{segment: New[float64](2, 4, 1, 1)},
+			expectedRight: &statusItem{segment: New[float64](4, 4, 5, 2)},
 		},
 		"point with no left neighbor": {
 			statusItems: []statusItem{
-				{segment: New[float64](4, 6, 3, 3), sweepY: 3}, // Matching segment
-				{segment: New[float64](4, 4, 5, 2), sweepY: 3}, // Right neighbor
+				{segment: New[float64](4, 6, 3, 3)}, // Matching segment
+				{segment: New[float64](4, 4, 5, 2)}, // Right neighbor
 			},
 			point:         qItem{point: point.New[float64](3, 3)},
 			expectedLeft:  nil,
-			expectedRight: &statusItem{segment: New[float64](4, 4, 5, 2), sweepY: 3},
+			expectedRight: &statusItem{segment: New[float64](4, 4, 5, 2)},
 		},
 		"point with no right neighbor": {
 			statusItems: []statusItem{
-				{segment: New[float64](2, 4, 1, 1), sweepY: 3}, // Left neighbor
-				{segment: New[float64](4, 6, 3, 3), sweepY: 3}, // Matching segment
+				{segment: New[float64](2, 4, 1, 1)}, // Left neighbor
+				{segment: New[float64](4, 6, 3, 3)}, // Matching segment
 			},
 			point:         qItem{point: point.New[float64](3, 3)},
-			expectedLeft:  &statusItem{segment: New[float64](2, 4, 1, 1), sweepY: 3},
+			expectedLeft:  &statusItem{segment: New[float64](2, 4, 1, 1)},
 			expectedRight: nil,
 		},
 		"point with no neighbors (single item)": {
 			statusItems: []statusItem{
-				{segment: New[float64](1, 1, 3, 3), sweepY: 3},
+				{segment: New[float64](1, 1, 3, 3)},
 			},
 			point:         qItem{point: point.New[float64](3, 3)},
 			expectedLeft:  nil,
@@ -711,28 +711,28 @@ func TestSortStatusBySweepLine(t *testing.T) {
 	}{
 		"basic case": {
 			input: []statusItem{
-				{segment: New[float64](3, 1, 5, 5), sweepY: 0}, // Will have XAtY = 4 at sweepY = 3
-				{segment: New[float64](1, 1, 3, 3), sweepY: 0}, // Will have XAtY = 3 at sweepY = 3
-				{segment: New[float64](2, 4, 1, 1), sweepY: 0}, // Will have XAtY = 1.5 at sweepY = 3
+				{segment: New[float64](3, 1, 5, 5)}, // Will have XAtY = 4 at sweepY = 3
+				{segment: New[float64](1, 1, 3, 3)}, // Will have XAtY = 3 at sweepY = 3
+				{segment: New[float64](2, 4, 1, 1)}, // Will have XAtY = 1.5 at sweepY = 3
 			},
 			sweepY: 3,
 			expected: []statusItem{
-				{segment: New[float64](2, 4, 1, 1), sweepY: 3}, // XAtY = 1.5
-				{segment: New[float64](1, 1, 3, 3), sweepY: 3}, // XAtY = 3
-				{segment: New[float64](3, 1, 5, 5), sweepY: 3}, // XAtY = 4
+				{segment: New[float64](2, 4, 1, 1)}, // XAtY = 1.5
+				{segment: New[float64](1, 1, 3, 3)}, // XAtY = 3
+				{segment: New[float64](3, 1, 5, 5)}, // XAtY = 4
 			},
 		},
 		"already sorted": {
 			input: []statusItem{
-				{segment: New[float64](2, 4, 1, 1), sweepY: 0},
-				{segment: New[float64](1, 1, 3, 3), sweepY: 0},
-				{segment: New[float64](3, 1, 5, 5), sweepY: 0},
+				{segment: New[float64](2, 4, 1, 1)},
+				{segment: New[float64](1, 1, 3, 3)},
+				{segment: New[float64](3, 1, 5, 5)},
 			},
 			sweepY: 3,
 			expected: []statusItem{
-				{segment: New[float64](2, 4, 1, 1), sweepY: 3},
-				{segment: New[float64](1, 1, 3, 3), sweepY: 3},
-				{segment: New[float64](3, 1, 5, 5), sweepY: 3},
+				{segment: New[float64](2, 4, 1, 1)},
+				{segment: New[float64](1, 1, 3, 3)},
+				{segment: New[float64](3, 1, 5, 5)},
 			},
 		},
 		"empty input": {
@@ -746,14 +746,13 @@ func TestSortStatusBySweepLine(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			sortStatusBySweepLine(tc.input, qItem{point: point.New(0, tc.sweepY)})
 
-			debugPrintStatus(tc.input)
+			debugPrintStatus(tc.input, tc.sweepY)
 
 			fmt.Println("input: ", tc.input)
 			fmt.Println("expect:", tc.expected)
 
 			for i := range tc.input {
 				assert.Equal(t, tc.expected[i].segment, tc.input[i].segment, "Segment mismatch at index %d", i)
-				assert.Equal(t, tc.sweepY, tc.input[i].sweepY, "SweepY mismatch at index %d", i)
 			}
 		})
 	}

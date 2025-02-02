@@ -14,6 +14,9 @@ import (
 // Parameters:
 //   - segments: A slice of [LineSegment][T] instances to check for intersections.
 //   - opts: A variadic slice of [options.GeometryOptionsFunc] to customize the intersection behavior.
+//   - If [options.WithEpsilon] is provided, the function performs an approximate equality check,
+//     considering the points equal if their coordinate differences are within the specified
+//     epsilon threshold.
 //
 // Returns:
 //   - []IntersectionResult[T]: A slice of intersection results, including points and segments
@@ -62,6 +65,9 @@ func FindIntersectionsSlow[T types.SignedNumber](segments []LineSegment[T], opts
 //   - other (LineSegment[T]): The second line segment to check for intersection.
 //   - opts (options.GeometryOptionsFunc): Optional parameters, such as the epsilon value for
 //     numerical precision adjustments.
+//   - If [options.WithEpsilon] is provided, the function performs an approximate equality check,
+//     considering the points equal if their coordinate differences are within the specified
+//     epsilon threshold.
 //
 // Returns:
 //   - IntersectionResult[T]: A structure containing information about the type of intersection
@@ -88,13 +94,13 @@ func (l LineSegment[T]) Intersection(other LineSegment[T], opts ...options.Geome
 	dir2 := D.Translate(C.Negate())
 
 	// Calculate the determinants
-	denominator := dir1.CrossProduct(dir2)
+	denominator := point.New[float64](0, 0).CrossProduct(dir1, dir2)
 
 	// Handle collinear case (denominator == 0)
 	if denominator == 0 {
 		// Check if the segments are collinear
 		AC := C.Translate(A.Negate())
-		if AC.CrossProduct(dir1) != 0 {
+		if point.New[float64](0, 0).CrossProduct(AC, dir1) != 0 {
 
 			// Parallel but not collinear
 			return IntersectionResult[T]{
@@ -155,8 +161,8 @@ func (l LineSegment[T]) Intersection(other LineSegment[T], opts ...options.Geome
 
 	// Calculate parameters t and u for non-collinear case
 	AC := C.Translate(A.Negate())
-	tNumerator := AC.CrossProduct(dir2)
-	uNumerator := AC.CrossProduct(dir1)
+	tNumerator := point.New[float64](0, 0).CrossProduct(AC, dir2)
+	uNumerator := point.New[float64](0, 0).CrossProduct(AC, dir1)
 
 	// It uses the parametric form of the line segments to solve for intersection parameters t and u.
 	// If t and u are both in the range [0, 1], the intersection point lies within the bounds of

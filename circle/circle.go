@@ -1,7 +1,33 @@
+// Package circle provides a representation of circles in a two-dimensional space,
+// along with methods for geometric operations, transformations, and relationships
+// with other geometric primitives.
+//
+// Circles are fundamental in computational geometry, used in collision detection, spatial indexing, and graphics.
+//
+// # Overview
+//
+// The [Circle] type represents a circle defined by a center point and a radius. It supports
+// operations such as computing the area and circumference, scaling, translating, and rotating
+// the circle, as well as determining its relationship with points and other geometric entities.
+//
+// This package also includes Bresenham's circle algorithm for rasterization, enabling efficient
+// integer-based rendering of circles.
+//
+// # Features
+//
+//   - Creation of circles from coordinates or points.
+//   - Type conversion to different numeric representations.
+//   - Relationship checks with points, including containment and intersection. // TODO: implement
+//   - Support for geometric transformations such as translation, rotation, and scaling.
+//   - Efficient rasterization using Bresenham's circle algorithm.
+//
+// This package is part of the geom2d library and integrates with other geometric primitives
+// such as points, line segments, and polygons.
 package circle
 
 import (
 	"fmt"
+	"github.com/mikenye/geom2d/numeric"
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
@@ -18,7 +44,7 @@ type Circle[T types.SignedNumber] struct {
 	radius T              // The radius of the circle
 }
 
-// New creates a new [Circle] with the specified center coordindates and radius.
+// New creates a new [Circle] with the specified center coordinates and radius.
 //
 // Parameters:
 //   - x, y (T): The center coordinates of the [Circle].
@@ -51,7 +77,7 @@ func NewFromPoint[T types.SignedNumber](center point.Point[T], radius T) Circle[
 // Area calculates the area of the circle.
 //
 // Returns:
-//   - float64: The area of the circle, computed as π * radius^2.
+//   - float64: The area of the circle, computed as π * radius².
 func (c Circle[T]) Area() float64 {
 	return math.Pi * float64(c.radius) * float64(c.radius)
 }
@@ -116,11 +142,12 @@ func (c Circle[T]) AsIntRounded() Circle[int] {
 // This algorithm utilizes integer arithmetic to efficiently calculate the points on the circle,
 // making it suitable for rendering or other grid-based operations.
 //
+// This algorithm requires circles using integer coordinates because Bresenham's circle algorithm relies
+// on integer arithmetic to avoid floating-point precision errors.
+//
 // Parameters:
 //   - yield (func([point.Point][int]) bool): A function that processes each generated point.
 //     Returning false will stop further point generation.
-//
-// Note: This implementation requires the circle is defined with integer-type coordinates.
 func (c Circle[int]) Bresenham(yield func(point.Point[int]) bool) {
 	var xc, yc, r, x, y, p int
 
@@ -196,7 +223,7 @@ func (c Circle[T]) Circumference() float64 {
 //     on the boundary of, or contained within the circle.
 //
 // Behavior:
-//   - The function computes the Euclidean distance between the point and the circle's center.
+//   - The function computes the [Euclidean distance] between the point and the circle's center.
 //   - It compares this distance to the circle's radius (converted to float64 for precision).
 //   - If the distance equals the radius, the relationship is [types.RelationshipIntersection].
 //   - If the distance is less than the radius, the relationship is [types.RelationshipContainedBy].
@@ -205,6 +232,8 @@ func (c Circle[T]) Circumference() float64 {
 // Notes:
 //   - Epsilon adjustments can be used to account for floating-point precision issues when comparing the distance
 //     to the circle's radius.
+//
+// [Euclidean distance]: https://en.wikipedia.org/wiki/Euclidean_distance
 func (c Circle[T]) RelationshipToPoint(p point.Point[T], opts ...options.GeometryOptionsFunc) types.Relationship {
 	distancePointToCircleCenter := p.DistanceToPoint(c.center, opts...)
 	circleFloat := c.AsFloat64()
@@ -224,8 +253,8 @@ func (c Circle[T]) RelationshipToPoint(p point.Point[T], opts ...options.Geometr
 // Parameters
 //   - other: The Circle to compare with the calling Circle.
 //   - opts: A variadic slice of [options.GeometryOptionsFunc] functions to customize the equality check.
-//     [options.WithEpsilon](epsilon float64): Specifies a tolerance for comparing the center coordinates
-//     and radii of the circles, allowing for robust handling of floating-point precision errors.
+//     [options.WithEpsilon](epsilon float64): Specifies a numerical tolerance (epsilon) for comparing the
+//     center coordinates and radii of the circles, to avoid false negatives due to floating-point imprecision.
 //
 // Behavior
 //   - The function checks whether the center points of the two circles are equal (using the [point.Point.Eq] method
@@ -244,14 +273,14 @@ func (c Circle[T]) Eq(other Circle[T], opts ...options.GeometryOptionsFunc) bool
 	// Apply options with defaults
 	geoOpts := options.ApplyGeometryOptions(options.GeometryOptions{Epsilon: 0}, opts...)
 
+	cf := c.AsFloat64()
+	otherf := other.AsFloat64()
+
 	// Check equality for the center points
-	centersEqual := c.center.Eq(other.center, opts...)
+	centersEqual := cf.center.Eq(otherf.center, opts...)
 
 	// Check equality for the radii with epsilon adjustment
-	radiiEqual := c.radius == other.radius
-	if geoOpts.Epsilon > 0 {
-		radiiEqual = math.Abs(float64(c.radius)-float64(other.radius)) < geoOpts.Epsilon
-	}
+	radiiEqual := numeric.FloatEquals(cf.radius, otherf.radius, geoOpts.Epsilon)
 
 	return centersEqual && radiiEqual
 }
@@ -318,7 +347,7 @@ func (c Circle[T]) Scale(factor T) Circle[T] {
 //   - k: y-coordinate of the center.
 //   - r: radius
 func (c Circle[T]) String() string {
-	return fmt.Sprintf("(%v,%v,%v)", c.center.X(), c.center.Y(), c.radius)
+	return fmt.Sprintf("(%v,%v; r=%v)", c.center.X(), c.center.Y(), c.radius)
 }
 
 // Translate moves the circle by a specified vector (given as a [point.Point]).

@@ -127,7 +127,7 @@ func orderPointsByAngleAboutLowestPoint[T types.SignedNumber](lowestPoint point.
 		// Calculate relative vectors from lowestPoint to start and end
 		relativeA := a.Translate(lowestPoint.Negate())
 		relativeB := b.Translate(lowestPoint.Negate())
-		crossProduct := relativeA.CrossProduct(relativeB)
+		crossProduct := point.New[T](0, 0).CrossProduct(relativeA, relativeB)
 
 		// Use cross product to determine angular order
 		switch {

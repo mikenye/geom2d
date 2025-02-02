@@ -2,23 +2,34 @@ package numeric
 
 import "math"
 
-// FloatEquals returns true if a and b are equal within a small epsilon threshold.
-// todo: doc comments, example func, unit test
+// FloatEquals returns true if a and b are equal within the given epsilon tolerance.
+//
+// This is useful for comparing floating-point numbers where direct equality checks may be unreliable
+// due to floating point imprecision.
 func FloatEquals(a, b, epsilon float64) bool {
 	return math.Abs(a-b) <= epsilon
 }
 
-// FloatGreaterThan checks if 'a' is significantly greater than 'b'.
+// FloatGreaterThan returns true if a is greater than b within the given epsilon tolerance.
+//
+// This is useful for comparing floating-point numbers where direct equality checks may be unreliable
+// due to floating point imprecision.
 func FloatGreaterThan(a, b, epsilon float64) bool {
 	return a > b && !FloatEquals(a, b, epsilon)
 }
 
-// FloatGreaterThanOrEqualTo checks if 'a' is greater than or equal to 'b'.
+// FloatGreaterThanOrEqualTo returns true if a is greater than or equal to b within the given epsilon tolerance.
+//
+// This is useful for comparing floating-point numbers where direct equality checks may be unreliable
+// due to floating point imprecision.
 func FloatGreaterThanOrEqualTo(a, b, epsilon float64) bool {
 	return a > b || FloatEquals(a, b, epsilon)
 }
 
-// FloatLessThan checks if 'a' is significantly less than 'b'.
+// FloatLessThan returns true if a is less than b within the given epsilon tolerance.
+//
+// This is useful for comparing floating-point numbers where direct equality checks may be unreliable
+// due to floating point imprecision.
 func FloatLessThan(a, b, epsilon float64) bool {
 	return a < b && !FloatEquals(a, b, epsilon)
 }

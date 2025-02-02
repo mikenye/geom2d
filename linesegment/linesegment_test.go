@@ -504,6 +504,33 @@ func TestLineSegment_Eq(t *testing.T) {
 	}
 }
 
+func TestLineSegment_Flip(t *testing.T) {
+	tests := map[string]struct {
+		segment  LineSegment[int]
+		expected LineSegment[int]
+	}{
+		"simple horizontal": {
+			segment:  New(1, 1, 5, 1),
+			expected: New(5, 1, 1, 1),
+		},
+		"simple vertical": {
+			segment:  New(3, 2, 3, 6),
+			expected: New(3, 6, 3, 2),
+		},
+		"diagonal": {
+			segment:  New(0, 0, 7, 7),
+			expected: New(7, 7, 0, 0),
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := tc.segment.Flip()
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
 func TestLineSegment_Length(t *testing.T) {
 	tests := map[string]struct {
 		lineSegment LineSegment[float64]
@@ -536,6 +563,37 @@ func TestLineSegment_Length(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			actual := tt.lineSegment.Length(options.WithEpsilon(tt.epsilon))
 			assert.InDelta(t, tt.expected, actual, tt.epsilon, "Expected length to match")
+		})
+	}
+}
+
+func TestLineSegment_Normalize(t *testing.T) {
+	tests := map[string]struct {
+		input    LineSegment[int]
+		expected LineSegment[int]
+	}{
+		"already normalized (top-to-bottom)": {
+			input:    New(3, 10, 5, 2),
+			expected: New(3, 10, 5, 2),
+		},
+		"needs flipping (bottom-to-top)": {
+			input:    New(5, 2, 3, 10),
+			expected: New(3, 10, 5, 2),
+		},
+		"already normalized (left-to-right horizontal)": {
+			input:    New(3, 5, 10, 5),
+			expected: New(3, 5, 10, 5),
+		},
+		"needs flipping (right-to-left horizontal)": {
+			input:    New(10, 5, 3, 5),
+			expected: New(3, 5, 10, 5),
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := tt.input.normalize()
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }

@@ -13,23 +13,74 @@ import (
 	"strings"
 )
 
+// qItem represents an entry in the event queue used in the sweep line algorithm for finding line segment intersections.
+//
+// Each qItem consists of:
+//   - point: The event point where an intersection or segment endpoint occurs.
+//   - segments: A slice of LineSegment[float64] that are associated with this event point. These could be:
+//   - Segments that start at this point (U(p))
+//   - Segments that end at this point (L(p))
+//   - Segments that contain this point as an intersection (C(p))
+//
+// Purpose:
+//   - qItem structures the event queue, ensuring each event is processed correctly in handleEventPoint.
+//   - It allows multiple segments to be grouped under the same event point, preventing redundant queue entries.
+//
+// Notes:
+//   - qItem is used internally by the sweep line algorithm and is not exposed publicly.
+//   - The event queue processes qItem entries in lexicographic order, breaking ties as needed.
+//
+// This ensures that events are processed in the correct order during the sweep.
 type qItem struct {
 	point    point.Point[float64]
 	segments []LineSegment[float64]
 }
 
+// String returns a human-readable representation of the event queue item (qItem).
+//
+// The format follows:
+//
+//	Queue Item: (x, y), U(p): (x1,y1)(x2,y2), (x3,y3)(x4,y4), ...
+//
+// This output helps visualize event processing in the sweep line algorithm.
+// The event point p is displayed first, followed by all associated segments "U(p)" where the
+// event point is the upper point of the line segment.
+//
+// Example Output:
+//
+//	Queue Item: (5,10), U(p): (5,10)(15,20), (5,10)(7,14)
+//
+// This function is particularly useful for debugging and logging the event queue.
 func (qi qItem) String() string {
 	builder := strings.Builder{}
-	builder.WriteString(fmt.Sprintf("Queue Item: %s\n", qi.point.String()))
+	builder.WriteString(fmt.Sprintf("Queue Item: %s, U(p): ", qi.point.String()))
+	first := true
 	for _, seg := range qi.segments {
-		builder.WriteString(fmt.Sprintf("      - Segment: %s\n", seg.String()))
+		if first {
+			builder.WriteString(seg.String())
+			first = false
+			continue
+		}
+		builder.WriteString(fmt.Sprintf(", %s", seg.String()))
 	}
 	return builder.String()
 }
 
+// statusItem represents an entry in the sweep line status structure.
+//
+// The status structure maintains active line segments as the sweep line
+// progresses through event points in the plane-sweep algorithm. Each
+// statusItem corresponds to a single line segment that is currently
+// intersected by the sweep line.
+//
+// The sweep line status helps efficiently determine segment relationships,
+// such as finding neighboring segments for intersection testing.
+//
+// In the context of the sweep line algorithm, statusItem instances are
+// stored in a balanced search tree or sorted list to maintain order based
+// on their relative position to the sweep line.
 type statusItem struct {
 	segment LineSegment[float64]
-	sweepY  float64 // Pointer to the current sweep line's y-coordinate
 }
 
 func debugPrintQueue(Q *btree.BTreeG[qItem]) {
@@ -41,14 +92,41 @@ func debugPrintQueue(Q *btree.BTreeG[qItem]) {
 	}
 }
 
-func debugPrintStatus(S []statusItem) {
+func debugPrintStatus(S []statusItem, y float64) {
 	fmt.Println("Status structure:")
 	for _, s := range S {
-		xaty := s.segment.XAtY(s.sweepY)
-		fmt.Printf("  - %s (x=%f @ y=%f)\n", s.segment.String(), xaty, s.sweepY)
+		xaty := s.segment.XAtY(y)
+		fmt.Printf("  - %s (x=%f @ y=%f)\n", s.segment.String(), xaty, y)
 	}
 }
 
+// dedupeSegments removes duplicate line segments from the input slice.
+//
+// This function normalizes each line segment to ensure consistent ordering,
+// then eliminates duplicates by storing them in a map. The resulting slice
+// contains only unique line segments.
+//
+// A segment is considered a duplicate if its normalized representation
+// (i.e., consistently ordered start and end points) matches another segment.
+//
+// Parameters:
+//   - segments: A slice of LineSegment[T] that may contain duplicates.
+//
+// Returns:
+//   - A new slice containing only unique LineSegment[T] instances.
+//
+// Example Usage:
+//
+//	segments := []linesegment.LineSegment[int]{
+//	    linesegment.New(2, 4, 6, 8),
+//	    linesegment.New(6, 8, 2, 4), // Duplicate, but reversed
+//	    linesegment.New(1, 1, 3, 3),
+//	}
+//	uniqueSegments := dedupeSegments(segments)
+//	fmt.Println(uniqueSegments) // Output: [(2,4)(6,8), (1,1)(3,3)]
+//
+// Notes:
+//   - The order of unique segments in the returned slice is not guaranteed.
 func dedupeSegments[T types.SignedNumber](segments []LineSegment[T]) []LineSegment[T] {
 	tmpMap := make(map[LineSegment[T]]bool)
 	for _, seg := range segments {
@@ -61,7 +139,36 @@ func dedupeSegments[T types.SignedNumber](segments []LineSegment[T]) []LineSegme
 	return deduped
 }
 
-// Helper to delete segments from S
+// deleteSegmentsFromStatus removes the specified line segments from the status structure S.
+//
+// This function takes a slice of status items (S) representing active segments in the sweep line algorithm
+// and removes any segments that match those in the segments slice. It uses the Eq method for comparison.
+//
+// Parameters:
+//   - S: The current status structure, which holds active segments in the sweep line algorithm.
+//   - segments: A slice of line segments to be removed from S.
+//   - opts: Optional geometry configuration options (such as epsilon for floating-point comparisons).
+//
+// Returns:
+//   - A new slice of status items with the specified segments removed.
+//
+// Example usage:
+//
+//	segments := []linesegment.LineSegment[float64]{
+//		linesegment.New(1, 2, 3, 4),
+//		linesegment.New(5, 6, 7, 8),
+//	}
+//
+//	status := []statusItem{
+//		{segment: linesegment.New(1, 2, 3, 4)},
+//		{segment: linesegment.New(5, 6, 7, 8)},
+//		{segment: linesegment.New(9, 10, 11, 12)},
+//	}
+//
+//	updatedStatus := deleteSegmentsFromStatus(status, segments)
+//	fmt.Println(updatedStatus) // Output: [{(9,10)(11,12)}]
+//
+// This function is used in the sweep line algorithm to efficiently remove segments that are no longer active.
 func deleteSegmentsFromStatus(
 	S []statusItem,
 	segments []LineSegment[float64],
@@ -70,8 +177,6 @@ func deleteSegmentsFromStatus(
 	return slices.DeleteFunc(S, func(item statusItem) bool {
 		for _, seg := range segments {
 			if item.segment.Eq(seg, opts...) {
-				// Optional: Log the removal for debugging
-				fmt.Printf("Removing segment: %v\n", item.segment)
 				return true
 			}
 		}
@@ -79,12 +184,47 @@ func deleteSegmentsFromStatus(
 	})
 }
 
-func FindIntersections[T types.SignedNumber](
+// FindIntersectionsFast computes all intersection points and overlapping segments among a set of line segments
+// using the sweep line algorithm, outlined in Section 2.1 of [Computational Geometry: Algorithms and Applications].
+//
+// This function efficiently finds intersections in O((n + k) log n) time, where n is the number of input segments
+// and k is the number of intersections found. It is significantly faster than the naive O(n²) method when dealing
+// with large input sets.
+//
+// The function removes duplicate segments before processing and ignores degenerate segments (where Start == End).
+// It uses a balanced search tree (B-tree) as the event queue to maintain efficient event processing.
+//
+// Parameters:
+//   - segments: A slice of line segments to check for intersections.
+//   - opts: Optional geometry configuration options (e.g., epsilon for floating-point precision).
+//   - If [options.WithEpsilon] is provided, the function performs an approximate equality check,
+//     considering the points equal if their coordinate differences are within the specified
+//     epsilon threshold.
+//
+// Returns:
+//   - A slice of IntersectionResult[float64] containing all intersection points and overlapping segments found.
+//
+// Algorithm Overview:
+//  1. Deduplicate Input: Removes exact duplicate segments.
+//  2. Event Queue Initialization: Inserts segment endpoints into a B-tree event queue (Q).
+//     Upper endpoints store the corresponding segments.
+//     Degenerate segments are skipped.
+//  3. Status Structure Initialization: Uses a balanced search tree (S) to track active segments.
+//  4. Sweep Line Execution: Iterates through event points in Q, updating S and computing intersections.
+//  5. Result Collection: Returns a slice of intersection results.
+//
+// Performance Considerations:
+//   - If the number of segments is small, the naive O(n²) method (FindIntersectionsSlow) may be faster
+//     due to lower constant overhead.
+//
+// See Also:
+//   - FindIntersectionsSlow for the naive O(n²) intersection detection method.
+//
+// [Computational Geometry: Algorithms and Applications]: https://www.springer.com/gp/book/9783540779735
+func FindIntersectionsFast[T types.SignedNumber](
 	segments []LineSegment[T],
 	opts ...options.GeometryOptionsFunc,
 ) []IntersectionResult[float64] {
-
-	fmt.Println("FindIntersections started")
 
 	// dedupe input
 	segments = dedupeSegments(segments)
@@ -100,7 +240,6 @@ func FindIntersections[T types.SignedNumber](
 	for i := range segments {
 		// skip degenerate line segments
 		if segments[i].Start().Eq(segments[i].End(), opts...) {
-			fmt.Println("skipping degenerate line segment:", segments[i].String())
 			continue
 		}
 		insertSegmentIntoQueue(segments[i].AsFloat64(), Q)
@@ -111,14 +250,10 @@ func FindIntersections[T types.SignedNumber](
 	S := make([]statusItem, 0)
 
 	// while Q is not empty
-	iternum := 1
 	for Q.Len() > 0 {
 
-		fmt.Printf("\n\n\n--- ITERATION %d ---\n\n\n", iternum)
-		iternum++
-
 		// DEBUGGING: show queue
-		debugPrintQueue(Q)
+		//debugPrintQueue(Q)
 
 		// Determine the next event point p in Q and delete it
 		p, ok := Q.DeleteMin()
@@ -126,16 +261,45 @@ func FindIntersections[T types.SignedNumber](
 			panic(fmt.Errorf("unexpected empty queue"))
 		}
 
-		// DEBUGGING: show popped event
-		fmt.Printf("Popped: %s", p.String())
-
+		// Handle the event
 		S = handleEventPoint(p, Q, S, R, opts...)
 	}
 
-	fmt.Println("FindIntersections finished")
 	return R.Results()
 }
 
+// findLeftmostAndRightmostSegmentAndNeighbors identifies the leftmost and rightmost segments among U(p) ∪ C(p),
+// as well as their immediate neighbors in the status structure S.
+//
+// This function is a key part of the sweep line algorithm, helping to determine which segments
+// should be tested for new intersections.
+//
+// Parameters:
+//   - p: The current event point being processed.
+//   - UofP: The set of segments whose upper endpoint is at p.
+//   - CofP: The set of segments that contain p but are neither upper nor lower endpoints.
+//   - S: The status structure (sweep line status), which maintains the order of active segments.
+//   - opts: Optional geometry configuration options (e.g., epsilon for floating-point precision).
+//
+// Returns:
+//   - sPrime: The leftmost segment in U(p) ∪ C(p), or nil if no segments exist.
+//   - sDoublePrime: The rightmost segment in U(p) ∪ C(p), or nil if no segments exist.
+//   - sL: The left neighbor of sPrime in S, or nil if no left neighbor exists.
+//   - sR: The right neighbor of sDoublePrime in S, or nil if no right neighbor exists.
+//
+// Algorithm Overview:
+//  1. Combine U(p) and C(p): The function first merges U(p) and C(p) into a single slice.
+//  2. Sort UCofP: The segments are sorted using segmentSortLess, which ensures proper ordering below p.
+//  3. Identify Leftmost & Rightmost Segments: The first and last elements in the sorted list are selected.
+//  4. Find the Segments in S: The function locates sPrime and sDoublePrime in the sweep line status.
+//  5. Determine Neighboring Segments: If sPrime or sDoublePrime are found in S, their immediate neighbors are returned.
+//
+// Performance Notes:
+// - Sorting is performed using slices.SortStableFunc, ensuring segments are ordered correctly relative to p.
+// - The function assumes the status structure S maintains a valid order of segments as the sweep line progresses.
+// - Future TODO: we should be able to get better performance by switching from a slice to a binary search tree, as outlined in Section 2.1 of the book [Computational Geometry: Algorithms and Applications].
+//
+// [Computational Geometry: Algorithms and Applications]: https://www.springer.com/gp/book/9783540779735
 func findLeftmostAndRightmostSegmentAndNeighbors(
 	p point.Point[float64],
 	UofP, CofP []LineSegment[float64],
@@ -157,86 +321,6 @@ func findLeftmostAndRightmostSegmentAndNeighbors(
 		}
 		return 1
 	})
-	//slices.SortFunc(UCofP, func(a, b LineSegment[float64]) int {
-	//	xa := a.XAtY(sweepY)
-	//	xb := b.XAtY(sweepY)
-	//
-	//	// Identify horizontal and vertical segments
-	//	aIsHorizontal := a.Start().Y() == a.End().Y()
-	//	bIsHorizontal := b.Start().Y() == b.End().Y()
-	//	aIsVertical := a.Start().X() == a.End().X()
-	//	bIsVertical := b.Start().X() == b.End().X()
-	//
-	//	// **1. Vertical segments should always come first**
-	//	if aIsVertical && !bIsVertical && a.Start().X() == p.X() {
-	//		return -1
-	//	}
-	//	if bIsVertical && !aIsVertical && b.Start().X() == p.X() {
-	//		return 1
-	//	}
-	//
-	//	//// **2. If XAtY returns NaN (horizontal segment), use leftmost X-coordinate instead**
-	//	// 2. If XAtY returns NaN (horizontal segment), use p X-coordinate instead
-	//	if math.IsNaN(xa) {
-	//		//xa = math.Min(a.Start().X(), a.End().X())
-	//		xa = p.X()
-	//	}
-	//	if math.IsNaN(xb) {
-	//		//xb = math.Min(b.Start().X(), b.End().X())
-	//		xb = p.X()
-	//	}
-	//
-	//	// **3. Primary Sort: By X-coordinates at sweepY**
-	//	if xa < xb {
-	//		return -1
-	//	}
-	//	if xa > xb {
-	//		return 1
-	//	}
-	//
-	//	// **4. Horizontal segments should come last if tied by X**
-	//	if aIsHorizontal && !bIsHorizontal {
-	//		return 1
-	//	}
-	//	if bIsHorizontal && !aIsHorizontal {
-	//		return -1
-	//	}
-	//
-	//	// **5. Higher start Y should come first**
-	//	if a.Start().Y() > b.Start().Y() {
-	//		return -1
-	//	}
-	//	if a.Start().Y() < b.Start().Y() {
-	//		return 1
-	//	}
-	//
-	//	// **6. Higher end Y should come first**
-	//	if a.End().Y() > b.End().Y() {
-	//		return -1
-	//	}
-	//	if a.End().Y() < b.End().Y() {
-	//		return 1
-	//	}
-	//
-	//	// **7. Lower X-start should come first**
-	//	if a.Start().X() < b.Start().X() {
-	//		return -1
-	//	}
-	//	if a.Start().X() > b.Start().X() {
-	//		return 1
-	//	}
-	//
-	//	// **8. Lower X-end should come first**
-	//	if a.End().X() < b.End().X() {
-	//		return -1
-	//	}
-	//	if a.End().X() > b.End().X() {
-	//		return 1
-	//	}
-	//
-	//	// **9. If completely equal, return 0**
-	//	return 0
-	//})
 
 	// Step 3: Get the leftmost & rightmost segment (first & ladt elements in sorted UCofP)
 	if len(UCofP) == 0 {
@@ -279,6 +363,31 @@ func findLeftmostAndRightmostSegmentAndNeighbors(
 	return sPrime, sDoublePrime, sL, sR
 }
 
+// findNeighbors identifies the left and right neighbors of a given event point p in the status structure S.
+//
+// This function is a key component of the sweep line algorithm, used to determine which segments
+// are adjacent to the event point in the active sweep line status.
+//
+// Parameters:
+//   - S: The status structure, which maintains the order of active segments as the sweep line progresses.
+//   - p: The event point with associated segments that are being processed.
+//   - opts: Optional geometry configuration options (e.g., epsilon for floating-point precision).
+//
+// Returns:
+//   - sl: Pointer to the left neighbor segment in S, or nil if no left neighbor exists.
+//   - sr: Pointer to the right neighbor segment in S, or nil if no right neighbor exists.
+//
+// Algorithm Overview:
+//  1. Locate p in the status structure S:
+//     - If a segment contains p, its index is recorded.
+//     - If no segment contains p, the function finds the first segment whose x-coordinate at p's y-value is greater than p.x.
+//  2. Determine left and right neighbors:
+//     - If p was found in S, the left neighbor is S[index-1] (if valid).
+//     - The right neighbor depends on whether p was found exactly or was approximated.
+//
+// Performance Notes:
+// - The function performs a linear scan through S, making it O(n) in complexity.
+// - The logic ensures robustness when dealing with horizontal and near-vertical segments.
 func findNeighbors(
 	S []statusItem,
 	p qItem,
@@ -321,46 +430,40 @@ func findNeighbors(
 		}
 	}
 
-	if sl != nil {
-		fmt.Printf("Left neighbor: %v\n", *sl)
-	}
-	if sr != nil {
-		fmt.Printf("Right neighbor: %v\n", *sr)
-	}
-
 	return sl, sr
 }
 
-// // Helper to find neighbors in S
-//func findNeighbors(
-//	S []statusItem,
-//	p qItem,
-//	opts ...options.GeometryOptionsFunc,
-//) (*statusItem, *statusItem) {
-//	var left, right *statusItem
-//	index := -1
-//	for i, item := range S {
-//		fmt.Printf("findNeighbors: %s == %s ?: ", item.segment.End().String(), p.point.String())
-//		if item.segment.End().Eq(p.point, opts...) {
-//			fmt.Println("true")
-//			index = i
-//			break
-//		}
-//		fmt.Println("false")
-//	}
-//	leftIndex := index - 1
-//	rightIndex := index + 1
-//	if leftIndex >= 0 && leftIndex < len(S) {
-//		left = &S[leftIndex]
-//	}
-//	if rightIndex >= 0 && rightIndex < len(S) {
-//		right = &S[rightIndex]
-//	}
-//	fmt.Printf("Left neighbor: %v\n", left)
-//	fmt.Printf("Right neighbor: %v\n", right)
-//	return left, right
-//}
-
+// findNewEvent determines if two adjacent segments in the status structure intersect below the current event point
+// and inserts the intersection as a future event in the event queue Q.
+//
+// This function is a critical part of the Bentley-Ottmann sweep line algorithm, ensuring that all intersections are
+// detected efficiently.
+//
+// Parameters:
+//   - sl: The left segment in the status structure.
+//   - sr: The right segment in the status structure.
+//   - p: The current event point being processed.
+//   - Q: The event queue, storing upcoming intersection events.
+//   - R: The intersection results accumulator.
+//   - opts: Optional geometry configuration options (e.g., epsilon for floating-point precision).
+//
+// Algorithm Overview:
+//  1. Compute the intersection between sl and sr.
+//  2. If the segments overlap, record an IntersectionOverlappingSegment in the results.
+//  3. If they do not intersect at a single point, exit early.
+//  4. Extract the intersection point and check its position relative to p.
+//  5. If the intersection is below the sweep line, or exactly on it but to the right of p, proceed.
+//  6. If the intersection is already in the event queue, exit early to avoid duplicates.
+//  7. Otherwise, insert the intersection point into the event queue.
+//
+// Conditions for Skipping an Intersection:
+//   - If the intersection lies above the current event point, it is ignored.
+//   - If the intersection is at the same Y-level as the current event but lies to its left, it is ignored.
+//   - If the intersection is already queued, no action is taken.
+//
+// Performance Considerations:
+// - This function runs in **O(1)** in most cases, with the intersection calculation itself being the most expensive step.
+// - It avoids redundant work by preventing duplicate intersection events from entering Q.
 func findNewEvent(
 	sl, sr LineSegment[float64],
 	p point.Point[float64],
@@ -371,17 +474,10 @@ func findNewEvent(
 
 	geoOpts := options.ApplyGeometryOptions(options.GeometryOptions{Epsilon: 0}, opts...)
 
-	fmt.Println("ENTERING findNewEvent")
-	defer fmt.Println("EXITING findNewEvent")
-
-	fmt.Printf("finding new events between %s and %s: ", sl.String(), sr.String())
-
 	// Find the intersection between segments sl and sr.
 	intersection := sl.Intersection(sr, opts...)
-	fmt.Println(intersection.String())
 
 	if intersection.IntersectionType == IntersectionOverlappingSegment {
-		fmt.Println("IntersectionOverlappingSegment", intersection.OverlappingSegment.String())
 		R.Add(IntersectionResult[float64]{
 			IntersectionType:   IntersectionOverlappingSegment,
 			OverlappingSegment: intersection.OverlappingSegment,
@@ -390,7 +486,6 @@ func findNewEvent(
 	}
 
 	if intersection.IntersectionType != IntersectionPoint {
-		fmt.Println("no intersection")
 		return // No intersection, so nothing to do.
 	}
 
@@ -403,39 +498,76 @@ func findNewEvent(
 
 	if numeric.FloatGreaterThan(newPoint.Y(), p.Y(), geoOpts.Epsilon) || // skip point above sweep line
 		(numeric.FloatEquals(newPoint.Y(), p.Y(), geoOpts.Epsilon) && numeric.FloatLessThanOrEqualTo(newPoint.X(), p.X(), geoOpts.Epsilon)) { // skip point on swwp line and to the left of or equal to current event point p
-
-		fmt.Printf("The point is above or equal to the current event point, so skip it: %s\n", newPoint.String())
 		return // The point is above or equal to the current event point, so skip it.
 	}
 
 	// Check if the intersection point is already in Q.
 	exists := Q.Has(qItem{point: newPoint})
 	if exists {
-		fmt.Println("Point is already in Q, so skip insertion.")
 		return // Point is already in Q, so skip insertion.
 	}
 
-	// Insert the intersection point into Q, associating both segments with it.
+	// Insert the intersection point into Q
 	qi := qItem{
 		point: newPoint,
-		//segments: []LineSegment[float64]{sl, sr},
 	}
-	fmt.Printf("inserting item into event Q: %s\n", qi.String())
 	Q.ReplaceOrInsert(qi)
 
 	return
 }
 
+// handleEventPoint processes an event point p in the sweep line algorithm, updating the event queue (Q),
+// the status structure (S), and the intersection results (R). This function is a core part of the
+// sweep line algorithm for finding intersections among a set of line segments.
+//
+// Parameters:
+//   - p: The current event point being processed, which may be an endpoint or an intersection.
+//   - Q: The event queue storing future event points.
+//   - S: The status structure maintaining the active segments intersecting the sweep line at p.
+//   - R: The intersection results accumulator, collecting detected intersections.
+//   - opts: Optional geometry configuration settings, including precision tolerance.
+//
+// Algorithm Overview:
+//
+// Identify three key sets of segments related to p:
+//   - U(p): Segments whose upper endpoint is p (start at p).
+//   - L(p): Segments whose lower endpoint is p (end at p).
+//   - C(p): Segments that contain p in their interior.
+//
+// If multiple segments pass through p, report it as an intersection.
+//
+// Remove L(p) ∪ C(p) from the status structure S ("∪" is "unioned with").
+//
+// Insert U(p) ∪ C(p) into S, ensuring correct order in the status structure.
+//
+// Determine neighboring segments in S and use findNewEvent to check for potential intersections.
+//
+// Conditions for Reporting an Intersection:
+//
+//   - If L(p) ∪ U(p) ∪ C(p) contains more than one segment, p is reported as an intersection.
+//   - The slow intersection method (FindIntersectionsSlow) is used to confirm and merge intersections.
+//
+// Sorting & Order Maintenance:
+//
+//   - S must be ordered such that it corresponds to the order in which segments would be intersected
+//     by a sweep line just below p.
+//   - Horizontal segments always come last among all segments containing p.
+//
+// Handling New Events:
+//
+//   - If U(p) ∪ C(p) = 0, the left and right neighbors of p in S are checked for new intersections.
+//   - Otherwise, the leftmost (s') and rightmost (s”) segments of U(p) ∪ C(p) are found in S.
+//   - The function findNewEvent is used to detect new intersections between adjacent segments.
+//
+// Performance Considerations:
+//   - This function operates in O(log n) on average due to event queue operations and status structure updates.
+//   - Sorting of U(p) ∪ C(p) ensures the sweep line maintains correct order efficiently.
 func handleEventPoint(p qItem, Q *btree.BTreeG[qItem], S []statusItem, R *intersectionResults[float64], opts ...options.GeometryOptionsFunc) []statusItem {
-
-	fmt.Println("ENTERING handleEventPoint")
-	defer fmt.Println("EXITING handleEventPoint")
 
 	// Let U(p) be the set of segments whose upper endpoint is p;
 	// these segments are stored with the event point p.
 	// (For horizontal segments, the upper endpoint is by definition the left endpoint.)
 	UofP := p.segments
-	fmt.Println("U(p):", UofP)
 
 	// Find all segments stored in S that contain p;
 	// they are adjacent in S.
@@ -447,7 +579,6 @@ func handleEventPoint(p qItem, Q *btree.BTreeG[qItem], S []statusItem, R *inters
 			segments = append(segments, item.segment)
 		}
 	}
-	fmt.Println("Find all segments stored in S that contain p:", segments)
 
 	// Let L(p) denote the subset of segments found whose lower endpoint is p.
 	// Let C(p) denote the subset of segments found that contain p in their interior.
@@ -460,19 +591,12 @@ func handleEventPoint(p qItem, Q *btree.BTreeG[qItem], S []statusItem, R *inters
 			CofP = append(CofP, seg)
 		}
 	}
-	fmt.Println("L(p):", LofP)
-	fmt.Println("C(p):", CofP)
 
 	// if L(p) ∪ U(p) ∪ C(p) contains more than one segment...
 	if len(LofP)+len(UofP)+len(CofP) > 1 {
 
 		// then Report p as an intersection, together with L(p), U(p), and C(p).
-		fmt.Println("L(p):", LofP)
-		fmt.Println("U(p):", UofP)
-		fmt.Println("C(p):", CofP)
-
 		for _, result := range FindIntersectionsSlow(append(LofP, append(UofP, CofP...)...), opts...) {
-			fmt.Println("INTERSECTION: ", result)
 			R.Add(result, opts...)
 		}
 	}
@@ -481,96 +605,54 @@ func handleEventPoint(p qItem, Q *btree.BTreeG[qItem], S []statusItem, R *inters
 	S = deleteSegmentsFromStatus(S, LofP, opts...)
 	sortStatusBySweepLine(S, p, opts...) // Re-sort to account for new sweep line position
 
-	// DEBUGGING: show status of event queue
-	debugPrintStatus(S)
+	// DEBUGGING: show status of status structure
+	//debugPrintStatus(S)
 
 	// Insert the segments in U(p) ∪ C(p) into S.
 	// The order of the segments in S should correspond to the order in which they are
 	// intersected by a sweep line just below p. If there is a horizontal segment, it comes
 	// last among all segments containing p.
-	fmt.Println("Insert the segments in U(p) ∪ C(p) into S:")
 	for _, seg := range append(UofP, CofP...) {
 		// Ensure segment is not already in S
 		alreadyInS := slices.ContainsFunc(S, func(item statusItem) bool {
 			return item.segment.Eq(seg, opts...)
 		})
 		if !alreadyInS {
-			fmt.Printf("  - ADDING: %s\n", seg.String())
 			S = append(S, statusItem{
 				segment: seg,
-				sweepY:  p.point.Y(),
 			})
 		} else {
-			fmt.Printf("  - SKIPPING DUPLICATE: %s\n", seg.String())
+			// skip duplicate
 		}
 
 	}
 	sortStatusBySweepLine(S, p, opts...) // Re-sort S after insertion
 
-	// DEBUGGING: show status of event queue
-	debugPrintStatus(S)
+	// DEBUGGING: show status of status structure
+	//debugPrintStatus(S)
 
 	// If U(p) ∪ C(p) = 0, find neighbors in S and call FINDNEWEVENT
 	if len(UofP)+len(CofP) == 0 {
-		fmt.Println("U(p) ∪ C(p) = 0")
 		sL, sR := findNeighbors(S, p, opts...)
-		if sL != nil {
-			fmt.Println("sl: ", sL.segment.String())
-		} else {
-			fmt.Println("sl: nil")
-		}
-		if sR != nil {
-			fmt.Println("sr: ", sR.segment.String())
-		} else {
-			fmt.Println("sr: nil")
-		}
 		if sL != nil && sR != nil {
 			// findNewEvent(*sl, *sr, p) (from book)
-			fmt.Println("running findNewEvent(sl,sr, p)")
 			findNewEvent(sL.segment, sR.segment, p.point, Q, R, opts...)
 		}
 
 	} else {
-		fmt.Println("U(p) ∪ C(p) != 0")
 		// Let s' be the leftmost segment of U(p) ∪ C(p) in S.
 		// Let sl be the left neighbor of s' in S.
 		// Let s'' be the rightmost segment of U(p) ∪ C(p) in S.
 		// Let sr be the right neighbor of s'' in S.
 		sPrime, sDoublePrime, sL, sR := findLeftmostAndRightmostSegmentAndNeighbors(p.point, UofP, CofP, S, opts...)
 
-		UCofP := append(UofP, CofP...)
-		fmt.Println("U(p) ∪ C(p):", UCofP)
-
-		if sPrime != nil {
-			fmt.Println("s': ", sPrime.String())
-		} else {
-			fmt.Println("s': nil")
-		}
-		if sDoublePrime != nil {
-			fmt.Println("s'': ", sDoublePrime.String())
-		} else {
-			fmt.Println("s'': nil")
-		}
-		if sL != nil {
-			fmt.Println("sl: ", sL.segment.String())
-		} else {
-			fmt.Println("sl: nil")
-		}
-		if sR != nil {
-			fmt.Println("sr: ", sR.segment.String())
-		} else {
-			fmt.Println("sr: nil")
-		}
-
 		// findNewEvent(sl,s', p) (from book)
 		if sPrime != nil && sL != nil {
-			fmt.Println("running findNewEvent(sl,s', p)")
 			findNewEvent(sL.segment, *sPrime, p.point, Q, R, opts...)
 		}
 
 		// findNewEvent(s'',sr, p) (from book)
 		if sDoublePrime != nil && sR != nil {
-			fmt.Println("running findNewEvent(s'',sr, p)")
 			findNewEvent(*sDoublePrime, sR.segment, p.point, Q, R, opts...)
 		}
 	}
@@ -578,18 +660,39 @@ func handleEventPoint(p qItem, Q *btree.BTreeG[qItem], S []statusItem, R *inters
 	return S
 }
 
+// insertSegmentIntoQueue inserts a line segment into the event queue (Q) in a manner that ensures
+// correct ordering for the sweep line algorithm. It associates the segment with its upper endpoint
+// and ensures the lower endpoint is registered in Q for future processing.
+//
+// Parameters:
+//   - seg: The line segment to be inserted into the event queue.
+//   - Q: A balanced B-tree (btree.BTreeG[qItem]) used to maintain the event queue.
+//
+// Algorithm Overview:
+//  1. Normalize the segment to ensure correct ordering (upper endpoint first).
+//  2. Handle degenerate segments (segments where start == end). These are treated as single points
+//     and inserted into Q without associating a segment.
+//  3. Insert the segment at its upper endpoint in Q.
+//     If an event already exists for this point, append seg to the existing event.
+//     Otherwise, create a new event entry with seg attached.
+//  4. Insert the lower endpoint into Q as a standalone event (without an associated segment),
+//     ensuring future processing when the sweep line reaches this point.
+//
+// Ordering & Structure Considerations:
+//   - The event queue is sorted lexicographically by (y, x) coordinates, ensuring correct
+//     event processing order from top-to-bottom and left-to-right.
+//   - Segments are attached to their upper endpoints, following the Bentley-Ottmann convention.
+//
+// Performance Considerations:
+//   - This function operates in O(log n) due to B-tree operations for insertion and lookup.
+//   - Duplicate points are efficiently handled via Q.Has and Q.ReplaceOrInsert.
 func insertSegmentIntoQueue(seg LineSegment[float64], Q *btree.BTreeG[qItem]) {
-
-	//fmt.Println("insertSegmentIntoQueue called for:", seg.String())
 
 	// Ensure correct ordering
 	seg = seg.normalize()
 
-	//fmt.Println("normalised to:", seg.String())
-
 	// Check if segment is degenerate (single point)
 	if seg.Start().Eq(seg.End()) {
-		//fmt.Println("Degenerate segment detected, treating as a point:", seg.Start())
 
 		// Insert the degenerate point **without associating a segment**
 		if !Q.Has(qItem{point: seg.Start()}) {
@@ -601,29 +704,39 @@ func insertSegmentIntoQueue(seg LineSegment[float64], Q *btree.BTreeG[qItem]) {
 	// Retrieve or update the upper endpoint
 	existingUpper, exists := Q.Get(qItem{point: seg.Start()})
 	if exists {
-		//fmt.Println("upper point already exists in Q, appending segment")
 		// Append the segment to the existing qItem
 		existingUpper.segments = append(existingUpper.segments, seg)
 		Q.ReplaceOrInsert(existingUpper) // Re-insert the updated item back into Q
 	} else {
 		// Insert a new qItem for the upper endpoint
-		//fmt.Println("upper point does not exist in Q, adding new queue entry")
 		Q.ReplaceOrInsert(qItem{point: seg.Start(), segments: []LineSegment[float64]{seg}})
 	}
 
 	// Insert the lower endpoint as a new qItem (no associated segment)
 	if !Q.Has(qItem{point: seg.End()}) {
-		//fmt.Println("adding lower point queue entry")
 		Q.ReplaceOrInsert(qItem{point: seg.End()})
 	} else {
-		//fmt.Println("lower point queue entry already exists, not adding")
+		// skip duplicate
 	}
-
-	//fmt.Println("state of queue:")
-	//debugPrintQueue(Q)
-	//fmt.Print("\n\n\n")
 }
 
+// qItemLess defines the ordering of event queue items (qItem) for use in a balanced B-tree (btree.BTreeG[qItem]).
+// It ensures that events are processed in the correct order by the sweep line algorithm.
+//
+// Ordering Rules:
+//  1. Higher Y-coordinates come first (processed earlier by the sweep line).
+//  2. For equal Y-coordinates, smaller X-coordinates come first (ensuring left-to-right processing).
+//
+// Parameters:
+//   - p: The first event queue item (qItem) to compare.
+//   - q: The second event queue item (qItem) to compare.
+//
+// Returns:
+//   - true if p should be processed before q, otherwise false.
+//
+// Usage in the Sweep Line Algorithm:
+//   - The event queue (Q) is implemented as a balanced B-tree (btree.BTreeG[qItem]).
+//   - This function defines the comparison rule for inserting and retrieving events efficiently.
 func qItemLess(p, q qItem) bool {
 	// Compare based on the sweep line event order:
 	// 1. Higher y-coordinates are "smaller" (processed first).
@@ -637,8 +750,36 @@ func qItemLess(p, q qItem) bool {
 	return false
 }
 
-// ordered left to right at sweep line y.
-// If there is a horizontal segment, it comes last among all segments containing p.
+// segmentSortLess determines the relative ordering of two line segments (a and b)
+// at a given sweep line position (p). It is used in the sweep line algorithm
+// to maintain the correct ordering of segments in the status structure.
+//
+// Sorting Rules:
+//
+// Primary Order: XAtY Comparison
+//   - The function first compares where each segment intersects the horizontal sweep line at p.Y().
+//   - If the X-coordinates differ, the segment with the smaller X-coordinate is considered "less."
+//
+// Handling Vertical Segments: If one segment is vertical and intersects the other at p, the diagonal segment's slope determines order:
+//   - A negative slope (`\`) means it should be after the vertical segment in the ordering.
+//   - A positive slope (`/`) means it should be before the vertical segment in the ordering.
+//
+// Handling Horizontal Segments:
+//   - Horizontal segments should always be considered *after* any non-horizontal segments that pass through p.
+//
+// Tie-breaking with Slope: If both segments intersect at the same X-coordinate, slopes are compared to break ties:
+//   - Segments sloping upward (positive slope) come after those sloping downward.
+//   - If both have negative slopes, the one with a steeper slope comes first.
+//   - If both have positive slopes, the one with a less steep slope comes first.
+//
+// Parameters:
+//   - a: The first line segment (LineSegment[float64]).
+//   - b: The second line segment (LineSegment[float64]).
+//   - p: The current event point (point.Point[float64]) where the comparison occurs.
+//   - opts: Additional geometry options, including epsilon for floating-point comparisons.
+//
+// Returns:
+//   - true if a should be ordered before b in the status structure, otherwise false.
 func segmentSortLess(a, b LineSegment[float64], p point.Point[float64], opts ...options.GeometryOptionsFunc) bool {
 
 	geoOpts := options.ApplyGeometryOptions(options.GeometryOptions{Epsilon: 0}, opts...)
@@ -664,40 +805,34 @@ func segmentSortLess(a, b LineSegment[float64], p point.Point[float64], opts ...
 		bX = p.X()
 	}
 
-	fmt.Printf(
-		"is %s (x=%f, s=%f) to the left of %s (x=%f, s=%f) at %s: ",
-		a.String(),
-		aX,
-		aSlope,
-		b.String(),
-		bX,
-		bSlope,
-		p.String(),
-	)
+	//fmt.Printf(
+	//	"is %s (x=%f, s=%f) to the left of %s (x=%f, s=%f) at %s: ",
+	//	a.String(),
+	//	aX,
+	//	aSlope,
+	//	b.String(),
+	//	bX,
+	//	bSlope,
+	//	p.String(),
+	//)
 
 	// Vertical segment ordering logic: Handle cases where a vertical segment intersects a diagonal one.
 	if aIsVertical && aContainsP && numeric.FloatEquals(aX, p.X(), geoOpts.Epsilon) && !bIsVertical && !bIsHorizontal && bContainsP {
-		fmt.Println(bSlope < 0, "via slope & intersection with vertical (a)")
+		//fmt.Println(bSlope < 0, "via slope & intersection with vertical (a)")
 		return bSlope < 0
 	}
 	if bIsVertical && bContainsP && numeric.FloatEquals(bX, p.X(), geoOpts.Epsilon) && !aIsVertical && !bIsHorizontal && aContainsP {
-		fmt.Println(aSlope > 0, "via slope & intersection with vertical (b)")
+		//fmt.Println(aSlope > 0, "via slope & intersection with vertical (b)")
 		return aSlope > 0
 	}
 
-	//// If both are vertical, sort by Y **to maintain correct order in S**
-	//if aIsVertical && bIsVertical {
-	//	fmt.Println(a.Start().Y() < b.Start().Y(), "via sorting two vertical segments by Y")
-	//	return a.Start().Y() < b.Start().Y()
-	//}
-
 	// Horizontal lines still come last if they contain p
 	if aIsHorizontal && b.ContainsPoint(p, opts...) {
-		fmt.Println("false via horizontal handling (a is horizontal, b contains p)")
+		//fmt.Println("false via horizontal handling (a is horizontal, b contains p)")
 		return false
 	}
 	if bIsHorizontal && a.ContainsPoint(p, opts...) {
-		fmt.Println("true via horizontal handling (b is horizontal, a contains p)")
+		//fmt.Println("true via horizontal handling (b is horizontal, a contains p)")
 		return true
 	}
 
@@ -706,28 +841,36 @@ func segmentSortLess(a, b LineSegment[float64], p point.Point[float64], opts ...
 
 		// order by slope
 		if (aSlope < 0 && bSlope > 0) || (aSlope > 0 && bSlope < 0) {
-			fmt.Println(aSlope > bSlope, "via slope as XAtY was equal & slopes opposite")
+			//fmt.Println(aSlope > bSlope, "via slope as XAtY was equal & slopes opposite")
 			return aSlope > bSlope
 		} else if aSlope < 0 && bSlope < 0 {
-			fmt.Println(aSlope > bSlope, "via slope as XAtY was equal & slopes both negative")
+			//fmt.Println(aSlope > bSlope, "via slope as XAtY was equal & slopes both negative")
 			return aSlope < bSlope
 		} else {
-			fmt.Println(aSlope > bSlope, "via slope as XAtY was equal & slopes both positive")
+			//fmt.Println(aSlope > bSlope, "via slope as XAtY was equal & slopes both positive")
 			return aSlope < bSlope
 		}
 	}
 
-	fmt.Println(aX < bX, "via default XAtY comparison")
+	//fmt.Println(aX < bX, "via default XAtY comparison")
 	return aX < bX // Default XAtY comparison
 
 }
 
-// Helper to sort S by the current sweep line
+// sortStatusBySweepLine sorts the status structure (S) based on the ordering of line segments
+// at the current sweep line position (p). This ensures that segments are processed in the correct
+// order as the sweep line progresses through the plane.
+//
+// Sorting Logic:
+//   - Uses segmentSortLess to determine the relative order of segments at the current event point p.
+//   - Ensures the order in S matches the order in which segments are intersected by a horizontal
+//     sweep line positioned just below p.
+//
+// Parameters:
+//   - S: The status structure containing active line segments ([]statusItem).
+//   - p: The current event point (qItem) where sorting occurs.
+//   - opts: Additional geometry options, such as epsilon, for floating-point comparisons.
 func sortStatusBySweepLine(S []statusItem, p qItem, opts ...options.GeometryOptionsFunc) {
-	// Assign the sweepY value to each status item
-	for i := range S {
-		S[i].sweepY = p.point.Y()
-	}
 
 	// Sort using a custom comparison function
 	slices.SortFunc(S, func(a, b statusItem) int {
@@ -736,113 +879,4 @@ func sortStatusBySweepLine(S []statusItem, p qItem, opts ...options.GeometryOpti
 		}
 		return 1
 	})
-	//slices.SortFunc(S, func(a, b statusItem) int {
-	//
-	//	//fmt.Printf("\n\nchecking %s vs %s for y=%f\n", a.segment.String(), b.segment.String(), a.sweepY)
-	//	if a.sweepY != b.sweepY {
-	//		panic(fmt.Errorf("unexpected sweepY"))
-	//	}
-	//
-	//	xa := a.segment.XAtY(p.point.Y())
-	//	xb := b.segment.XAtY(p.point.Y())
-	//
-	//	//fmt.Printf("xa: %f\n", xa)
-	//	//fmt.Printf("xb: %f\n", xb)
-	//
-	//	// Identify horizontal and vertical segments
-	//	aIsHorizontal := a.segment.Start().Y() == a.segment.End().Y()
-	//	bIsHorizontal := b.segment.Start().Y() == b.segment.End().Y()
-	//	aIsVertical := a.segment.Start().X() == a.segment.End().X()
-	//	bIsVertical := b.segment.Start().X() == b.segment.End().X()
-	//
-	//	//fmt.Printf("aIsHorizontal: %t, bIsHorizontal: %t\n", aIsHorizontal, bIsHorizontal)
-	//	//fmt.Printf("aIsVertical: %t, bIsVertical: %t\n", aIsVertical, bIsVertical)
-	//
-	//	// **1. Vertical segments should always come first**
-	//	if aIsVertical && !bIsVertical && a.segment.Start().X() == p.point.X() {
-	//		//fmt.Println("Vertical segments come first: aIsVertical && !bIsVertical")
-	//		return -1
-	//	}
-	//	if bIsVertical && !aIsVertical && b.segment.Start().X() == p.point.X() {
-	//		//fmt.Println("Vertical segments come first: bIsVertical && !aIsVertical")
-	//		return 1
-	//	}
-	//
-	//	////**2. If XAtY returns NaN (horizontal segment), use leftmost X-coordinate instead**
-	//	// 2. If XAtY returns NaN (horizontal segment), use p X-coordinate instead**
-	//	if math.IsNaN(xa) {
-	//		//xa = math.Min(a.segment.Start().X(), a.segment.End().X())
-	//		xa = p.point.X()
-	//		//fmt.Printf("as xa was NaN, using leftmost x value of: %f\n", xa)
-	//	}
-	//	if math.IsNaN(xb) {
-	//		//xb = math.Min(b.segment.Start().X(), b.segment.End().X())
-	//		xb = p.point.X()
-	//		//fmt.Printf("as xb was NaN, using leftmost x value of: %f\n", xb)
-	//	}
-	//
-	//	// **3. Primary Sort: By X-coordinates at sweepY**
-	//	if xa < xb {
-	//		//fmt.Println("Primary: Sort by X-coordinates at sweepY: xa < xb")
-	//		return -1
-	//	}
-	//	if xa > xb {
-	//		//fmt.Println("Primary: Sort by X-coordinates at sweepY: xa > xb")
-	//		return 1
-	//	}
-	//
-	//	// **4. Horizontal segments should come last if tied by X**
-	//	if aIsHorizontal && !bIsHorizontal {
-	//		//fmt.Println("Horizontal segments should come last: aIsHorizontal && !bIsHorizontal")
-	//		return 1
-	//	}
-	//	if bIsHorizontal && !aIsHorizontal {
-	//		//fmt.Println("Horizontal segments should come last: bIsHorizontal && !aIsHorizontal")
-	//		return -1
-	//	}
-	//
-	//	// **5. Higher start Y should come first**
-	//	if a.segment.Start().Y() > b.segment.Start().Y() {
-	//		//fmt.Println("Higher Y-start should come first: a.segment.Start().Y() > b.segment.Start().Y()")
-	//		return -1
-	//	}
-	//	if a.segment.Start().Y() < b.segment.Start().Y() {
-	//		//fmt.Println("Higher Y-start should come first: a.segment.Start().Y() < b.segment.Start().Y()")
-	//		return 1
-	//	}
-	//
-	//	// **6. Higher end Y should come first**
-	//	if a.segment.End().Y() > b.segment.End().Y() {
-	//		//fmt.Println("Higher Y-end should come first: a.segment.End().Y() > b.segment.End().Y()")
-	//		return -1
-	//	}
-	//	if a.segment.End().Y() < b.segment.End().Y() {
-	//		//fmt.Println("Higher Y-end should come first: a.segment.End().Y() < b.segment.End().Y()")
-	//		return 1
-	//	}
-	//
-	//	// **7. Lower X-start should come first**
-	//	if a.segment.Start().X() < b.segment.Start().X() {
-	//		//fmt.Println("Lower X-start should come first: a.segment.Start().X() < b.segment.Start().X()")
-	//		return -1
-	//	}
-	//	if a.segment.Start().X() > b.segment.Start().X() {
-	//		//fmt.Println("Lower X-start should come first: a.segment.Start().X() > b.segment.Start().X()")
-	//		return 1
-	//	}
-	//
-	//	// **8. Lower X-end should come first**
-	//	if a.segment.End().X() < b.segment.End().X() {
-	//		//fmt.Println("Lower X-end should come first: a.segment.End().X() < b.segment.End().X()")
-	//		return -1
-	//	}
-	//	if a.segment.End().X() > b.segment.End().X() {
-	//		//fmt.Println("Lower X-end should come first: a.segment.End().X() > b.segment.End().X()")
-	//		return 1
-	//	}
-	//
-	//	// **9. If completely equal, return 0**
-	//	//fmt.Println("completely equal")
-	//	return 0
-	//})
 }

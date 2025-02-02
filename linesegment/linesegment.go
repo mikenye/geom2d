@@ -1,3 +1,42 @@
+// Package linesegment provides fundamental geometric operations on line segments,
+// including intersection detection, transformations, and computational geometry algorithms.
+//
+// # Overview
+//
+// This package defines the [LineSegment] type, which represents a finite straight segment
+// between two points in a 2D plane. It supports various operations,
+// such as computing intersections, transformations (scaling, rotation, translation),
+// and checking geometric relationships.
+//
+// # Features
+//
+//   - Basic Operations: Methods for retrieving endpoints, length, midpoint, and orientation.
+//   - Geometric Relationships: Functions to determine whether a point lies on the segment,
+//     whether two segments intersect, and whether a segment is collinear with another.
+//   - Transformations: Functions to translate, rotate, and scale line segments.
+//   - Intersection detection via FindIntersectionsSlow:
+//     A naive brute-force approach that compares all segment pairs.
+//   - Intersection detection via FindIntersectionsFast:
+//     A more efficient method using the sweep line algorithm from
+//     [Computational Geometry: Algorithms and Applications], suitable for larger datasets.
+//
+// # Line Segment Intersection Algorithms
+//
+// There are two methods for determining intersections between a set of line segments:
+//   - Naive Method (FindIntersectionsSlow)
+//   - Sweep Line Algorithm (FindIntersectionsFast)
+//
+// The naive method FindIntersectionsSlow iterates over all pairs of line segments and directly checks whether they
+// intersect using the [Intersection] method. This has O(n²) time complexity, making it
+// inefficient for large datasets but useful as a reference for correctness. In fact,
+// the testing/fuzzing of FindIntersectionsFast compares results to FindIntersectionsSlow as a reference.
+//
+// The sweep line method FindIntersectionsFast is implemented to more efficiently find all intersections
+// among a set of line segments. This algorithm sweeps a vertical line from Y-max to Y-min across
+// the plane, maintaining an active set of segments that intersect the sweep line.
+// This method is outlined in Section 2.1 of [Computational Geometry: Algorithms and Applications].
+//
+// [Computational Geometry: Algorithms and Applications]: https://www.springer.com/gp/book/9783540779735
 package linesegment
 
 import (
@@ -9,7 +48,8 @@ import (
 	"math"
 )
 
-// LineSegment represents a line segment in a 2D space, defined by two endpoints, the start [point.Point] and end [point.Point].
+// LineSegment represents a line segment in a 2D space, defined by two endpoints,
+// a start [point.Point] and an end [point.Point].
 //
 // The generic type parameter T must satisfy the [types.SignedNumber] constraint, allowing the segment
 // to use various numeric types such as int or float64 for its coordinates.
@@ -37,7 +77,7 @@ func New[T types.SignedNumber](x1, y1, x2, y2 T) LineSegment[T] {
 	}
 }
 
-// NewFromPoints creates a new LineSegment from two endpoints, a start [point.Point] and end [point.Point].
+// NewFromPoints creates a new LineSegment from two endpoints, a start [point.Point] and an end [point.Point].
 //
 // This constructor function initializes a [LineSegment] with the specified starting and ending points.
 // The generic type parameter "T" must satisfy the [types.SignedNumber] constraint, allowing various numeric types
@@ -114,8 +154,8 @@ func (l LineSegment[T]) AsIntRounded() LineSegment[int] {
 // halts further generation.
 //
 // Example use cases include:
-// - Rendering lines in graphics applications.
-// - Generating grid points for pathfinding.
+//   - Rendering lines in graphics applications.
+//   - Generating grid points for pathfinding.
 //
 // Parameters:
 //   - yield (func([point.Point][int]) bool): A function that processes each generated point.
@@ -367,7 +407,7 @@ func (l LineSegment[T]) End() point.Point[T] {
 // Behavior:
 //   - By default, the function performs an exact equality check, returning true only if
 //     both the start and end points of l and other are identical.
-//   - If [WithEpsilon] is provided, the function performs an approximate equality check,
+//   - If [options.WithEpsilon] is provided, the function performs an approximate equality check,
 //     considering the points equal if their coordinate differences are within the specified
 //     epsilon threshold.
 //
@@ -383,7 +423,7 @@ func (l LineSegment[T]) Eq(other LineSegment[T], opts ...options.GeometryOptions
 	return l.start.Eq(other.start, opts...) && l.end.Eq(other.end, opts...)
 }
 
-// todo: doc comments, unit test, example
+// Flip returns a new LineSegment with the start and end points swapped.
 func (l LineSegment[T]) Flip() LineSegment[T] {
 	return NewFromPoints(l.End(), l.Start())
 }
@@ -415,9 +455,16 @@ func (l LineSegment[T]) Length(opts ...options.GeometryOptionsFunc) float64 {
 	return l.start.DistanceToPoint(l.end, opts...)
 }
 
-// normalize ensures that the line segment's coordinates match the expected ordering for the sweep line algorithm in FindIntersections.
-// makes l.Start() the "upper" point, and seg.End() the "lower" point
-// todo: doc comment, unit test, example
+// normalize reorders the endpoints of the line segment to ensure a consistent
+// ordering required for the sweep line algorithm in the FindIntersectionsSlow/Fast functions.
+//
+//   - If the segment is not horizontal, the point with the greater Y-coordinate
+//     becomes the start point, ensuring top-to-bottom ordering.
+//   - If the segment is horizontal, the point with the smaller X-coordinate
+//     becomes the start point, ensuring left-to-right ordering.
+//
+// This normalization ensures that the orientation of the line segments match what is expected by the
+// sweep line algorithm.
 func (l LineSegment[T]) normalize() LineSegment[T] {
 
 	// if start Y is smaller than end Y, then flip (top-to-bottom)
@@ -650,7 +697,7 @@ func (l LineSegment[T]) Scale(ref point.Point[T], factor T) LineSegment[T] {
 //
 // Notes:
 //   - Vertical lines (dx = 0) are identified as having an undefined slope.
-//   - Use math.IsNaN() to check if the slope is undefined.
+//   - Use math.IsNaN() to check if the slope is undefined (and thus vertical).
 func (l LineSegment[T]) Slope() float64 {
 	dx := float64(l.end.X() - l.start.X())
 	dy := float64(l.end.Y() - l.start.Y())
@@ -719,6 +766,9 @@ func (l LineSegment[T]) Translate(delta point.Point[T]) LineSegment[T] {
 //   - If the provided y-coordinate is outside the range of the segment's y-coordinates, the function returns math.NaN().
 //   - If the line segment is horizontal, the x-coordinate is constant and will match the start or end x-coordinate.
 //
+// Notes:
+//   - Users should check for `NaN` with `math.IsNaN()` before using the result.
+//
 // Example:
 //   - For a line segment from (1, 2) to (4, 6), calling XAtY(4) will return 2.5.
 func (l LineSegment[T]) XAtY(y float64) float64 {
@@ -751,6 +801,9 @@ func (l LineSegment[T]) XAtY(y float64) float64 {
 //   - If the line segment is horizontal (zero slope), the function returns math.NaN().
 //   - If the provided x-coordinate is outside the range of the segment's x-coordinates, the function returns math.NaN().
 //   - If the line segment is vertical, the y-coordinate is constant and will match the start or end y-coordinate.
+//
+// Notes:
+//   - Users should check for `NaN` with `math.IsNaN()` before using the result.
 //
 // Example:
 //   - For a line segment from (1, 2) to (4, 6), calling YAtX(2.5) will return 3.5.

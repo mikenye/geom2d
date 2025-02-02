@@ -207,7 +207,28 @@ func (r Rectangle[T]) Edges() (bottom, right, top, left linesegment.LineSegment[
 		linesegment.NewFromPoints(r.topLeft, r.bottomLeft)
 }
 
-// todo: doc comments, unit test, example func
+// EdgesIter iterates over the edges of the rectangle in counter-clockwise order,
+// yielding each edge as a [linesegment.LineSegment].
+//
+// It is a ["range-over"] function, designed for use with a for-loop.
+//
+// Example usage:
+//
+//		rect := NewRectangle(NewPoint(0, 0), NewPoint(4, 3))
+//	 fmt.Println("Edges in rect:")
+//		for seg := range rect.EdgesIter {
+//		    fmt.Printf(" - %s\n", seg)
+//		}
+//
+// The edges are yielded in the following order:
+//  1. Bottom edge (left to right)
+//  2. Right edge (bottom to top)
+//  3. Top edge (right to left)
+//  4. Left edge (top to bottom)
+//
+// If the loop body returns false (due to the for-loop being broken early), iteration stops early.
+//
+// ["range-over"]: https://go.dev/blog/range-functions
 func (r Rectangle[T]) EdgesIter(yield func(segment linesegment.LineSegment[T]) bool) {
 	if !yield(linesegment.NewFromPoints(r.bottomLeft, r.bottomRight)) {
 		return
