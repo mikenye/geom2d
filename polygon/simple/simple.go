@@ -45,16 +45,16 @@ func IsWellFormed[T types.SignedNumber](points []point.Point[T], opts ...options
 	// todo: options.GeometryOptionsFunc to allow user to change out linesegment.FindIntersectionsSlow (eg: sweepline)
 	intersections := linesegment.FindIntersectionsSlow(segments, opts...)
 
+IsWellFormedOuterLoop:
 	for _, intersection := range intersections {
 		// Skip intersection if it is exactly at the endpoints of both line segments
 		if intersection.IntersectionType == linesegment.IntersectionPoint {
 			// Check if the intersection point is an endpoint of both segments
-			pointOnSegment := func(p point.Point[float64], seg linesegment.LineSegment[T], opts ...options.GeometryOptionsFunc) bool {
-				return p.Eq(seg.Start().AsFloat64(), opts...) || p.Eq(seg.End().AsFloat64(), opts...)
-			}
-			if pointOnSegment(intersection.IntersectionPoint, intersection.InputLineSegments[0], opts...) &&
-				pointOnSegment(intersection.IntersectionPoint, intersection.InputLineSegments[1], opts...) {
-				continue
+			for _, inputSeg := range intersection.InputLineSegments {
+				if intersection.IntersectionPoint.Eq(inputSeg.Start(), opts...) ||
+					intersection.IntersectionPoint.Eq(inputSeg.End(), opts...) {
+					continue IsWellFormedOuterLoop
+				}
 			}
 		}
 

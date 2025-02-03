@@ -1,6 +1,7 @@
 package simple
 
 import (
+	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -77,7 +78,7 @@ func TestIsWellFormed(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := IsWellFormed(tc.points)
+			result, err := IsWellFormed(tc.points, options.WithEpsilon(1e-8))
 
 			assert.Equal(t, tc.expected, result)
 
