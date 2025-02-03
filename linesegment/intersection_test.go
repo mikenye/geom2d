@@ -1,7 +1,6 @@
 package linesegment
 
 import (
-	"fmt"
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/stretchr/testify/assert"
@@ -75,8 +74,8 @@ func TestFindIntersectionsSlow(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			actual := FindIntersectionsSlow(tc.segments, tc.opts...)
-			fmt.Println(tc.expected)
-			fmt.Println(actual)
+			//fmt.Println(tc.expected)
+			//fmt.Println(actual)
 			assert.ElementsMatch(t, tc.expected, actual, "unexpected intersections")
 		})
 	}

@@ -157,7 +157,7 @@ func FuzzFindIntersections_Int_4Segments(f *testing.F) {
 		if x5 == x6 && y5 == y6 {
 			return // skip degenerate (don't use t.Skip() or fuzz will store the test
 		}
-		if x7 == x7 && y8 == y8 {
+		if x7 == x8 && y7 == y8 {
 			return // skip degenerate (don't use t.Skip() or fuzz will store the test
 		}
 
@@ -398,10 +398,11 @@ func TestFindIntersections(t *testing.T) {
 					actualIntersections := FindIntersectionsFast(tc.segments, options.WithEpsilon(epsilon))
 					actualIntersectionsFromSlow := FindIntersectionsSlow(tc.segments, options.WithEpsilon(epsilon))
 
-					fmt.Printf("From sweep line: %#v\n", actualIntersections)
-					fmt.Printf("From naive algo: %#v\n", actualIntersectionsFromSlow)
-
 					ok, reason := compareIntersectionResults(actualIntersections, actualIntersectionsFromSlow, epsilon)
+					if !ok {
+						fmt.Printf("From sweep line: %#v\n", actualIntersections)
+						fmt.Printf("From naive algo: %#v\n", actualIntersectionsFromSlow)
+					}
 					require.True(t, ok, reason)
 				})
 			}
@@ -746,10 +747,10 @@ func TestSortStatusBySweepLine(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			sortStatusBySweepLine(tc.input, qItem{point: point.New(0, tc.sweepY)})
 
-			debugPrintStatus(tc.input, tc.sweepY)
+			//debugPrintStatus(tc.input, tc.sweepY)
 
-			fmt.Println("input: ", tc.input)
-			fmt.Println("expect:", tc.expected)
+			//fmt.Println("input: ", tc.input)
+			//fmt.Println("expect:", tc.expected)
 
 			for i := range tc.input {
 				assert.Equal(t, tc.expected[i].segment, tc.input[i].segment, "Segment mismatch at index %d", i)

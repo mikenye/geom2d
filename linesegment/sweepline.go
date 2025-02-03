@@ -621,9 +621,9 @@ func handleEventPoint(p qItem, Q *btree.BTreeG[qItem], S []statusItem, R *inters
 			S = append(S, statusItem{
 				segment: seg,
 			})
-		} else {
-			// skip duplicate
-		}
+		} //else {
+		// skip duplicate
+		//}
 
 	}
 	sortStatusBySweepLine(S, p, opts...) // Re-sort S after insertion
@@ -715,9 +715,9 @@ func insertSegmentIntoQueue(seg LineSegment[float64], Q *btree.BTreeG[qItem]) {
 	// Insert the lower endpoint as a new qItem (no associated segment)
 	if !Q.Has(qItem{point: seg.End()}) {
 		Q.ReplaceOrInsert(qItem{point: seg.End()})
-	} else {
-		// skip duplicate
-	}
+	} //else {
+	// skip duplicate
+	//}
 }
 
 // qItemLess defines the ordering of event queue items (qItem) for use in a balanced B-tree (btree.BTreeG[qItem]).
