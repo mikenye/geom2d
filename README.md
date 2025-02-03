@@ -5,7 +5,7 @@
 
 Geom2D is a computational geometry library for Go, designed for 2D polygon operations and other fundamental geometric types, and is currently reaching its release candidate phase, nearing production readiness.
 
-Currently (as-of Feb 2025), the Polygon and Spatial Relationship functions/methods/packages are being actively developed, however the Point, Line Segment, Rectangle and Circle functions/methods/packages should be production ready.
+As of February 2025, the Polygon and Spatial Relationship functionalities are actively in development. However, the Point, Line Segment, Rectangle, and Circle functionalities are considered production-ready.
 
 ## Table of Contents
 - [Geom2D](#geom2d)
