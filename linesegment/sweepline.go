@@ -7,6 +7,7 @@ import (
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
+	"log"
 	"maps"
 	"math"
 	"slices"
@@ -85,18 +86,18 @@ type statusItem struct {
 
 func debugPrintQueue(Q *btree.BTreeG[qItem]) {
 	Qcopy := Q.Clone()
-	fmt.Println("Event queue (Q):")
+	log.Println("Event queue (Q):")
 	for Qcopy.Len() > 0 {
 		item, _ := Qcopy.DeleteMin()
-		fmt.Printf("  - %s", item.String())
+		log.Printf("  - %s\n", item.String())
 	}
 }
 
 func debugPrintStatus(S []statusItem, y float64) {
-	fmt.Println("Status structure:")
+	log.Printf("Status structure at y=%f:\n", y)
 	for _, s := range S {
 		xaty := s.segment.XAtY(y)
-		fmt.Printf("  - %s (x=%f @ y=%f)\n", s.segment.String(), xaty, y)
+		log.Printf("  - %s (x=%f @ y=%f)\n", s.segment.String(), xaty, y)
 	}
 }
 
@@ -123,7 +124,7 @@ func debugPrintStatus(S []statusItem, y float64) {
 //	    linesegment.New(1, 1, 3, 3),
 //	}
 //	uniqueSegments := dedupeSegments(segments)
-//	fmt.Println(uniqueSegments) // Output: [(2,4)(6,8), (1,1)(3,3)]
+//	log.Println(uniqueSegments) // Output: [(2,4)(6,8), (1,1)(3,3)]
 //
 // Notes:
 //   - The order of unique segments in the returned slice is not guaranteed.
@@ -166,7 +167,7 @@ func dedupeSegments[T types.SignedNumber](segments []LineSegment[T]) []LineSegme
 //	}
 //
 //	updatedStatus := deleteSegmentsFromStatus(status, segments)
-//	fmt.Println(updatedStatus) // Output: [{(9,10)(11,12)}]
+//	log.Println(updatedStatus) // Output: [{(9,10)(11,12)}]
 //
 // This function is used in the sweep line algorithm to efficiently remove segments that are no longer active.
 func deleteSegmentsFromStatus(
@@ -250,16 +251,22 @@ func FindIntersectionsFast[T types.SignedNumber](
 	S := make([]statusItem, 0)
 
 	// while Q is not empty
+	iterCount := 0
 	for Q.Len() > 0 {
+		iterCount++
+
+		log.Printf("\n\n\n---ITERATION %d---\n\n\n", iterCount)
 
 		// DEBUGGING: show queue
-		//debugPrintQueue(Q)
+		debugPrintQueue(Q)
 
 		// Determine the next event point p in Q and delete it
 		p, ok := Q.DeleteMin()
 		if !ok {
 			panic(fmt.Errorf("unexpected empty queue"))
 		}
+
+		log.Printf("\nPopped: %s\n", p)
 
 		// Handle the event
 		S = handleEventPoint(p, Q, S, R, opts...)
@@ -321,6 +328,8 @@ func findLeftmostAndRightmostSegmentAndNeighbors(
 		}
 		return 1
 	})
+
+	log.Println("\nUC(p):", UCofP)
 
 	// Step 3: Get the leftmost & rightmost segment (first & ladt elements in sorted UCofP)
 	if len(UCofP) == 0 {
@@ -476,6 +485,7 @@ func findNewEvent(
 
 	// Find the intersection between segments sl and sr.
 	intersection := sl.Intersection(sr, opts...)
+	log.Printf("\nIntersection between %s & %s: %s\n", sl, sr, intersection)
 
 	if intersection.IntersectionType == IntersectionOverlappingSegment {
 		R.Add(IntersectionResult[float64]{
@@ -592,8 +602,24 @@ func handleEventPoint(p qItem, Q *btree.BTreeG[qItem], S []statusItem, R *inters
 		}
 	}
 
+	log.Printf("\nU(p): ")
+	for _, seg := range UofP {
+		log.Printf("%s ", seg)
+	}
+	log.Printf("\nC(p): ")
+	for _, seg := range CofP {
+		log.Printf("%s ", seg)
+	}
+	log.Printf("\nL(p): ")
+	for _, seg := range LofP {
+		log.Printf("%s ", seg)
+	}
+	log.Print("\n")
+
 	// if L(p) ∪ U(p) ∪ C(p) contains more than one segment...
 	if len(LofP)+len(UofP)+len(CofP) > 1 {
+
+		log.Println("\nL(p) ∪ U(p) ∪ C(p) contains more than one segment")
 
 		// then Report p as an intersection, together with L(p), U(p), and C(p).
 		for _, result := range FindIntersectionsSlow(append(LofP, append(UofP, CofP...)...), opts...) {
@@ -606,7 +632,8 @@ func handleEventPoint(p qItem, Q *btree.BTreeG[qItem], S []statusItem, R *inters
 	sortStatusBySweepLine(S, p, opts...) // Re-sort to account for new sweep line position
 
 	// DEBUGGING: show status of status structure
-	//debugPrintStatus(S)
+	log.Print("\n")
+	debugPrintStatus(S, p.point.Y())
 
 	// Insert the segments in U(p) ∪ C(p) into S.
 	// The order of the segments in S should correspond to the order in which they are
@@ -629,11 +656,19 @@ func handleEventPoint(p qItem, Q *btree.BTreeG[qItem], S []statusItem, R *inters
 	sortStatusBySweepLine(S, p, opts...) // Re-sort S after insertion
 
 	// DEBUGGING: show status of status structure
-	//debugPrintStatus(S)
+	log.Print("\n")
+	debugPrintStatus(S, p.point.Y())
 
 	// If U(p) ∪ C(p) = 0, find neighbors in S and call FINDNEWEVENT
 	if len(UofP)+len(CofP) == 0 {
+
+		log.Println("\nU(p) ∪ C(p) = 0")
+
 		sL, sR := findNeighbors(S, p, opts...)
+
+		log.Println("sL:", sL)
+		log.Println("sR:", sR)
+
 		if sL != nil && sR != nil {
 			// findNewEvent(*sl, *sr, p) (from book)
 			findNewEvent(sL.segment, sR.segment, p.point, Q, R, opts...)
@@ -645,6 +680,11 @@ func handleEventPoint(p qItem, Q *btree.BTreeG[qItem], S []statusItem, R *inters
 		// Let s'' be the rightmost segment of U(p) ∪ C(p) in S.
 		// Let sr be the right neighbor of s'' in S.
 		sPrime, sDoublePrime, sL, sR := findLeftmostAndRightmostSegmentAndNeighbors(p.point, UofP, CofP, S, opts...)
+
+		log.Println("\ns': ", sPrime)
+		log.Println("s'':", sDoublePrime)
+		log.Println("sL: ", sL)
+		log.Println("sR: ", sR)
 
 		// findNewEvent(sl,s', p) (from book)
 		if sPrime != nil && sL != nil {
@@ -805,35 +845,41 @@ func segmentSortLess(a, b LineSegment[float64], p point.Point[float64], opts ...
 		bX = p.X()
 	}
 
-	//fmt.Printf(
-	//	"is %s (x=%f, s=%f) to the left of %s (x=%f, s=%f) at %s: ",
-	//	a.String(),
-	//	aX,
-	//	aSlope,
-	//	b.String(),
-	//	bX,
-	//	bSlope,
-	//	p.String(),
-	//)
+	log.Printf(
+		"is %s (x=%f, s=%f) to the left of %s (x=%f, s=%f) at %s: ",
+		a.String(),
+		aX,
+		aSlope,
+		b.String(),
+		bX,
+		bSlope,
+		p.String(),
+	)
 
 	// Vertical segment ordering logic: Handle cases where a vertical segment intersects a diagonal one.
 	if aIsVertical && aContainsP && numeric.FloatEquals(aX, p.X(), geoOpts.Epsilon) && !bIsVertical && !bIsHorizontal && bContainsP {
-		//fmt.Println(bSlope < 0, "via slope & intersection with vertical (a)")
+		log.Println(bSlope < 0, "via slope & intersection with vertical (a)")
 		return bSlope < 0
 	}
 	if bIsVertical && bContainsP && numeric.FloatEquals(bX, p.X(), geoOpts.Epsilon) && !aIsVertical && !bIsHorizontal && aContainsP {
-		//fmt.Println(aSlope > 0, "via slope & intersection with vertical (b)")
+		log.Println(aSlope > 0, "via slope & intersection with vertical (b)")
 		return aSlope > 0
 	}
 
 	// Horizontal lines still come last if they contain p
-	if aIsHorizontal && b.ContainsPoint(p, opts...) {
-		//fmt.Println("false via horizontal handling (a is horizontal, b contains p)")
+	if aIsHorizontal && b.ContainsPoint(p, opts...) && !bIsHorizontal {
+		log.Println("false via horizontal handling (a is horizontal, b contains p)")
 		return false
 	}
-	if bIsHorizontal && a.ContainsPoint(p, opts...) {
-		//fmt.Println("true via horizontal handling (b is horizontal, a contains p)")
+	if bIsHorizontal && a.ContainsPoint(p, opts...) && !aIsHorizontal {
+		log.Println("true via horizontal handling (b is horizontal, a contains p)")
 		return true
+	}
+
+	// if both horizontal, order by end x
+	if aIsHorizontal && bIsHorizontal {
+		log.Println("true via horizontal handling (both horizontal)")
+		return a.End().X() > b.End().X()
 	}
 
 	// If XAtY matches
@@ -841,18 +887,18 @@ func segmentSortLess(a, b LineSegment[float64], p point.Point[float64], opts ...
 
 		// order by slope
 		if (aSlope < 0 && bSlope > 0) || (aSlope > 0 && bSlope < 0) {
-			//fmt.Println(aSlope > bSlope, "via slope as XAtY was equal & slopes opposite")
+			log.Println(aSlope > bSlope, "via slope as XAtY was equal & slopes opposite")
 			return aSlope > bSlope
 		} else if aSlope < 0 && bSlope < 0 {
-			//fmt.Println(aSlope > bSlope, "via slope as XAtY was equal & slopes both negative")
+			log.Println(aSlope > bSlope, "via slope as XAtY was equal & slopes both negative")
 			return aSlope < bSlope
 		} else {
-			//fmt.Println(aSlope > bSlope, "via slope as XAtY was equal & slopes both positive")
+			log.Println(aSlope > bSlope, "via slope as XAtY was equal & slopes both positive")
 			return aSlope < bSlope
 		}
 	}
 
-	//fmt.Println(aX < bX, "via default XAtY comparison")
+	log.Println(aX < bX, "via default XAtY comparison")
 	return aX < bX // Default XAtY comparison
 
 }

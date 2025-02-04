@@ -5,6 +5,7 @@ import (
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
+	"log"
 	"slices"
 	"strings"
 )
@@ -237,6 +238,7 @@ func (R *intersectionResults[T]) addOverlappingSegment(result IntersectionResult
 
 	// If overlap doesn't exist, add it
 	if index == -1 {
+		log.Println("adding intersection result:", result)
 		R.results = append(R.results, result)
 		return
 	}
@@ -245,6 +247,7 @@ func (R *intersectionResults[T]) addOverlappingSegment(result IntersectionResult
 	for _, seg := range result.InputLineSegments {
 		if !slices.Contains(R.results[index].InputLineSegments, seg) {
 			R.results[index].InputLineSegments = append(R.results[index].InputLineSegments, seg)
+			log.Println("updated intersection result:", R.results[index])
 		}
 	}
 }
@@ -289,6 +292,7 @@ func (R *intersectionResults[T]) addPoint(result IntersectionResult[T], opts ...
 
 	// if intersection point doesn't exist, add
 	if index == -1 {
+		log.Println("adding intersection result:", result)
 		R.results = append(R.results, result)
 		return
 	}
@@ -303,6 +307,7 @@ func (R *intersectionResults[T]) addPoint(result IntersectionResult[T], opts ...
 
 		// else, merge
 		R.results[index].InputLineSegments = append(R.results[index].InputLineSegments, seg)
+		log.Println("updated intersection result:", R.results[index])
 	}
 }
 
