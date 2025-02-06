@@ -419,8 +419,11 @@ func (l LineSegment[T]) End() point.Point[T] {
 //   - Approximate equality is useful when comparing line segments with floating-point coordinates,
 //     where small precision errors might otherwise cause inequality.
 //   - This function relies on the [Point.Eq] method, which supports epsilon adjustments.
+//
+// todo: update doc comments to define equality: A line segment is typically unordered—it is the set of points between two endpoints. So (0,0) → (10,10) should be equal to (10,10) → (0,0).
 func (l LineSegment[T]) Eq(other LineSegment[T], opts ...options.GeometryOptionsFunc) bool {
-	return l.start.Eq(other.start, opts...) && l.end.Eq(other.end, opts...)
+	return (l.start.Eq(other.start, opts...) && l.end.Eq(other.end, opts...)) ||
+		(l.start.Eq(other.end, opts...) && l.end.Eq(other.start, opts...))
 }
 
 // Flip returns a new LineSegment with the start and end points swapped.
@@ -726,6 +729,54 @@ func (l LineSegment[T]) Start() point.Point[T] {
 //   - string: A string representing the line segment's start and end coordinates.
 func (l LineSegment[T]) String() string {
 	return fmt.Sprintf("(%v,%v)(%v,%v)", l.start.X(), l.start.Y(), l.end.X(), l.end.Y())
+}
+
+// sweeplineLowerPoint returns the lower of the two endpoints of the line segment,
+// which is defined as the point with the smallest y-value. If both endpoints share
+// the same y-value, the point with the larger x-value is considered lower.
+// If both endpoints are identical, the function returns true to indicate a degenerate segment.
+func (l LineSegment[T]) sweeplineLowerPoint() (point.Point[T], bool) {
+	// If start Y is lower, return start
+	if l.Start().Y() < l.End().Y() {
+		return l.Start(), false
+	}
+	// If end Y is lower, return end
+	if l.Start().Y() > l.End().Y() {
+		return l.End(), false
+	}
+	// If Ys are equal, return the point with the larger X
+	if l.Start().X() > l.End().X() {
+		return l.Start(), false
+	}
+	if l.Start().X() < l.End().X() {
+		return l.End(), false
+	}
+	// If both X and Y are equal, segment is degenerate
+	return l.Start(), true
+}
+
+// sweeplineUpperPoint returns the upper of the two endpoints of the line segment,
+// which is defined as the point with the largest y-value. If both endpoints share
+// the same y-value, the point with the smaller x-value is considered upper.
+// If both endpoints are identical, the function returns true to indicate a degenerate segment.
+func (l LineSegment[T]) sweeplineUpperPoint() (point.Point[T], bool) {
+	// If start Y is higher, return start
+	if l.Start().Y() > l.End().Y() {
+		return l.Start(), false
+	}
+	// If end Y is higher, return end
+	if l.Start().Y() < l.End().Y() {
+		return l.End(), false
+	}
+	// If Ys are equal, return the point with the smaller X
+	if l.Start().X() < l.End().X() {
+		return l.Start(), false
+	}
+	if l.Start().X() > l.End().X() {
+		return l.End(), false
+	}
+	// If both X and Y are equal, segment is degenerate
+	return l.Start(), true
 }
 
 // Translate moves the LineSegment by a specified vector.

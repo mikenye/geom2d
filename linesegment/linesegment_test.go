@@ -4,6 +4,7 @@ import (
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"math"
 	"testing"
 )
@@ -1001,6 +1002,92 @@ func TestLineSegment_String(t *testing.T) {
 				result := segment.String()
 				assert.Equal(t, tt.expected, result)
 			}
+		})
+	}
+}
+
+func TestSweeplineLowerPoint(t *testing.T) {
+	tests := map[string]struct {
+		ls         LineSegment[int]
+		expected   point.Point[int]
+		degenerate bool
+	}{
+		"standard case: lower point is start": {
+			ls:         New(0, 10, 5, 0),
+			expected:   point.New(5, 0),
+			degenerate: false,
+		},
+		"standard case: lower point is end": {
+			ls:         New(5, 0, 0, 10),
+			expected:   point.New(5, 0),
+			degenerate: false,
+		},
+		"horizontal segment: rightmost point is lower": {
+			ls:         New(3, 5, 7, 5),
+			expected:   point.New(7, 5),
+			degenerate: false,
+		},
+		"horizontal segment: rightmost point is lower (flipped)": {
+			ls:         New(7, 5, 3, 5),
+			expected:   point.New(7, 5),
+			degenerate: false,
+		},
+		"degenerate segment: both points identical": {
+			ls:         New(2, 2, 2, 2),
+			expected:   point.New(2, 2),
+			degenerate: true,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			actual, degenerate := tc.ls.sweeplineLowerPoint()
+			require.NotNil(t, actual)
+			assert.Equal(t, tc.expected, actual)
+			assert.Equal(t, tc.degenerate, degenerate)
+		})
+	}
+}
+
+func TestSweeplineUpperPoint(t *testing.T) {
+	tests := map[string]struct {
+		ls         LineSegment[int]
+		expected   point.Point[int]
+		degenerate bool
+	}{
+		"standard case: upper point is start": {
+			ls:         New(5, 0, 0, 10),
+			expected:   point.New(0, 10),
+			degenerate: false,
+		},
+		"standard case: upper point is end": {
+			ls:         New(0, 10, 5, 0),
+			expected:   point.New(0, 10),
+			degenerate: false,
+		},
+		"horizontal segment: leftmost point is upper": {
+			ls:         New(3, 5, 7, 5),
+			expected:   point.New(3, 5),
+			degenerate: false,
+		},
+		"horizontal segment: leftmost point is upper (flipped)": {
+			ls:         New(7, 5, 3, 5),
+			expected:   point.New(3, 5),
+			degenerate: false,
+		},
+		"degenerate segment: both points identical": {
+			ls:         New(2, 2, 2, 2),
+			expected:   point.New(2, 2),
+			degenerate: true,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			actual, degenerate := tc.ls.sweeplineUpperPoint()
+			require.NotNil(t, actual)
+			assert.Equal(t, tc.expected, actual)
+			assert.Equal(t, tc.degenerate, degenerate)
 		})
 	}
 }
