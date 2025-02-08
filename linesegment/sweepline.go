@@ -8,64 +8,9 @@ import (
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
 	"log"
-	"maps"
 	"math"
 	"slices"
-	"strings"
 )
-
-// qItem represents an entry in the event queue used in the sweep line algorithm for finding line segment intersections.
-//
-// Each qItem consists of:
-//   - point: The event point where an intersection or segment endpoint occurs.
-//   - segments: A slice of LineSegment[float64] that are associated with this event point. These could be:
-//   - Segments that start at this point (U(p))
-//   - Segments that end at this point (L(p))
-//   - Segments that contain this point as an intersection (C(p))
-//
-// Purpose:
-//   - qItem structures the event queue, ensuring each event is processed correctly in handleEventPoint.
-//   - It allows multiple segments to be grouped under the same event point, preventing redundant queue entries.
-//
-// Notes:
-//   - qItem is used internally by the sweep line algorithm and is not exposed publicly.
-//   - The event queue processes qItem entries in lexicographic order, breaking ties as needed.
-//
-// This ensures that events are processed in the correct order during the sweep.
-type qItem struct {
-	point    point.Point[float64]
-	segments []LineSegment[float64]
-}
-
-// String returns a human-readable representation of the event queue item (qItem).
-//
-// The format follows:
-//
-//	Queue Item: (x, y), U(p): (x1,y1)(x2,y2), (x3,y3)(x4,y4), ...
-//
-// This output helps visualize event processing in the sweep line algorithm.
-// The event point p is displayed first, followed by all associated segments "U(p)" where the
-// event point is the upper point of the line segment.
-//
-// Example Output:
-//
-//	Queue Item: (5,10), U(p): (5,10)(15,20), (5,10)(7,14)
-//
-// This function is particularly useful for debugging and logging the event queue.
-func (qi qItem) String() string {
-	builder := strings.Builder{}
-	builder.WriteString(fmt.Sprintf("Queue Item: %s, U(p): ", qi.point.String()))
-	first := true
-	for _, seg := range qi.segments {
-		if first {
-			builder.WriteString(seg.String())
-			first = false
-			continue
-		}
-		builder.WriteString(fmt.Sprintf(", %s", seg.String()))
-	}
-	return builder.String()
-}
 
 // statusItem represents an entry in the sweep line status structure.
 //
@@ -84,60 +29,12 @@ type statusItem struct {
 	segment LineSegment[float64]
 }
 
-func debugPrintQueue(Q *btree.BTreeG[qItem]) {
-	Qcopy := Q.Clone()
-	log.Println("Event queue (Q):")
-	for Qcopy.Len() > 0 {
-		item, _ := Qcopy.DeleteMin()
-		log.Printf("  - %s\n", item.String())
-	}
-}
-
 func debugPrintStatus(S []statusItem, y float64) {
 	log.Printf("Status structure at y=%f:\n", y)
 	for _, s := range S {
 		xaty := s.segment.XAtY(y)
 		log.Printf("  - %s (x=%f @ y=%f)\n", s.segment.String(), xaty, y)
 	}
-}
-
-// dedupeSegments removes duplicate line segments from the input slice.
-//
-// This function normalizes each line segment to ensure consistent ordering,
-// then eliminates duplicates by storing them in a map. The resulting slice
-// contains only unique line segments.
-//
-// A segment is considered a duplicate if its normalized representation
-// (i.e., consistently ordered start and end points) matches another segment.
-//
-// Parameters:
-//   - segments: A slice of LineSegment[T] that may contain duplicates.
-//
-// Returns:
-//   - A new slice containing only unique LineSegment[T] instances.
-//
-// Example Usage:
-//
-//	segments := []linesegment.LineSegment[int]{
-//	    linesegment.New(2, 4, 6, 8),
-//	    linesegment.New(6, 8, 2, 4), // Duplicate, but reversed
-//	    linesegment.New(1, 1, 3, 3),
-//	}
-//	uniqueSegments := dedupeSegments(segments)
-//	log.Println(uniqueSegments) // Output: [(2,4)(6,8), (1,1)(3,3)]
-//
-// Notes:
-//   - The order of unique segments in the returned slice is not guaranteed.
-func dedupeSegments[T types.SignedNumber](segments []LineSegment[T]) []LineSegment[T] {
-	tmpMap := make(map[LineSegment[T]]bool)
-	for _, seg := range segments {
-		tmpMap[seg.normalize()] = false
-	}
-	deduped := make([]LineSegment[T], 0, len(segments))
-	for k := range maps.Keys(tmpMap) {
-		deduped = append(deduped, k)
-	}
-	return deduped
 }
 
 // deleteSegmentsFromStatus removes the specified line segments from the status structure S.
@@ -227,24 +124,11 @@ func FindIntersectionsFast[T types.SignedNumber](
 	opts ...options.GeometryOptionsFunc,
 ) []IntersectionResult[float64] {
 
-	// dedupe input
-	segments = dedupeSegments(segments)
+	// Initialize an empty event queue
+	Q := newEventQueue(segments, opts...)
 
 	// Initialize results
 	R := newIntersectionResults[float64]()
-
-	// Initialize an empty event queue
-	Q := btree.NewG[qItem](2, qItemLess)
-
-	// Insert the segment endpoints into Q.
-	// When an upper endpoint is inserted, the corresponding segment should be stored with it.
-	for i := range segments {
-		// skip degenerate line segments
-		if segments[i].Start().Eq(segments[i].End(), opts...) {
-			continue
-		}
-		insertSegmentIntoQueue(segments[i].AsFloat64(), Q)
-	}
 
 	// Initialize an empty status structure S
 	// (in the book they use T, but that would clobber the generic type T).
@@ -700,94 +584,28 @@ func handleEventPoint(p qItem, Q *btree.BTreeG[qItem], S []statusItem, R *inters
 	return S
 }
 
-// insertSegmentIntoQueue inserts a line segment into the event queue (Q) in a manner that ensures
-// correct ordering for the sweep line algorithm. It associates the segment with its upper endpoint
-// and ensures the lower endpoint is registered in Q for future processing.
+// sortStatusBySweepLine sorts the status structure (S) based on the ordering of line segments
+// at the current sweep line position (p). This ensures that segments are processed in the correct
+// order as the sweep line progresses through the plane.
+//
+// Sorting Logic:
+//   - Uses segmentSortLess to determine the relative order of segments at the current event point p.
+//   - Ensures the order in S matches the order in which segments are intersected by a horizontal
+//     sweep line positioned just below p.
 //
 // Parameters:
-//   - seg: The line segment to be inserted into the event queue.
-//   - Q: A balanced B-tree (btree.BTreeG[qItem]) used to maintain the event queue.
-//
-// Algorithm Overview:
-//  1. Normalize the segment to ensure correct ordering (upper endpoint first).
-//  2. Handle degenerate segments (segments where start == end). These are treated as single points
-//     and inserted into Q without associating a segment.
-//  3. Insert the segment at its upper endpoint in Q.
-//     If an event already exists for this point, append seg to the existing event.
-//     Otherwise, create a new event entry with seg attached.
-//  4. Insert the lower endpoint into Q as a standalone event (without an associated segment),
-//     ensuring future processing when the sweep line reaches this point.
-//
-// Ordering & Structure Considerations:
-//   - The event queue is sorted lexicographically by (y, x) coordinates, ensuring correct
-//     event processing order from top-to-bottom and left-to-right.
-//   - Segments are attached to their upper endpoints, following the Bentley-Ottmann convention.
-//
-// Performance Considerations:
-//   - This function operates in O(log n) due to B-tree operations for insertion and lookup.
-//   - Duplicate points are efficiently handled via Q.Has and Q.ReplaceOrInsert.
-func insertSegmentIntoQueue(seg LineSegment[float64], Q *btree.BTreeG[qItem]) {
+//   - S: The status structure containing active line segments ([]statusItem).
+//   - p: The current event point (qItem) where sorting occurs.
+//   - opts: Additional geometry options, such as epsilon, for floating-point comparisons.
+func sortStatusBySweepLine(S []statusItem, p qItem, opts ...options.GeometryOptionsFunc) {
 
-	// Ensure correct ordering
-	seg = seg.normalize()
-
-	// Check if segment is degenerate (single point)
-	if seg.Start().Eq(seg.End()) {
-
-		// Insert the degenerate point **without associating a segment**
-		if !Q.Has(qItem{point: seg.Start()}) {
-			Q.ReplaceOrInsert(qItem{point: seg.Start()})
+	// Sort using a custom comparison function
+	slices.SortFunc(S, func(a, b statusItem) int {
+		if segmentSortLess(a.segment, b.segment, p.point, opts...) {
+			return -1
 		}
-		return // Don't process as a segment
-	}
-
-	// Retrieve or update the upper endpoint
-	existingUpper, exists := Q.Get(qItem{point: seg.Start()})
-	if exists {
-		// Append the segment to the existing qItem
-		existingUpper.segments = append(existingUpper.segments, seg)
-		Q.ReplaceOrInsert(existingUpper) // Re-insert the updated item back into Q
-	} else {
-		// Insert a new qItem for the upper endpoint
-		Q.ReplaceOrInsert(qItem{point: seg.Start(), segments: []LineSegment[float64]{seg}})
-	}
-
-	// Insert the lower endpoint as a new qItem (no associated segment)
-	if !Q.Has(qItem{point: seg.End()}) {
-		Q.ReplaceOrInsert(qItem{point: seg.End()})
-	} //else {
-	// skip duplicate
-	//}
-}
-
-// qItemLess defines the ordering of event queue items (qItem) for use in a balanced B-tree (btree.BTreeG[qItem]).
-// It ensures that events are processed in the correct order by the sweep line algorithm.
-//
-// Ordering Rules:
-//  1. Higher Y-coordinates come first (processed earlier by the sweep line).
-//  2. For equal Y-coordinates, smaller X-coordinates come first (ensuring left-to-right processing).
-//
-// Parameters:
-//   - p: The first event queue item (qItem) to compare.
-//   - q: The second event queue item (qItem) to compare.
-//
-// Returns:
-//   - true if p should be processed before q, otherwise false.
-//
-// Usage in the Sweep Line Algorithm:
-//   - The event queue (Q) is implemented as a balanced B-tree (btree.BTreeG[qItem]).
-//   - This function defines the comparison rule for inserting and retrieving events efficiently.
-func qItemLess(p, q qItem) bool {
-	// Compare based on the sweep line event order:
-	// 1. Higher y-coordinates are "smaller" (processed first).
-	// 2. For equal y-coordinates, smaller x-coordinates are "smaller".
-	if p.point.Y() > q.point.Y() {
-		return true
-	}
-	if p.point.Y() == q.point.Y() && p.point.X() < q.point.X() {
-		return true
-	}
-	return false
+		return 1
+	})
 }
 
 // segmentSortLess determines the relative ordering of two line segments (a and b)
@@ -901,28 +719,4 @@ func segmentSortLess(a, b LineSegment[float64], p point.Point[float64], opts ...
 	log.Println(aX < bX, "via default XAtY comparison")
 	return aX < bX // Default XAtY comparison
 
-}
-
-// sortStatusBySweepLine sorts the status structure (S) based on the ordering of line segments
-// at the current sweep line position (p). This ensures that segments are processed in the correct
-// order as the sweep line progresses through the plane.
-//
-// Sorting Logic:
-//   - Uses segmentSortLess to determine the relative order of segments at the current event point p.
-//   - Ensures the order in S matches the order in which segments are intersected by a horizontal
-//     sweep line positioned just below p.
-//
-// Parameters:
-//   - S: The status structure containing active line segments ([]statusItem).
-//   - p: The current event point (qItem) where sorting occurs.
-//   - opts: Additional geometry options, such as epsilon, for floating-point comparisons.
-func sortStatusBySweepLine(S []statusItem, p qItem, opts ...options.GeometryOptionsFunc) {
-
-	// Sort using a custom comparison function
-	slices.SortFunc(S, func(a, b statusItem) int {
-		if segmentSortLess(a.segment, b.segment, p.point, opts...) {
-			return -1
-		}
-		return 1
-	})
 }

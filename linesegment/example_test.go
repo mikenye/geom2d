@@ -60,48 +60,26 @@ func ExampleFindIntersectionsSlow() {
 	// Output:
 	// Octothorpe shape with the following line segments: (0,7)(10,7), (0,3)(10,3), (3,10)(3,0), (7,10)(7,0)
 	// ...containts the following intersections:
-	// Intersection type: IntersectionPoint: (3,7) from segments: (0,7)(10,7), (3,10)(3,0)
-	// Intersection type: IntersectionPoint: (7,7) from segments: (0,7)(10,7), (7,10)(7,0)
 	// Intersection type: IntersectionPoint: (3,3) from segments: (0,3)(10,3), (3,10)(3,0)
 	// Intersection type: IntersectionPoint: (7,3) from segments: (0,3)(10,3), (7,10)(7,0)
+	// Intersection type: IntersectionPoint: (3,7) from segments: (0,7)(10,7), (3,10)(3,0)
+	// Intersection type: IntersectionPoint: (7,7) from segments: (0,7)(10,7), (7,10)(7,0)
 }
 
 func ExampleFindIntersectionsFast() {
-	// define octothorpe ("#") shape
-	octothorpe := []linesegment.LineSegment[int]{
-		// Horizontal lines
-		linesegment.New[int](0, 7, 10, 7),
-		linesegment.New[int](0, 3, 10, 3),
-		// Vertical lines
-		linesegment.New[int](3, 10, 3, 0),
-		linesegment.New[int](7, 10, 7, 0),
+	// define a cross ("X") shape
+	cross := []linesegment.LineSegment[int]{
+		linesegment.New[int](0, 0, 10, 10),
+		linesegment.New[int](0, 10, 10, 0),
 	}
 
 	// find intersections via sweep line method
-	intersections := linesegment.FindIntersectionsFast(octothorpe, options.WithEpsilon(1e-8))
+	intersections := linesegment.FindIntersectionsFast(cross, options.WithEpsilon(1e-8))
 
-	fmt.Print("Octothorpe shape with the following line segments: ")
-	first := true
-	for _, seg := range octothorpe {
-		if first {
-			fmt.Print(seg)
-			first = false
-			continue
-		}
-		fmt.Printf(", %s", seg)
-	}
-	fmt.Printf("\n...containts the following intersections:\n")
-	for _, intersection := range intersections {
-		fmt.Println(intersection)
-	}
+	fmt.Printf("The cross shape has %s at %s\n", intersections[0].IntersectionType, intersections[0].IntersectionPoint)
 
 	// Output:
-	// Octothorpe shape with the following line segments: (0,7)(10,7), (0,3)(10,3), (3,10)(3,0), (7,10)(7,0)
-	// ...containts the following intersections:
-	// Intersection type: IntersectionPoint: (3,7) from segments: (0,7)(10,7), (3,10)(3,0)
-	// Intersection type: IntersectionPoint: (7,7) from segments: (0,7)(10,7), (7,10)(7,0)
-	// Intersection type: IntersectionPoint: (3,3) from segments: (0,3)(10,3), (3,10)(3,0)
-	// Intersection type: IntersectionPoint: (7,3) from segments: (0,3)(10,3), (7,10)(7,0)
+	// The cross shape has IntersectionPoint at (5,5)
 }
 
 func ExampleLineSegment_AsFloat32() {

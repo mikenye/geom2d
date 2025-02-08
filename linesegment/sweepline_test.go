@@ -1,7 +1,6 @@
 package linesegment
 
 import (
-	"fmt"
 	"github.com/google/btree"
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
@@ -270,7 +269,7 @@ func TestFindIntersections(t *testing.T) {
 				New[int](0, 0, 10, 0),
 				New[int](10, 0, 10, 10),
 				New[int](10, 10, 0, 10),
-				New[int](10, 0, 0, 0),
+				New[int](0, 10, 0, 0),
 			},
 		},
 		"diamond shape": {
@@ -398,12 +397,10 @@ func TestFindIntersections(t *testing.T) {
 					actualIntersections := FindIntersectionsFast(tc.segments, options.WithEpsilon(epsilon))
 					actualIntersectionsFromSlow := FindIntersectionsSlow(tc.segments, options.WithEpsilon(epsilon))
 
-					ok, reason := compareIntersectionResults(actualIntersections, actualIntersectionsFromSlow, epsilon)
-					if !ok {
-						fmt.Printf("From sweep line: %#v\n", actualIntersections)
-						fmt.Printf("From naive algo: %#v\n", actualIntersectionsFromSlow)
-					}
-					require.True(t, ok, reason)
+					t.Log("From sweep line:", actualIntersections)
+					t.Log("From naive algo:", actualIntersectionsFromSlow)
+
+					require.True(t, InterSectionResultsEq(actualIntersections, actualIntersectionsFromSlow, options.WithEpsilon(epsilon)))
 				})
 			}
 		})
@@ -658,50 +655,6 @@ func TestFindNewEvent(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestInsertSegmentIntoQueue(t *testing.T) {
-	// Create a new btree for the event queue
-	Q := btree.NewG[qItem](2, qItemLess)
-
-	// Define test segments
-	seg1 := New[float64](1, 5, 3, 1) // Upper endpoint (1,5), lower endpoint (3,1)
-	seg2 := New[float64](3, 1, 5, 5) // Upper endpoint (5,5), lower endpoint (3,1)
-	seg3 := New[float64](1, 5, 2, 2) // Upper endpoint (1,5), lower endpoint (2,2)
-
-	// Insert the first segment
-	insertSegmentIntoQueue(seg1, Q)
-
-	// Verify upper and lower points for seg1
-	upper1 := qItem{point: point.New[float64](1, 5), segments: []LineSegment[float64]{seg1.normalize()}}
-	lower1 := qItem{point: point.New[float64](3, 1), segments: nil}
-	upper1FromQ, ok := Q.Get(upper1)
-	require.True(t, ok, "Upper endpoint should exist in Q")
-	assert.Equal(t, upper1, upper1FromQ, "Upper endpoint should match expected")
-	assert.True(t, Q.Has(lower1), "Lower endpoint should exist in Q without a segment")
-
-	// Insert the second segment
-	insertSegmentIntoQueue(seg2, Q)
-
-	// Verify upper and lower points for seg2
-	upper2 := qItem{point: point.New[float64](5, 5), segments: []LineSegment[float64]{seg2.normalize()}}
-	lower2 := qItem{point: point.New[float64](3, 1), segments: nil}
-	upper2FromQ, ok := Q.Get(upper2)
-	require.True(t, ok, "Upper endpoint should exist in Q")
-	assert.Equal(t, upper2, upper2FromQ, "Upper endpoint should match expected")
-	assert.True(t, Q.Has(lower2), "Lower endpoint should exist in Q without a segment")
-
-	// Insert the third segment
-	insertSegmentIntoQueue(seg3, Q)
-
-	// Verify upper and lower points for seg3
-	// Note: upper1's segment list should now include seg3
-	upper3 := qItem{point: point.New[float64](1, 5), segments: []LineSegment[float64]{seg1.normalize(), seg3.normalize()}}
-	lower3 := qItem{point: point.New[float64](2, 2), segments: nil}
-	upper3FromQ, ok := Q.Get(upper3)
-	require.True(t, ok, "Upper endpoint should exist in Q")
-	assert.Equal(t, upper3, upper3FromQ, "Upper endpoint should match expected")
-	assert.True(t, Q.Has(lower3), "Lower endpoint should exist in Q without a segment")
 }
 
 func TestSortStatusBySweepLine(t *testing.T) {

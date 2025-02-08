@@ -32,8 +32,6 @@ import (
 //     for benchmarking more efficient algorithms.
 func FindIntersectionsSlow[T types.SignedNumber](segments []LineSegment[T], opts ...options.GeometryOptionsFunc) []IntersectionResult[float64] {
 
-	segments = dedupeSegments(segments)
-
 	R := newIntersectionResults[float64]()
 
 	// Compare each segment with every other segment
@@ -42,6 +40,11 @@ func FindIntersectionsSlow[T types.SignedNumber](segments []LineSegment[T], opts
 
 			// skip degenerate line segments
 			if segments[i].Start().Eq(segments[i].End(), opts...) || segments[j].Start().Eq(segments[j].End(), opts...) {
+				continue
+			}
+
+			// skip equal line segments
+			if segments[i].Eq(segments[j], opts...) {
 				continue
 			}
 

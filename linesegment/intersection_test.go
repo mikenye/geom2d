@@ -30,8 +30,8 @@ func TestFindIntersectionsSlow(t *testing.T) {
 					IntersectionType:  IntersectionPoint,
 					IntersectionPoint: point.New[float64](1, 1),
 					InputLineSegments: []LineSegment[float64]{
+						New[float64](0, 0, 2, 2),
 						New[float64](0, 2, 2, 0),
-						New[float64](2, 2, 0, 0),
 					},
 				},
 			},
@@ -45,17 +45,17 @@ func TestFindIntersectionsSlow(t *testing.T) {
 			expected: []IntersectionResult[float64]{
 				{
 					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](1.5, 1.5),
+					IntersectionPoint: point.New[float64](1, 1),
 					InputLineSegments: []LineSegment[float64]{
-						New[float64](0, 3, 3, 0),
-						New[float64](3, 3, 0, 0),
+						New[float64](1, 3, 1, 0),
+						New[float64](0, 0, 3, 3),
 					},
 				},
 				{
 					IntersectionType:  IntersectionPoint,
-					IntersectionPoint: point.New[float64](1, 1),
+					IntersectionPoint: point.New[float64](1.5, 1.5),
 					InputLineSegments: []LineSegment[float64]{
-						New[float64](1, 3, 1, 0),
+						New[float64](0, 3, 3, 0),
 						New[float64](3, 3, 0, 0),
 					},
 				},
@@ -69,14 +69,56 @@ func TestFindIntersectionsSlow(t *testing.T) {
 				},
 			},
 		},
+		"square shape": {
+			segments: []LineSegment[int]{
+				New[int](0, 0, 10, 0),
+				New[int](10, 0, 10, 10),
+				New[int](10, 10, 0, 10),
+				New[int](0, 10, 0, 0),
+			},
+			expected: []IntersectionResult[float64]{
+				{
+					IntersectionType:  IntersectionPoint,
+					IntersectionPoint: point.New[float64](0, 10),
+					InputLineSegments: []LineSegment[float64]{
+						New[float64](10, 10, 0, 10),
+						New[float64](0, 10, 0, 0),
+					},
+				},
+				{
+					IntersectionType:  IntersectionPoint,
+					IntersectionPoint: point.New[float64](10, 10),
+					InputLineSegments: []LineSegment[float64]{
+						New[float64](10, 0, 10, 10),
+						New[float64](10, 10, 0, 10),
+					},
+				},
+				{
+					IntersectionType:  IntersectionPoint,
+					IntersectionPoint: point.New[float64](10, 0),
+					InputLineSegments: []LineSegment[float64]{
+						New[float64](0, 0, 10, 0),
+						New[float64](10, 0, 10, 10),
+					},
+				},
+				{
+					IntersectionType:  IntersectionPoint,
+					IntersectionPoint: point.New[float64](0, 0),
+					InputLineSegments: []LineSegment[float64]{
+						New[float64](0, 0, 10, 0),
+						New[float64](0, 10, 0, 0),
+					},
+				},
+			},
+		},
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			actual := FindIntersectionsSlow(tc.segments, tc.opts...)
-			//fmt.Println(tc.expected)
-			//fmt.Println(actual)
-			assert.ElementsMatch(t, tc.expected, actual, "unexpected intersections")
+			t.Log("Expected:", tc.expected)
+			t.Log("Actual:  ", actual)
+			assert.True(t, InterSectionResultsEq(actual, tc.expected, options.WithEpsilon(1e-8)))
 		})
 	}
 }

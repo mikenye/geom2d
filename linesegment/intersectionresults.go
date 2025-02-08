@@ -2,6 +2,7 @@ package linesegment
 
 import (
 	"fmt"
+	"github.com/google/btree"
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
@@ -85,6 +86,46 @@ type IntersectionResult[T types.SignedNumber] struct {
 	InputLineSegments []LineSegment[T]
 }
 
+func (ir IntersectionResult[T]) Eq(other IntersectionResult[T], opts ...options.GeometryOptionsFunc) bool {
+	// check IntersectionType equality
+	if ir.IntersectionType != other.IntersectionType {
+		return false
+	}
+
+	// check intersections equality
+	switch ir.IntersectionType {
+	case IntersectionNone:
+		return true
+	case IntersectionPoint:
+		if !ir.IntersectionPoint.Eq(other.IntersectionPoint, opts...) {
+			return false
+		}
+	case IntersectionOverlappingSegment:
+		if !ir.OverlappingSegment.Eq(other.OverlappingSegment, opts...) {
+			return false
+		}
+	}
+
+	// check InputLineSegments equality
+	if len(ir.InputLineSegments) != len(other.InputLineSegments) {
+		return false
+	}
+	for _, segA := range ir.InputLineSegments {
+		found := false
+		for _, segB := range other.InputLineSegments {
+			if segA.Eq(segB, opts...) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+
+	return true
+}
+
 // String returns a human-readable string representation of the intersection result.
 //
 // The output format varies depending on the IntersectionType:
@@ -140,7 +181,7 @@ func (ir IntersectionResult[T]) String() string {
 // This type is not exposed publicly and is intended for internal use within the
 // sweep line and naive intersection detection algorithms.
 type intersectionResults[T types.SignedNumber] struct {
-	results []IntersectionResult[T]
+	results *btree.BTreeG[IntersectionResult[T]]
 }
 
 // newIntersectionResults creates and returns a new instance of intersectionResults.
@@ -154,7 +195,7 @@ type intersectionResults[T types.SignedNumber] struct {
 //     intersection results.
 func newIntersectionResults[T types.SignedNumber]() *intersectionResults[T] {
 	return &intersectionResults[T]{
-		results: make([]IntersectionResult[T], 0),
+		results: btree.NewG[IntersectionResult[T]](2, intersectionResultLess),
 	}
 }
 
@@ -180,193 +221,25 @@ func newIntersectionResults[T types.SignedNumber]() *intersectionResults[T] {
 // being added to the collection, maintaining consistency in how intersections are stored.
 func (R *intersectionResults[T]) Add(result IntersectionResult[T], opts ...options.GeometryOptionsFunc) {
 
-	// "normalize" result
-	resultNormalized := IntersectionResult[T]{
-		IntersectionType:   result.IntersectionType,
-		IntersectionPoint:  result.IntersectionPoint,
-		OverlappingSegment: result.OverlappingSegment.normalize(),
-		InputLineSegments:  make([]LineSegment[T], 0, len(result.InputLineSegments)),
-	}
-	for _, seg := range result.InputLineSegments {
-		resultNormalized.InputLineSegments = append(resultNormalized.InputLineSegments, seg.normalize())
-	}
-
-	// handle result
-	switch result.IntersectionType {
-	case IntersectionNone:
-		// do nothing
-	case IntersectionPoint:
-		R.addPoint(resultNormalized, opts...)
-	case IntersectionOverlappingSegment:
-		R.addOverlappingSegment(resultNormalized, opts...)
-	}
-}
-
-// addOverlappingSegment adds an intersection result of type IntersectionOverlappingSegment
-// to the intersectionResults set while ensuring deduplication.
-//
-// This method is responsible for handling cases where two line segments overlap completely or
-// partially. If the overlapping segment is not already present in the results, it is added.
-// If it already exists, the function merges the input line segments into the existing result
-// to track all segments involved in the overlap.
-//
-// Parameters:
-//   - result: The intersection result to be added. Must be of type IntersectionOverlappingSegment.
-//   - opts: Optional geometry settings, such as epsilon values for floating-point precision handling.
-//
-// Behavior:
-//   - If IntersectionType is not IntersectionOverlappingSegment, the function panics.
-//   - The function searches for an existing overlapping segment in R.results.
-//   - If no existing overlap is found, result is added as a new entry.
-//   - If an overlap is found, result.InputLineSegments are merged with the existing entry to
-//     ensure all contributing segments are recorded.
-func (R *intersectionResults[T]) addOverlappingSegment(result IntersectionResult[T], opts ...options.GeometryOptionsFunc) {
-	if result.IntersectionType != IntersectionOverlappingSegment {
-		panic(fmt.Errorf("IntersectionResult is not type IntersectionOverlappingSegment"))
-	}
-
-	// Check for existing overlaps
-	index := slices.IndexFunc(R.results, func(i IntersectionResult[T]) bool {
-		// Skip if existing intersection is not an overlap
-		if i.IntersectionType != IntersectionOverlappingSegment {
-			return false
-		}
-
-		// Check if the overlapping segments are equal
-		return i.OverlappingSegment.Eq(result.OverlappingSegment, opts...)
-	})
-
-	// If overlap doesn't exist, add it
-	if index == -1 {
-		log.Println("adding intersection result:", result)
-		R.results = append(R.results, result)
+	// don't bother proceeding if no intersection
+	if result.IntersectionType == IntersectionNone {
 		return
 	}
 
-	// Else, merge input line segments
-	for _, seg := range result.InputLineSegments {
-		if !slices.Contains(R.results[index].InputLineSegments, seg) {
-			R.results[index].InputLineSegments = append(R.results[index].InputLineSegments, seg)
-			log.Println("updated intersection result:", R.results[index])
+	existing, found := R.results.Get(result)
+
+	if found {
+		for _, seg := range existing.InputLineSegments {
+			if !slices.Contains(result.InputLineSegments, seg) {
+				result.InputLineSegments = append(result.InputLineSegments, seg)
+				log.Println("updating intersection result:", result)
+			}
 		}
-	}
-}
-
-// addPoint adds an intersection result of type IntersectionPoint to the intersectionResults set,
-// ensuring that duplicate intersection points are not stored while tracking all contributing segments.
-//
-// This method is responsible for handling point-based intersections where two or more line segments
-// cross at a single point. If the intersection point does not already exist in the results, it is added.
-// If the point is already present, the function merges `InputLineSegments` to ensure all contributing
-// segments are recorded.
-//
-// Parameters:
-//   - result: The intersection result to be added. Must be of type `IntersectionPoint`.
-//   - opts: Optional geometry settings, such as epsilon values for floating-point precision handling.
-//
-// Behavior:
-//   - If `result.IntersectionType` is not `IntersectionPoint`, the function panics.
-//   - The function searches for an existing intersection point in `R.results`.
-//   - If no existing intersection point is found, `result` is added as a new entry.
-//   - If the intersection point is found, `result.InputLineSegments` are merged with the existing entry to
-//     ensure all contributing segments are recorded.
-func (R *intersectionResults[T]) addPoint(result IntersectionResult[T], opts ...options.GeometryOptionsFunc) {
-	if result.IntersectionType != IntersectionPoint {
-		panic(fmt.Errorf("IntersectionResult is not type IntersectionPoint"))
+	} else {
+		log.Println("inserting intersection result:", result)
 	}
 
-	// check for existing points
-	index := slices.IndexFunc(R.results, func(i IntersectionResult[T]) bool {
-		// skip if existing intersection is not a point
-		if i.IntersectionType != IntersectionPoint {
-			return false
-		}
-
-		// skip if existing intersection point does not match new point
-		if !i.IntersectionPoint.Eq(result.IntersectionPoint, opts...) {
-			return false
-		}
-
-		return true
-	})
-
-	// if intersection point doesn't exist, add
-	if index == -1 {
-		log.Println("adding intersection result:", result)
-		R.results = append(R.results, result)
-		return
-	}
-
-	// else, add input line segments to existing intersection
-	for _, seg := range result.InputLineSegments {
-
-		// skip if line segment exists
-		if slices.Contains(R.results[index].InputLineSegments, seg) {
-			continue
-		}
-
-		// else, merge
-		R.results[index].InputLineSegments = append(R.results[index].InputLineSegments, seg)
-		log.Println("updated intersection result:", R.results[index])
-	}
-}
-
-// sortInputSegments ensures that the InputLineSegments within each IntersectionResult
-// are sorted in a consistent order. This is primarily used for test and example output consistency,
-// allowing for reliable comparison of results.
-//
-// Sorting Criteria:
-//   - Segments are sorted first by their start point Y-coordinate (ascending).
-//   - If Y-coordinates are equal, they are sorted by start point X-coordinate (ascending).
-//   - If start points are identical, sorting continues based on end point Y-coordinate (ascending).
-//   - If end Y-coordinates are also equal, sorting falls back to end point X-coordinate (ascending).
-//   - If all values are equal, the segments are considered identical.
-//
-// Purpose:
-//   - Helps maintain deterministic output in tests and examples by ensuring consistent ordering of
-//     input segments in intersection results.
-//   - Uses slices.SortFunc from the Go standard library for in-place sorting.
-//
-// Notes:
-//   - This function does not modify the intersection type or computed intersection points—
-//     it only affects the order of `InputLineSegments` within each result.
-func (R *intersectionResults[T]) sortInputSegments() {
-	for i := range R.results {
-		slices.SortFunc(R.results[i].InputLineSegments, func(a, b LineSegment[T]) int {
-			// Compare by start point Y
-			if a.Start().Y() < b.Start().Y() {
-				return -1
-			}
-			if a.Start().Y() > b.Start().Y() {
-				return 1
-			}
-			// Compare by start point X
-			if a.Start().X() < b.Start().X() {
-				return -1
-			}
-			if a.Start().X() > b.Start().X() {
-				return 1
-			}
-
-			// Compare by end point Y
-			if a.End().Y() < b.End().Y() {
-				return -1
-			}
-			if a.End().Y() > b.End().Y() {
-				return 1
-			}
-			// Compare by end point X
-			if a.End().X() < b.End().X() {
-				return -1
-			}
-			if a.End().X() > b.End().X() {
-				return 1
-			}
-
-			// Otherwise, they are equal
-			return 0
-		})
-	}
+	R.results.ReplaceOrInsert(result)
 }
 
 // Results returns the list of IntersectionResult entries stored in the intersectionResults struct.
@@ -386,6 +259,89 @@ func (R *intersectionResults[T]) sortInputSegments() {
 //   - The caller receives a reference to the underlying slice, meaning modifications to the returned slice
 //     will affect the internal state of intersectionResults.
 func (R *intersectionResults[T]) Results() []IntersectionResult[T] {
-	R.sortInputSegments()
-	return R.results
+	final := make([]IntersectionResult[T], 0, R.results.Len())
+	R.results.Ascend(func(item IntersectionResult[T]) bool {
+		final = append(final, item)
+		return true
+	})
+	return final
+}
+
+func intersectionResultLess[T types.SignedNumber](a, b IntersectionResult[T]) bool {
+	var la, lb LineSegment[float64]
+
+	// Convert IntersectionResult to LineSegments for comparison
+	switch a.IntersectionType {
+	case IntersectionNone:
+		panic(fmt.Errorf("cannot compare against none"))
+	case IntersectionPoint:
+		la = NewFromPoints(a.IntersectionPoint, a.IntersectionPoint)
+	case IntersectionOverlappingSegment:
+		la = a.OverlappingSegment
+	}
+	switch b.IntersectionType {
+	case IntersectionNone:
+		panic(fmt.Errorf("cannot compare against none"))
+	case IntersectionPoint:
+		lb = NewFromPoints(b.IntersectionPoint, b.IntersectionPoint)
+	case IntersectionOverlappingSegment:
+		lb = b.OverlappingSegment
+	}
+
+	// **Sorting logic to ensure consistent ordering**
+	// 1. Compare by lower point (Y first, then X)
+	laLower, _ := la.sweeplineLowerPoint()
+	lbLower, _ := lb.sweeplineLowerPoint()
+
+	if laLower.Y() < lbLower.Y() {
+		return true
+	} else if laLower.Y() > lbLower.Y() {
+		return false
+	}
+
+	if laLower.X() < lbLower.X() {
+		return true
+	} else if laLower.X() > lbLower.X() {
+		return false
+	}
+
+	// 2. If lower points are the same, compare upper points
+	laUpper, _ := la.sweeplineUpperPoint()
+	lbUpper, _ := lb.sweeplineUpperPoint()
+
+	if laUpper.Y() < lbUpper.Y() {
+		return true
+	} else if laUpper.Y() > lbUpper.Y() {
+		return false
+	}
+
+	if laUpper.X() < lbUpper.X() {
+		return true
+	} else if laUpper.X() > lbUpper.X() {
+		return false
+	}
+
+	// 3. If both endpoints are the same, ensure a consistent ordering for IntersectionType
+	return a.IntersectionType < b.IntersectionType
+}
+
+func InterSectionResultsEq[T types.SignedNumber](a, b []IntersectionResult[T], opts ...options.GeometryOptionsFunc) bool {
+	// length check
+	if len(a) != len(b) {
+		return false
+	}
+	// elements check
+	for _, resultA := range a {
+		found := false
+		for _, resultB := range b {
+			if resultA.Eq(resultB, opts...) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
