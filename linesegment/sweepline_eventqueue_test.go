@@ -3,6 +3,7 @@ package linesegment
 import (
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log"
 	"testing"
@@ -80,9 +81,20 @@ func TestNewEventQueue(t *testing.T) {
 			require.Len(t, actual, len(tc.expected), "actual vs expected len mismatch")
 			for i := range tc.expected {
 				require.Equalf(t, tc.expected[i].point, actual[i].point, "point mismatch at index %d", i)
-				require.ElementsMatch(t, tc.expected[i].segments, actual[i].segments, "line segment mismatch at %d", i)
+				require.Len(t, actual[i].segments, len(tc.expected[i].segments), "segment len mismatch")
+				for _, expectedSeg := range tc.expected[i].segments {
+					foundSeg := false
+					for _, actualSeg := range actual[i].segments {
+						if expectedSeg.Eq(actualSeg) {
+							foundSeg = true
+							break
+						}
+					}
+					if !foundSeg {
+						assert.Fail(t, "segment mismatch")
+					}
+				}
 			}
-
 		})
 	}
 }
