@@ -167,8 +167,14 @@ func handleEventPointNew(
 					pointValid := p.Y() < event.point.Y() ||
 						(p.Y() == event.point.Y() && p.X() > event.point.X())
 					if pointValid {
-						log.Printf("adding overlapping segment endpoint %s to EventQueue", p.String())
-						EventQueue.ReplaceOrInsert(qItem{point: p})
+						newQItem := qItem{point: p}
+						if !EventQueue.Has(newQItem) {
+							log.Printf("Inserting overlapping segment endpoint to EventQueue: %s", newQItem.point)
+							EventQueue.ReplaceOrInsert(newQItem)
+						} else {
+							log.Printf("Overlapping segment endpoint already exists in EventQueue: %s", newQItem.point)
+						}
+
 					}
 				}
 			}
@@ -375,10 +381,10 @@ func findNewEventNew(
 				segments: nil,
 			}
 			if !EventQueue.Has(newQItem) {
-				log.Printf("Inserting intersection to EventQueue: %s", intersection.IntersectionPoint)
+				log.Printf("Inserting intersection to EventQueue: %s", newQItem.point)
 				EventQueue.ReplaceOrInsert(newQItem)
 			} else {
-				log.Printf("Intersection already exists in EventQueue: %s", intersection.IntersectionPoint)
+				log.Printf("Intersection already exists in EventQueue: %s", newQItem.point)
 			}
 		}
 	case IntersectionOverlappingSegment:
