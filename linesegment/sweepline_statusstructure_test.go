@@ -71,6 +71,29 @@ func TestSegmentSortLessHigherOrder(t *testing.T) {
 				New[float64](0, 10, 0, -10),
 			},
 		},
+		"vertical & positive slope #2": { // vertical should come last
+			setupStatusStructure: func() *btree.BTreeG[sItem] {
+				// Initialize status structure
+				var StatusStructure *btree.BTreeG[sItem]
+				StatusStructure = nil
+
+				// Event where failure happens
+				event := qItem{
+					point: point.New[float64](19, 10),
+				}
+
+				// Update the status structure based on new sweepline position
+				return updateStatusStructure(StatusStructure, event, options.WithEpsilon(1e-8))
+			},
+			segments: []LineSegment[float64]{
+				New[float64](10, 10, 10, -56),
+				New[float64](10, 10, 0, -99),
+			},
+			expected: []LineSegment[float64]{
+				New[float64](10, 10, 0, -99),
+				New[float64](10, 10, 10, -56),
+			},
+		},
 		"vertical & horizontal slope": { // horizontal should come last
 			setupStatusStructure: func() *btree.BTreeG[sItem] {
 				// Initialize status structure

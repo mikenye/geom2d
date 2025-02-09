@@ -149,6 +149,14 @@ func segmentSortLessHigherOrder(p point.Point[float64], opts ...options.Geometry
 				log.Printf("  - false due to XAtY equal, b vertical & a negative slope")
 				return false
 			}
+			if aIsVertical && bSlope > 0 && !bIsHorizontal {
+				log.Printf("  - false due to XAtY equal, a vertical & b positive slope")
+				return false
+			}
+			if bIsVertical && aSlope > 0 && !aIsHorizontal {
+				log.Printf("  - true due to XAtY equal, b vertical & a positive slope")
+				return true
+			}
 
 			// order by slope: both slopes negative or both slopes positive
 			if aSlope < 0 && bSlope < 0 || aSlope > 0 && bSlope > 0 {
