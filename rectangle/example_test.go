@@ -17,7 +17,7 @@ func ExampleRectangle_Area() {
 	fmt.Printf("The area of rectangle %s is %d*%d = %d units²", r, w, h, area)
 
 	// Output:
-	// The area of rectangle [(0,0),(10,10)] is 10*10 = 100
+	// The area of rectangle [(0,0),(10,10)] is 10*10 = 100 units²
 }
 
 func ExampleRectangle_AsFloat32() {
