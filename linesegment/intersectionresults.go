@@ -221,7 +221,7 @@ func newIntersectionResults[T types.SignedNumber](opts ...options.GeometryOption
 //
 // Internally, the method ensures that all input segments in the result are normalized before
 // being added to the collection, maintaining consistency in how intersections are stored.
-func (R *intersectionResults[T]) Add(result IntersectionResult[T], opts ...options.GeometryOptionsFunc) {
+func (R *intersectionResults[T]) Add(result IntersectionResult[T]) {
 
 	// don't bother proceeding if no intersection
 	if result.IntersectionType == IntersectionNone {

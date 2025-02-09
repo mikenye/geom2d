@@ -49,7 +49,7 @@ func FindIntersectionsSlow[T types.SignedNumber](segments []LineSegment[T], opts
 			}
 
 			// Check for intersection
-			R.Add(segments[i].AsFloat64().Intersection(segments[j].AsFloat64(), opts...), opts...)
+			R.Add(segments[i].AsFloat64().Intersection(segments[j].AsFloat64(), opts...))
 		}
 	}
 
