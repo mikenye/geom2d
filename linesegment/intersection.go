@@ -32,7 +32,7 @@ import (
 //     for benchmarking more efficient algorithms.
 func FindIntersectionsSlow[T types.SignedNumber](segments []LineSegment[T], opts ...options.GeometryOptionsFunc) []IntersectionResult[float64] {
 
-	R := newIntersectionResults[float64]()
+	R := newIntersectionResults[float64](opts...)
 
 	// Compare each segment with every other segment
 	for i := 0; i < len(segments); i++ {

@@ -128,7 +128,7 @@ func FindIntersectionsFast[T types.SignedNumber](
 	Q := newEventQueue(segments, opts...)
 
 	// Initialize results
-	R := newIntersectionResults[float64]()
+	R := newIntersectionResults[float64](opts...)
 
 	// Initialize an empty status structure S
 	// (in the book they use T, but that would clobber the generic type T).

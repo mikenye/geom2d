@@ -3,6 +3,7 @@ package linesegment
 import (
 	"fmt"
 	"github.com/google/btree"
+	"github.com/mikenye/geom2d/numeric"
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
@@ -193,9 +194,10 @@ type intersectionResults[T types.SignedNumber] struct {
 // Returns:
 //   - A pointer to an empty intersectionResults[T] instance, ready to store and process
 //     intersection results.
-func newIntersectionResults[T types.SignedNumber]() *intersectionResults[T] {
+func newIntersectionResults[T types.SignedNumber](opts ...options.GeometryOptionsFunc) *intersectionResults[T] {
+	geoOpts := options.ApplyGeometryOptions(options.GeometryOptions{Epsilon: 0}, opts...)
 	return &intersectionResults[T]{
-		results: btree.NewG[IntersectionResult[T]](2, intersectionResultLess),
+		results: btree.NewG[IntersectionResult[T]](2, intersectionResultLessHigherFunc[T](geoOpts.Epsilon)),
 	}
 }
 
@@ -267,62 +269,64 @@ func (R *intersectionResults[T]) Results() []IntersectionResult[T] {
 	return final
 }
 
-func intersectionResultLess[T types.SignedNumber](a, b IntersectionResult[T]) bool {
-	var la, lb LineSegment[float64]
+func intersectionResultLessHigherFunc[T types.SignedNumber](epsilon float64) func(a, b IntersectionResult[T]) bool {
+	return func(a, b IntersectionResult[T]) bool {
+		var la, lb LineSegment[float64]
 
-	// Convert IntersectionResult to LineSegments for comparison
-	switch a.IntersectionType {
-	case IntersectionNone:
-		panic(fmt.Errorf("cannot compare against none"))
-	case IntersectionPoint:
-		la = NewFromPoints(a.IntersectionPoint, a.IntersectionPoint)
-	case IntersectionOverlappingSegment:
-		la = a.OverlappingSegment
+		// Convert IntersectionResult to LineSegments for comparison
+		switch a.IntersectionType {
+		case IntersectionNone:
+			panic(fmt.Errorf("cannot compare against none"))
+		case IntersectionPoint:
+			la = NewFromPoints(a.IntersectionPoint, a.IntersectionPoint)
+		case IntersectionOverlappingSegment:
+			la = a.OverlappingSegment
+		}
+		switch b.IntersectionType {
+		case IntersectionNone:
+			panic(fmt.Errorf("cannot compare against none"))
+		case IntersectionPoint:
+			lb = NewFromPoints(b.IntersectionPoint, b.IntersectionPoint)
+		case IntersectionOverlappingSegment:
+			lb = b.OverlappingSegment
+		}
+
+		// **Sorting logic to ensure consistent ordering**
+		// 1. Compare by lower point (Y first, then X)
+		laLower, _ := la.sweeplineLowerPoint()
+		lbLower, _ := lb.sweeplineLowerPoint()
+
+		if numeric.FloatLessThan(laLower.Y(), lbLower.Y(), epsilon) {
+			return true
+		} else if numeric.FloatGreaterThan(laLower.Y(), lbLower.Y(), epsilon) {
+			return false
+		}
+
+		if numeric.FloatLessThan(laLower.X(), lbLower.X(), epsilon) {
+			return true
+		} else if numeric.FloatGreaterThan(laLower.X(), lbLower.X(), epsilon) {
+			return false
+		}
+
+		// 2. If lower points are the same, compare upper points
+		laUpper, _ := la.sweeplineUpperPoint()
+		lbUpper, _ := lb.sweeplineUpperPoint()
+
+		if numeric.FloatLessThan(laUpper.Y(), lbUpper.Y(), epsilon) {
+			return true
+		} else if numeric.FloatGreaterThan(laUpper.Y(), lbUpper.Y(), epsilon) {
+			return false
+		}
+
+		if numeric.FloatLessThan(laUpper.X(), lbUpper.X(), epsilon) {
+			return true
+		} else if numeric.FloatGreaterThan(laUpper.X(), lbUpper.X(), epsilon) {
+			return false
+		}
+
+		// 3. If both endpoints are the same, ensure a consistent ordering for IntersectionType
+		return a.IntersectionType < b.IntersectionType
 	}
-	switch b.IntersectionType {
-	case IntersectionNone:
-		panic(fmt.Errorf("cannot compare against none"))
-	case IntersectionPoint:
-		lb = NewFromPoints(b.IntersectionPoint, b.IntersectionPoint)
-	case IntersectionOverlappingSegment:
-		lb = b.OverlappingSegment
-	}
-
-	// **Sorting logic to ensure consistent ordering**
-	// 1. Compare by lower point (Y first, then X)
-	laLower, _ := la.sweeplineLowerPoint()
-	lbLower, _ := lb.sweeplineLowerPoint()
-
-	if laLower.Y() < lbLower.Y() {
-		return true
-	} else if laLower.Y() > lbLower.Y() {
-		return false
-	}
-
-	if laLower.X() < lbLower.X() {
-		return true
-	} else if laLower.X() > lbLower.X() {
-		return false
-	}
-
-	// 2. If lower points are the same, compare upper points
-	laUpper, _ := la.sweeplineUpperPoint()
-	lbUpper, _ := lb.sweeplineUpperPoint()
-
-	if laUpper.Y() < lbUpper.Y() {
-		return true
-	} else if laUpper.Y() > lbUpper.Y() {
-		return false
-	}
-
-	if laUpper.X() < lbUpper.X() {
-		return true
-	} else if laUpper.X() > lbUpper.X() {
-		return false
-	}
-
-	// 3. If both endpoints are the same, ensure a consistent ordering for IntersectionType
-	return a.IntersectionType < b.IntersectionType
 }
 
 func InterSectionResultsEq[T types.SignedNumber](a, b []IntersectionResult[T], opts ...options.GeometryOptionsFunc) bool {
