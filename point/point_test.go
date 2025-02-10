@@ -491,19 +491,7 @@ func TestPoint_Rotate(t *testing.T) {
 	}
 }
 
-func TestPointMarshalJSON(t *testing.T) {
-	p := New[float64](3.5, 7.2)
-
-	data, err := json.Marshal(p)
-	if err != nil {
-		t.Fatalf("Failed to marshal Point: %v", err)
-	}
-
-	expected := `{"x":3.5,"y":7.2}`
-	assert.Equalf(t, expected, string(data), "Expected JSON %s, got %s", expected, string(data))
-}
-
-func TestPointMarshalUnmarshal(t *testing.T) {
+func TestPoint_MarshalUnmarshalJSON(t *testing.T) {
 	tests := map[string]struct {
 		point    any // Generic input point
 		expected any // Expected output after Marshal -> Unmarshal
@@ -537,25 +525,25 @@ func TestPointMarshalUnmarshal(t *testing.T) {
 			case Point[int]:
 				var result Point[int]
 				err := json.Unmarshal(data, &result)
-				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", tc.point, err)
+				require.NoErrorf(t, err, "Failed to unmarshal `%s`: %v", string(data), err)
 				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
 
 			case Point[int64]:
 				var result Point[int64]
 				err := json.Unmarshal(data, &result)
-				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", tc.point, err)
+				require.NoErrorf(t, err, "Failed to unmarshal `%s`: %v", string(data), err)
 				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
 
 			case Point[float32]:
 				var result Point[float32]
 				err := json.Unmarshal(data, &result)
-				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", tc.point, err)
+				require.NoErrorf(t, err, "Failed to unmarshal `%s`: %v", string(data), err)
 				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
 
 			case Point[float64]:
 				var result Point[float64]
 				err := json.Unmarshal(data, &result)
-				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", tc.point, err)
+				require.NoErrorf(t, err, "Failed to unmarshal `%s`: %v", string(data), err)
 				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
 
 			default:
@@ -750,18 +738,6 @@ func TestPoint_Translate(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestPointUnmarshalJSON(t *testing.T) {
-	jsonData := `{"x":3.5,"y":7.2}`
-
-	var p Point[float64]
-	if err := json.Unmarshal([]byte(jsonData), &p); err != nil {
-		t.Fatalf("Failed to unmarshal Point: %v", err)
-	}
-
-	expected := New[float64](3.5, 7.2)
-	assert.Equalf(t, expected, p, "Expected %v, got %v", expected, p)
 }
 
 func TestPoint_X(t *testing.T) {

@@ -1,6 +1,7 @@
 package linesegment
 
 import (
+	"encoding/json"
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/stretchr/testify/assert"
@@ -564,6 +565,68 @@ func TestLineSegment_Length(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			actual := tt.lineSegment.Length(options.WithEpsilon(tt.epsilon))
 			assert.InDelta(t, tt.expected, actual, tt.epsilon, "Expected length to match")
+		})
+	}
+}
+
+func TestLineSegment_MarshalUnmarshalJSON(t *testing.T) {
+	tests := map[string]struct {
+		segment  any // Input segment
+		expected any // Expected output after Marshal -> Unmarshal
+	}{
+		"LineSegment[int]": {
+			segment:  New[int](3, 7, 10, -2),
+			expected: New[int](3, 7, 10, -2),
+		},
+		"LineSegment[int64]": {
+			segment:  New[int64](42, -19, 99, 100),
+			expected: New[int64](42, -19, 99, 100),
+		},
+		"LineSegment[float32]": {
+			segment:  New[float32](1.5, -2.5, 10.1, 5.5),
+			expected: New[float32](1.5, -2.5, 10.1, 5.5),
+		},
+		"LineSegment[float64]": {
+			segment:  New[float64](3.5, 7.2, -4.1, 2.8),
+			expected: New[float64](3.5, 7.2, -4.1, 2.8),
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Marshal
+			data, err := json.Marshal(tc.segment)
+			require.NoErrorf(t, err, "Failed to marshal %s: %v", tc.segment, err)
+
+			// Determine the correct type for unmarshalling
+			switch expected := tc.expected.(type) {
+			case LineSegment[int]:
+				var result LineSegment[int]
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal `%s`: %v", string(data), err)
+				assert.Equalf(t, expected, result, "Expected %s, got %s", expected, result)
+
+			case LineSegment[int64]:
+				var result LineSegment[int64]
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal `%s`: %v", string(data), err)
+				assert.Equalf(t, expected, result, "Expected %s, got %s", expected, result)
+
+			case LineSegment[float32]:
+				var result LineSegment[float32]
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal `%s`: %v", string(data), err)
+				assert.Equalf(t, expected, result, "Expected %s, got %s", expected, result)
+
+			case LineSegment[float64]:
+				var result LineSegment[float64]
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal `%s`: %v", string(data), err)
+				assert.Equalf(t, expected, result, "Expected %s, got %s", expected, result)
+
+			default:
+				t.Fatalf("Unhandled type in test case: %s", name)
+			}
 		})
 	}
 }

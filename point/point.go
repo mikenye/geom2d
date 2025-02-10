@@ -376,8 +376,8 @@ func (p Point[T]) MarshalJSON() ([]byte, error) {
 		X T `json:"x"`
 		Y T `json:"y"`
 	}{
-		X: p.x,
-		Y: p.y,
+		X: p.X(),
+		Y: p.Y(),
 	})
 }
 

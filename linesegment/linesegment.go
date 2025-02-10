@@ -40,6 +40,7 @@
 package linesegment
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/mikenye/geom2d/numeric"
 	"github.com/mikenye/geom2d/options"
@@ -458,6 +459,17 @@ func (l LineSegment[T]) Length(opts ...options.GeometryOptionsFunc) float64 {
 	return l.start.DistanceToPoint(l.end, opts...)
 }
 
+// MarshalJSON serializes LineSegment as JSON while preserving its original type.
+func (l LineSegment[T]) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Start point.Point[T] `json:"start"`
+		End   point.Point[T] `json:"end"`
+	}{
+		Start: l.Start(),
+		End:   l.End(),
+	})
+}
+
 // normalize reorders the endpoints of the line segment to ensure a consistent
 // ordering required for the sweep line algorithm in the FindIntersectionsSlow/Fast functions.
 //
@@ -801,6 +813,21 @@ func (l LineSegment[T]) Translate(delta point.Point[T]) LineSegment[T] {
 		l.start.Translate(delta),
 		l.end.Translate(delta),
 	)
+}
+
+// UnmarshalJSON deserializes JSON into a LineSegment while keeping the exact original type.
+func (l *LineSegment[T]) UnmarshalJSON(data []byte) error {
+	var temp struct {
+		Start point.Point[T] `json:"start"`
+		End   point.Point[T] `json:"end"`
+	}
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	l.start = temp.Start
+	l.end = temp.End
+	return nil
 }
 
 // XAtY calculates the x-coordinate on the line segment at a given y-coordinate.
