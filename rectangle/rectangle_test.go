@@ -1,6 +1,7 @@
 package rectangle
 
 import (
+	"encoding/json"
 	"github.com/mikenye/geom2d/linesegment"
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
@@ -298,6 +299,82 @@ func TestRectangle_Height(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, tt.expected, tt.rect.Height())
+		})
+	}
+}
+
+func TestRectangle_MarshalUnmarshalJSON(t *testing.T) {
+	tests := map[string]struct {
+		rectangle any // Input rectangle
+		expected  any // Expected output after Marshal -> Unmarshal
+	}{
+		"Rectangle[int]": {
+			rectangle: NewFromPoints(point.New[int](0, 10), point.New[int](10, 10), point.New[int](0, 0), point.New[int](10, 0)),
+			expected:  NewFromPoints(point.New[int](0, 10), point.New[int](10, 10), point.New[int](0, 0), point.New[int](10, 0)),
+		},
+		"Rectangle[int64]": {
+			rectangle: NewFromPoints(point.New[int64](5, 50), point.New[int64](50, 50), point.New[int64](5, 5), point.New[int64](50, 5)),
+			expected:  NewFromPoints(point.New[int64](5, 50), point.New[int64](50, 50), point.New[int64](5, 5), point.New[int64](50, 5)),
+		},
+		"Rectangle[float32]": {
+			rectangle: NewFromPoints(point.New[float32](1.5, 2.5), point.New[float32](10.1, 2.5), point.New[float32](1.5, 1.0), point.New[float32](10.1, 1.0)),
+			expected:  NewFromPoints(point.New[float32](1.5, 2.5), point.New[float32](10.1, 2.5), point.New[float32](1.5, 1.0), point.New[float32](10.1, 1.0)),
+		},
+		"Rectangle[float64]": {
+			rectangle: NewFromPoints(point.New[float64](3.5, 7.2), point.New[float64](8.4, 7.2), point.New[float64](3.5, 2.1), point.New[float64](8.4, 2.1)),
+			expected:  NewFromPoints(point.New[float64](3.5, 7.2), point.New[float64](8.4, 7.2), point.New[float64](3.5, 2.1), point.New[float64](8.4, 2.1)),
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Marshal
+			data, err := json.Marshal(tc.rectangle)
+			if err != nil {
+				t.Fatalf("Failed to marshal %s: %v", name, err)
+			}
+
+			// Determine the correct type for unmarshalling
+			switch expected := tc.expected.(type) {
+			case Rectangle[int]:
+				var result Rectangle[int]
+				if err := json.Unmarshal(data, &result); err != nil {
+					t.Fatalf("Failed to unmarshal %s: %v", name, err)
+				}
+				if result != expected {
+					t.Errorf("%s: Expected %v, got %v", name, expected, result)
+				}
+
+			case Rectangle[int64]:
+				var result Rectangle[int64]
+				if err := json.Unmarshal(data, &result); err != nil {
+					t.Fatalf("Failed to unmarshal %s: %v", name, err)
+				}
+				if result != expected {
+					t.Errorf("%s: Expected %v, got %v", name, expected, result)
+				}
+
+			case Rectangle[float32]:
+				var result Rectangle[float32]
+				if err := json.Unmarshal(data, &result); err != nil {
+					t.Fatalf("Failed to unmarshal %s: %v", name, err)
+				}
+				if result != expected {
+					t.Errorf("%s: Expected %v, got %v", name, expected, result)
+				}
+
+			case Rectangle[float64]:
+				var result Rectangle[float64]
+				if err := json.Unmarshal(data, &result); err != nil {
+					t.Fatalf("Failed to unmarshal %s: %v", name, err)
+				}
+				if result != expected {
+					t.Errorf("%s: Expected %v, got %v", name, expected, result)
+				}
+
+			default:
+				t.Fatalf("Unhandled type in test case: %s", name)
+			}
 		})
 	}
 }

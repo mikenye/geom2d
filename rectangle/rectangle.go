@@ -1,6 +1,7 @@
 package rectangle
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/mikenye/geom2d/linesegment"
 	"github.com/mikenye/geom2d/options"
@@ -279,6 +280,21 @@ func (r Rectangle[T]) Height() T {
 	return height
 }
 
+// MarshalJSON serializes Rectangle as JSON while preserving its original type.
+func (r Rectangle[T]) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		TopLeft     point.Point[T] `json:"top_left"`
+		TopRight    point.Point[T] `json:"top_right"`
+		BottomLeft  point.Point[T] `json:"bottom_left"`
+		BottomRight point.Point[T] `json:"bottom_right"`
+	}{
+		TopLeft:     r.topLeft,
+		TopRight:    r.topRight,
+		BottomLeft:  r.bottomLeft,
+		BottomRight: r.bottomRight,
+	})
+}
+
 // Perimeter calculates the perimeter of the rectangle.
 //
 // Returns:
@@ -455,6 +471,54 @@ func (r Rectangle[T]) Translate(p point.Point[T]) Rectangle[T] {
 		r.bottomLeft.Translate(p),
 		r.bottomRight.Translate(p),
 	)
+}
+
+// UnmarshalJSON deserializes JSON into a Rectangle while keeping the exact original type.
+func (r *Rectangle[T]) UnmarshalJSON(data []byte) error {
+	var temp struct {
+		TopLeft     point.Point[T] `json:"top_left"`
+		TopRight    point.Point[T] `json:"top_right"`
+		BottomLeft  point.Point[T] `json:"bottom_left"`
+		BottomRight point.Point[T] `json:"bottom_right"`
+	}
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	r.topLeft = temp.TopLeft
+	r.topRight = temp.TopRight
+	r.bottomLeft = temp.BottomLeft
+	r.bottomRight = temp.BottomRight
+	return r.validate()
+}
+
+// validate checks if the rectangle is axis-aligned and correctly ordered.
+func (r Rectangle[T]) validate() error {
+	if r.topLeft.Y() != r.topRight.Y() {
+		return fmt.Errorf("topLeft (%v) and topRight (%v) must have the same y-coordinate", r.topLeft, r.topRight)
+	}
+	if r.bottomLeft.Y() != r.bottomRight.Y() {
+		return fmt.Errorf("bottomLeft (%v) and bottomRight (%v) must have the same y-coordinate", r.bottomLeft, r.bottomRight)
+	}
+	if r.topLeft.X() != r.bottomLeft.X() {
+		return fmt.Errorf("topLeft (%v) and bottomLeft (%v) must have the same x-coordinate", r.topLeft, r.bottomLeft)
+	}
+	if r.topRight.X() != r.bottomRight.X() {
+		return fmt.Errorf("topRight (%v) and bottomRight (%v) must have the same x-coordinate", r.topRight, r.bottomRight)
+	}
+	if r.topLeft.Y() <= r.bottomLeft.Y() {
+		return fmt.Errorf("topLeft (%v) must be above bottomLeft (%v)", r.topLeft, r.bottomLeft)
+	}
+	if r.topRight.Y() <= r.bottomRight.Y() {
+		return fmt.Errorf("topRight (%v) must be above bottomRight (%v)", r.topRight, r.bottomRight)
+	}
+	if r.topLeft.X() >= r.topRight.X() {
+		return fmt.Errorf("topLeft (%v) must be to the left of topRight (%v)", r.topLeft, r.topRight)
+	}
+	if r.bottomLeft.X() >= r.bottomRight.X() {
+		return fmt.Errorf("bottomLeft (%v) must be to the left of bottomRight (%v)", r.bottomLeft, r.bottomRight)
+	}
+	return nil // Rectangle is valid
 }
 
 // Width calculates the width of the rectangle.
