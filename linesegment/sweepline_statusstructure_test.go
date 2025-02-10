@@ -21,7 +21,6 @@ func TestSegmentSortLessHigherOrder(t *testing.T) {
 			setupStatusStructure: func() *btree.BTreeG[sItem] {
 				// Initialize status structure
 				var StatusStructure *btree.BTreeG[sItem]
-				StatusStructure = nil
 
 				// Event where failure happens
 				event := qItem{
@@ -52,7 +51,6 @@ func TestSegmentSortLessHigherOrder(t *testing.T) {
 			setupStatusStructure: func() *btree.BTreeG[sItem] {
 				// Initialize status structure
 				var StatusStructure *btree.BTreeG[sItem]
-				StatusStructure = nil
 
 				// Event where failure happens
 				event := qItem{
@@ -75,7 +73,6 @@ func TestSegmentSortLessHigherOrder(t *testing.T) {
 			setupStatusStructure: func() *btree.BTreeG[sItem] {
 				// Initialize status structure
 				var StatusStructure *btree.BTreeG[sItem]
-				StatusStructure = nil
 
 				// Event where failure happens
 				event := qItem{
@@ -98,7 +95,6 @@ func TestSegmentSortLessHigherOrder(t *testing.T) {
 			setupStatusStructure: func() *btree.BTreeG[sItem] {
 				// Initialize status structure
 				var StatusStructure *btree.BTreeG[sItem]
-				StatusStructure = nil
 
 				// Event where failure happens
 				event := qItem{
@@ -121,7 +117,6 @@ func TestSegmentSortLessHigherOrder(t *testing.T) {
 			setupStatusStructure: func() *btree.BTreeG[sItem] {
 				// Initialize status structure
 				var StatusStructure *btree.BTreeG[sItem]
-				StatusStructure = nil
 
 				// Event where failure happens
 				event := qItem{
@@ -144,7 +139,6 @@ func TestSegmentSortLessHigherOrder(t *testing.T) {
 			setupStatusStructure: func() *btree.BTreeG[sItem] {
 				// Initialize status structure
 				var StatusStructure *btree.BTreeG[sItem]
-				StatusStructure = nil
 
 				// Event where failure happens
 				event := qItem{
@@ -167,7 +161,6 @@ func TestSegmentSortLessHigherOrder(t *testing.T) {
 			setupStatusStructure: func() *btree.BTreeG[sItem] {
 				// Initialize status structure
 				var StatusStructure *btree.BTreeG[sItem]
-				StatusStructure = nil
 
 				// Event where failure happens
 				event := qItem{
@@ -190,7 +183,6 @@ func TestSegmentSortLessHigherOrder(t *testing.T) {
 			setupStatusStructure: func() *btree.BTreeG[sItem] {
 				// Initialize status structure
 				var StatusStructure *btree.BTreeG[sItem]
-				StatusStructure = nil
 
 				// Event where failure happens
 				event := qItem{
