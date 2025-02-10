@@ -2,7 +2,6 @@ package rectangle_test
 
 import (
 	"fmt"
-	"github.com/mikenye/geom2d/linesegment"
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/rectangle"
@@ -31,33 +30,33 @@ func ExampleRectangle_AsFloat32() {
 }
 
 func ExampleRectangle_AsFloat64() {
-	intRect := linesegment.New(3, 4, 5, 6)
+	intRect := rectangle.New(3, 4, 5, 6)
 	fltRect := intRect.AsFloat64()
 	fmt.Printf("intRect is %v of type: %T\n", intRect, intRect)
 	fmt.Printf("fltRect is %v of type: %T\n", fltRect, fltRect)
 	// Output:
-	// intRect is (3,4)(5,6) of type: linesegment.LineSegment[int]
-	// fltRect is (3,4)(5,6) of type: linesegment.LineSegment[float64]
+	// intRect is [(3,4),(5,6)] of type: rectangle.Rectangle[int]
+	// fltRect is [(3,4),(5,6)] of type: rectangle.Rectangle[float64]
 }
 
 func ExampleRectangle_AsInt() {
-	fltRect := linesegment.New(3.7, 4.1, 5.6, 6.2)
+	fltRect := rectangle.New(3.7, 4.1, 5.6, 6.2)
 	intRect := fltRect.AsInt()
 	fmt.Printf("fltRect is %v of type: %T\n", fltRect, fltRect)
 	fmt.Printf("intRect is %v of type: %T\n", intRect, intRect)
 	// Output:
-	// fltRect is (3.7,4.1)(5.6,6.2) of type: linesegment.LineSegment[float64]
-	// intRect is (3,4)(5,6) of type: linesegment.LineSegment[int]
+	// fltRect is [(3.7,4.1),(5.6,6.2)] of type: rectangle.Rectangle[float64]
+	// intRect is [(3,4),(5,6)] of type: rectangle.Rectangle[int]
 }
 
 func ExampleRectangle_AsIntRounded() {
-	fltRect := linesegment.New(3.7, 4.1, 5.6, 6.2)
+	fltRect := rectangle.New(3.7, 4.1, 5.6, 6.2)
 	intRect := fltRect.AsIntRounded()
 	fmt.Printf("fltRect is %v of type: %T\n", fltRect, fltRect)
 	fmt.Printf("intRect is %v of type: %T\n", intRect, intRect)
 	// Output:
-	// fltRect is (3.7,4.1)(5.6,6.2) of type: linesegment.LineSegment[float64]
-	// intRect is (4,4)(6,6) of type: linesegment.LineSegment[int]
+	// fltRect is [(3.7,4.1),(5.6,6.2)] of type: rectangle.Rectangle[float64]
+	// intRect is [(4,4),(6,6)] of type: rectangle.Rectangle[int]
 }
 
 func ExampleRectangle_ContainsPoint() {
