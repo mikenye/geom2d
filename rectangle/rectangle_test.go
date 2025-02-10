@@ -7,6 +7,7 @@ import (
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"image"
 	"testing"
 )
@@ -330,47 +331,33 @@ func TestRectangle_MarshalUnmarshalJSON(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// Marshal
 			data, err := json.Marshal(tc.rectangle)
-			if err != nil {
-				t.Fatalf("Failed to marshal %s: %v", name, err)
-			}
+			require.NoErrorf(t, err, "Failed to marshal %s: %v", tc.rectangle, err)
 
 			// Determine the correct type for unmarshalling
 			switch expected := tc.expected.(type) {
 			case Rectangle[int]:
 				var result Rectangle[int]
-				if err := json.Unmarshal(data, &result); err != nil {
-					t.Fatalf("Failed to unmarshal %s: %v", name, err)
-				}
-				if result != expected {
-					t.Errorf("%s: Expected %v, got %v", name, expected, result)
-				}
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
+				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
 
 			case Rectangle[int64]:
 				var result Rectangle[int64]
-				if err := json.Unmarshal(data, &result); err != nil {
-					t.Fatalf("Failed to unmarshal %s: %v", name, err)
-				}
-				if result != expected {
-					t.Errorf("%s: Expected %v, got %v", name, expected, result)
-				}
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
+				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
 
 			case Rectangle[float32]:
 				var result Rectangle[float32]
-				if err := json.Unmarshal(data, &result); err != nil {
-					t.Fatalf("Failed to unmarshal %s: %v", name, err)
-				}
-				if result != expected {
-					t.Errorf("%s: Expected %v, got %v", name, expected, result)
-				}
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
+				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
 
 			case Rectangle[float64]:
 				var result Rectangle[float64]
-				if err := json.Unmarshal(data, &result); err != nil {
-					t.Fatalf("Failed to unmarshal %s: %v", name, err)
-				}
-				if result != expected {
-					t.Errorf("%s: Expected %v, got %v", name, expected, result)
-				}
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
+				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
 
 			default:
 				t.Fatalf("Unhandled type in test case: %s", name)

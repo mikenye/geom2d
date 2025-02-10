@@ -1,10 +1,12 @@
 package circle
 
 import (
+	"encoding/json"
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"math"
 	"testing"
 )
@@ -316,6 +318,68 @@ func TestCircle_Eq(t *testing.T) {
 	}
 }
 
+func TestCircle_MarshalUnmarshalJSON(t *testing.T) {
+	tests := map[string]struct {
+		circle   any // Input circle
+		expected any // Expected output after Marshal -> Unmarshal
+	}{
+		"Circle[int]": {
+			circle:   NewFromPoint[int](point.New[int](3, 4), 5),
+			expected: NewFromPoint[int](point.New[int](3, 4), 5),
+		},
+		"Circle[int64]": {
+			circle:   NewFromPoint[int64](point.New[int64](10, 20), 100),
+			expected: NewFromPoint[int64](point.New[int64](10, 20), 100),
+		},
+		"Circle[float32]": {
+			circle:   NewFromPoint[float32](point.New[float32](1.5, 2.5), 4.5),
+			expected: NewFromPoint[float32](point.New[float32](1.5, 2.5), 4.5),
+		},
+		"Circle[float64]": {
+			circle:   NewFromPoint[float64](point.New[float64](3.5, 7.2), 2.8),
+			expected: NewFromPoint[float64](point.New[float64](3.5, 7.2), 2.8),
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Marshal
+			data, err := json.Marshal(tc.circle)
+			require.NoErrorf(t, err, "Failed to marshal %s: %v", tc.circle, err)
+
+			// Determine the correct type for unmarshalling
+			switch expected := tc.expected.(type) {
+			case Circle[int]:
+				var result Circle[int]
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
+				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
+
+			case Circle[int64]:
+				var result Circle[int64]
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
+				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
+
+			case Circle[float32]:
+				var result Circle[float32]
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
+				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
+
+			case Circle[float64]:
+				var result Circle[float64]
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
+				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
+
+			default:
+				t.Fatalf("Unhandled type in test case: %s", name)
+			}
+		})
+	}
+}
+
 func TestCircle_Radius(t *testing.T) {
 	tests := map[string]struct {
 		circle   Circle[float64]
@@ -335,7 +399,7 @@ func TestCircle_Radius(t *testing.T) {
 		},
 		"negative radius (edge case)": {
 			circle:   New[float64](3, 4, -5),
-			expected: -5,
+			expected: 5,
 		},
 	}
 
@@ -461,7 +525,7 @@ func TestCircle_Scale(t *testing.T) {
 		"scale with negative factor": {
 			circle:   New[float64](3, 4, 5),
 			factor:   -2,
-			expected: New[float64](3, 4, -10),
+			expected: New[float64](3, 4, 10),
 		},
 	}
 
@@ -489,7 +553,7 @@ func TestCircle_String(t *testing.T) {
 		},
 		"negative center and radius": {
 			circle:   New[float64](-3.5, -4.5, -5.5),
-			expected: "(-3.5,-4.5; r=-5.5)",
+			expected: "(-3.5,-4.5; r=5.5)",
 		},
 	}
 

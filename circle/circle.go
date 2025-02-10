@@ -26,6 +26,7 @@
 package circle
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/mikenye/geom2d/numeric"
 	"github.com/mikenye/geom2d/options"
@@ -55,7 +56,7 @@ type Circle[T types.SignedNumber] struct {
 func New[T types.SignedNumber](x, y, radius T) Circle[T] {
 	return Circle[T]{
 		center: point.New[T](x, y),
-		radius: radius,
+		radius: numeric.Abs(radius),
 	}
 }
 
@@ -70,7 +71,7 @@ func New[T types.SignedNumber](x, y, radius T) Circle[T] {
 func NewFromPoint[T types.SignedNumber](center point.Point[T], radius T) Circle[T] {
 	return Circle[T]{
 		center: center,
-		radius: radius,
+		radius: numeric.Abs(radius),
 	}
 }
 
@@ -285,6 +286,17 @@ func (c Circle[T]) Eq(other Circle[T], opts ...options.GeometryOptionsFunc) bool
 	return centersEqual && radiiEqual
 }
 
+// MarshalJSON serializes Circle as JSON while preserving its original type.
+func (c Circle[T]) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Center point.Point[T] `json:"center"`
+		Radius T              `json:"radius"`
+	}{
+		Center: c.center,
+		Radius: c.radius,
+	})
+}
+
 // Radius returns the radius of the Circle.
 //
 // Returns:
@@ -335,8 +347,10 @@ func (c Circle[T]) Rotate(pivot point.Point[T], radians float64, opts ...options
 //
 // Returns:
 //   - Circle[T]: A new circle with the radius scaled by the specified factor.
+//
+// todo: update doc comment, examples after adding numeric.Abs to radius
 func (c Circle[T]) Scale(factor T) Circle[T] {
-	return Circle[T]{center: c.center, radius: c.radius * factor}
+	return Circle[T]{center: c.center, radius: numeric.Abs(c.radius * factor)}
 }
 
 // String returns a string representation of the Circle, including its center coordinates and radius.
@@ -363,6 +377,26 @@ func (c Circle[T]) String() string {
 //   - Circle[T]: A new Circle translated by the specified vector.
 func (c Circle[T]) Translate(v point.Point[T]) Circle[T] {
 	return Circle[T]{center: c.center.Translate(v), radius: c.radius}
+}
+
+// UnmarshalJSON deserializes JSON into a Circle while keeping the exact original type.
+func (c *Circle[T]) UnmarshalJSON(data []byte) error {
+	var temp struct {
+		Center point.Point[T] `json:"center"`
+		Radius T              `json:"radius"`
+	}
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	// Validate radius (ensure it's non-negative)
+	if temp.Radius < 0 {
+		return fmt.Errorf("invalid radius: must be non-negative, got %v", temp.Radius)
+	}
+
+	c.center = temp.Center
+	c.radius = temp.Radius
+	return nil
 }
 
 // reflectAcrossCircleOctants generates a slice of points that represent the reflection
