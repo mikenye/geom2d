@@ -1,9 +1,11 @@
 package point
 
 import (
+	"encoding/json"
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"image"
 	"math"
 	"testing"
@@ -489,6 +491,80 @@ func TestPoint_Rotate(t *testing.T) {
 	}
 }
 
+func TestPointMarshalJSON(t *testing.T) {
+	p := New[float64](3.5, 7.2)
+
+	data, err := json.Marshal(p)
+	if err != nil {
+		t.Fatalf("Failed to marshal Point: %v", err)
+	}
+
+	expected := `{"x":3.5,"y":7.2}`
+	assert.Equalf(t, expected, string(data), "Expected JSON %s, got %s", expected, string(data))
+}
+
+func TestPointMarshalUnmarshal(t *testing.T) {
+	tests := map[string]struct {
+		point    any // Generic input point
+		expected any // Expected output after Marshal -> Unmarshal
+	}{
+		"Point[int]": {
+			point:    New[int](3, 7),
+			expected: New[int](3, 7),
+		},
+		"Point[int64]": {
+			point:    New[int64](42, -19),
+			expected: New[int64](42, -19),
+		},
+		"Point[float32]": {
+			point:    New[float32](1.5, -2.5),
+			expected: New[float32](1.5, -2.5),
+		},
+		"Point[float64]": {
+			point:    New[float64](3.5, 7.2),
+			expected: New[float64](3.5, 7.2),
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Marshal
+			data, err := json.Marshal(tc.point)
+			require.NoErrorf(t, err, "Failed to marshal %s: %v", tc.point, err)
+
+			// Determine the correct type for unmarshalling
+			switch expected := tc.expected.(type) {
+			case Point[int]:
+				var result Point[int]
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", tc.point, err)
+				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
+
+			case Point[int64]:
+				var result Point[int64]
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", tc.point, err)
+				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
+
+			case Point[float32]:
+				var result Point[float32]
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", tc.point, err)
+				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
+
+			case Point[float64]:
+				var result Point[float64]
+				err := json.Unmarshal(data, &result)
+				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", tc.point, err)
+				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
+
+			default:
+				t.Fatalf("Unhandled type in test case: %s", name)
+			}
+		})
+	}
+}
+
 func TestPoint_Negate(t *testing.T) {
 	p := New(1, 2)
 	assert.Equal(t, New(-1, -2), p.Negate())
@@ -674,6 +750,18 @@ func TestPoint_Translate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPointUnmarshalJSON(t *testing.T) {
+	jsonData := `{"x":3.5,"y":7.2}`
+
+	var p Point[float64]
+	if err := json.Unmarshal([]byte(jsonData), &p); err != nil {
+		t.Fatalf("Failed to unmarshal Point: %v", err)
+	}
+
+	expected := New[float64](3.5, 7.2)
+	assert.Equalf(t, expected, p, "Expected %v, got %v", expected, p)
 }
 
 func TestPoint_X(t *testing.T) {

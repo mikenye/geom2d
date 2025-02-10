@@ -37,6 +37,7 @@
 package point
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/mikenye/geom2d/numeric"
 	"github.com/mikenye/geom2d/options"
@@ -369,6 +370,17 @@ func (p Point[T]) Eq(q Point[T], opts ...options.GeometryOptionsFunc) bool {
 	return p.x == q.x && p.y == q.y
 }
 
+// MarshalJSON serializes Point as JSON.
+func (p Point[T]) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		X T `json:"x"`
+		Y T `json:"y"`
+	}{
+		X: p.x,
+		Y: p.y,
+	})
+}
+
 // Negate returns a new Point with both x and y coordinates negated.
 // This operation is equivalent to reflecting the point across the origin
 // and is useful in reversing the direction of a vector or preparing
@@ -497,6 +509,20 @@ func (p Point[T]) String() string {
 //   - Point[T]: A new Point resulting from the translation.
 func (p Point[T]) Translate(delta Point[T]) Point[T] {
 	return New[T](p.x+delta.x, p.y+delta.y)
+}
+
+// UnmarshalJSON deserializes JSON into a Point.
+func (p *Point[T]) UnmarshalJSON(data []byte) error {
+	var temp struct {
+		X T `json:"x"`
+		Y T `json:"y"`
+	}
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+	p.x = temp.X
+	p.y = temp.Y
+	return nil
 }
 
 // X returns the x-coordinate of the Point origin.
