@@ -7,7 +7,6 @@ import (
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
-	"log"
 	"slices"
 	"strings"
 )
@@ -234,12 +233,13 @@ func (R *intersectionResults[T]) Add(result IntersectionResult[T]) {
 		for _, seg := range existing.InputLineSegments {
 			if !slices.Contains(result.InputLineSegments, seg) {
 				result.InputLineSegments = append(result.InputLineSegments, seg)
-				log.Println("updating intersection result:", result)
+				//log.Println("updating intersection result:", result)
 			}
 		}
-	} else {
-		log.Println("inserting intersection result:", result)
 	}
+	//else {
+	//	log.Println("inserting intersection result:", result)
+	//}
 
 	R.results.ReplaceOrInsert(result)
 }

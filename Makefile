@@ -11,6 +11,10 @@ help:  ## Show available make commands
 test:  ## Run all unit tests
 	go test ./...
 
+.PHONY: test_short
+test_short:  ## Run short unit tests
+	go test -short ./...
+
 .PHONY: linesegment_fuzz_intersections
 linesegment_fuzz_intersections:  ## Run fuzz testing for linesegment intersection functions
 	go test -run=FuzzFindIntersections_Int_2Segments -fuzz=FuzzFindIntersections_Int_2Segments -fuzztime=1000000x -parallel=$(FUZZ_WORKERS) ./linesegment/...

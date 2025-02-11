@@ -76,38 +76,38 @@ func segmentSortLessHigherOrder(p point.Point[float64], opts ...options.Geometry
 			bX = p.X()
 		}
 
-		log.Printf(
-			"  - is %s (x=%f, s=%f, v=%t, h=%t) < %s (x=%f, s=%f, v=%t, h=%t) at %s: ",
-			a.segment.String(),
-			aX,
-			aSlope,
-			aIsVertical,
-			aIsHorizontal,
-			b.segment.String(),
-			bX,
-			bSlope,
-			bIsVertical,
-			bIsHorizontal,
-			p.String(),
-		)
+		//log.Printf(
+		//	"  - is %s (x=%f, s=%f, v=%t, h=%t) < %s (x=%f, s=%f, v=%t, h=%t) at %s: ",
+		//	a.segment.String(),
+		//	aX,
+		//	aSlope,
+		//	aIsVertical,
+		//	aIsHorizontal,
+		//	b.segment.String(),
+		//	bX,
+		//	bSlope,
+		//	bIsVertical,
+		//	bIsHorizontal,
+		//	p.String(),
+		//)
 
 		// Vertical segment ordering logic: Handle cases where a vertical segment intersects a diagonal one.
 		if aIsVertical && aContainsP && numeric.FloatEquals(aX, p.X(), geoOpts.Epsilon) && !bIsVertical && !bIsHorizontal && bContainsP {
-			log.Printf("  - %t via slope & intersection with vertical (a)", bSlope < 0)
+			//log.Printf("  - %t via slope & intersection with vertical (a)", bSlope < 0)
 			return bSlope < 0
 		}
 		if bIsVertical && bContainsP && numeric.FloatEquals(bX, p.X(), geoOpts.Epsilon) && !aIsVertical && !bIsHorizontal && aContainsP {
-			log.Printf("  - %t via slope & intersection with vertical (b)", aSlope > 0)
+			//log.Printf("  - %t via slope & intersection with vertical (b)", aSlope > 0)
 			return aSlope > 0
 		}
 
 		// Horizontal lines still come last if they contain p
 		if aIsHorizontal && b.segment.ContainsPoint(p, opts...) && !bIsHorizontal {
-			log.Println("  - false via horizontal handling (a is horizontal, b contains p)")
+			//log.Println("  - false via horizontal handling (a is horizontal, b contains p)")
 			return false
 		}
 		if bIsHorizontal && a.segment.ContainsPoint(p, opts...) && !aIsHorizontal {
-			log.Println("  - true via horizontal handling (b is horizontal, a contains p)")
+			//log.Println("  - true via horizontal handling (b is horizontal, a contains p)")
 			return true
 		}
 
@@ -123,55 +123,55 @@ func segmentSortLessHigherOrder(p point.Point[float64], opts ...options.Geometry
 			// if slopes are equal, the line segments are collinear
 			if aSlope == bSlope || aIsVertical && bIsVertical || aIsHorizontal && bIsHorizontal {
 				if a.segment.Start().Y() != b.segment.Start().Y() {
-					log.Printf("  - %t due to XAtY equal, equal slopes, a start y > b start y", a.segment.Start().Y() > b.segment.Start().Y())
+					//log.Printf("  - %t due to XAtY equal, equal slopes, a start y > b start y", a.segment.Start().Y() > b.segment.Start().Y())
 					return a.segment.Start().Y() > b.segment.Start().Y() // order by start y
 				}
 				if a.segment.Start().X() != b.segment.Start().X() {
-					log.Printf("  - %t due to XAtY equal, equal slopes, a start x < b start x", a.segment.Start().X() < b.segment.Start().X())
+					//log.Printf("  - %t due to XAtY equal, equal slopes, a start x < b start x", a.segment.Start().X() < b.segment.Start().X())
 					return a.segment.Start().X() < b.segment.Start().X() // order by start x
 				}
 				if a.segment.End().Y() != b.segment.End().Y() {
-					log.Printf("  - %t due to XAtY equal, equal slopes, a end y > b end y", a.segment.End().Y() > b.segment.End().Y())
+					//log.Printf("  - %t due to XAtY equal, equal slopes, a end y > b end y", a.segment.End().Y() > b.segment.End().Y())
 					return a.segment.End().Y() > b.segment.End().Y() // order by end y
 				}
 				if a.segment.End().X() != b.segment.End().X() {
-					log.Printf("  - %t due to XAtY equal, equal slopes, a end x < b end x", a.segment.End().X() < b.segment.End().X())
+					//log.Printf("  - %t due to XAtY equal, equal slopes, a end x < b end x", a.segment.End().X() < b.segment.End().X())
 					return a.segment.End().X() < b.segment.End().X() // order by end y
 				}
 			}
 
 			// order by slope: one line is vertical
 			if aIsVertical && bSlope < 0 && !bIsHorizontal {
-				log.Printf("  - true due to XAtY equal, a vertical & b negative slope")
+				//log.Printf("  - true due to XAtY equal, a vertical & b negative slope")
 				return true
 			}
 			if bIsVertical && aSlope < 0 && !aIsHorizontal {
-				log.Printf("  - false due to XAtY equal, b vertical & a negative slope")
+				//log.Printf("  - false due to XAtY equal, b vertical & a negative slope")
 				return false
 			}
 			if aIsVertical && bSlope > 0 && !bIsHorizontal {
-				log.Printf("  - false due to XAtY equal, a vertical & b positive slope")
+				//log.Printf("  - false due to XAtY equal, a vertical & b positive slope")
 				return false
 			}
 			if bIsVertical && aSlope > 0 && !aIsHorizontal {
-				log.Printf("  - true due to XAtY equal, b vertical & a positive slope")
+				//log.Printf("  - true due to XAtY equal, b vertical & a positive slope")
 				return true
 			}
 
 			// order by slope: both slopes negative or both slopes positive
 			if aSlope < 0 && bSlope < 0 || aSlope > 0 && bSlope > 0 {
-				log.Printf("  - %t due to XAtY equal, steepest slope first", aSlope > bSlope)
+				//log.Printf("  - %t due to XAtY equal, steepest slope first", aSlope > bSlope)
 				return aSlope < bSlope
 			}
 
 			// order by slope: opposing slopes
 			if (aSlope < 0 && bSlope > 0) || (aSlope > 0 && bSlope < 0) {
-				log.Printf("  - %t via slope as XAtY was equal & slopes opposite", aSlope > bSlope)
+				//log.Printf("  - %t via slope as XAtY was equal & slopes opposite", aSlope > bSlope)
 				return aSlope > bSlope
 			}
 		}
 
-		log.Printf("  - %t via default XAtY comparison", aX < bX)
+		//log.Printf("  - %t via default XAtY comparison", aX < bX)
 		return aX < bX // Default XAtY comparison
 	}
 }

@@ -67,10 +67,10 @@ func FindIntersectionsFast[T types.SignedNumber](
 	for EventQueue.Len() > 0 {
 		iterCount++
 
-		log.Printf("\n\n\n---ITERATION %d---\n\n\n", iterCount)
+		//log.Printf("\n\n\n---ITERATION %d---\n\n\n", iterCount)
 
 		// DEBUGGING: show queue
-		debugPrintQueue(EventQueue)
+		//debugPrintQueue(EventQueue)
 
 		// Determine the next event point p in Q and delete it
 		event, ok := EventQueue.DeleteMin()
@@ -78,14 +78,14 @@ func FindIntersectionsFast[T types.SignedNumber](
 			panic(fmt.Errorf("unexpected empty queue"))
 		}
 
-		log.Printf("Popped event: %s\n", event)
+		//log.Printf("Popped event: %s\n", event)
 
 		// Update the status structure based on new sweepline position
 		StatusStructure = updateStatusStructure(StatusStructure, event, opts...)
 
 		// DEBUGGING: show status structure
-		log.Println("Status structure (S):")
-		debugStatusStructure(StatusStructure)
+		//log.Println("Status structure (S):")
+		//debugStatusStructure(StatusStructure)
 
 		// Handle the event
 		handleEventPointNew(event, EventQueue, StatusStructure, Results, opts...)
@@ -107,7 +107,8 @@ func handleEventPointNew(
 	// Find all segments stored in StatusStructure that contain event
 
 	// DEBUGGING
-	log.Println("Find all segments stored in StatusStructure that contain event:")
+	//log.Println("Find all segments stored in StatusStructure that contain event:")
+
 	// Let L(p) denote the subset of segments found whose lower endpoint is event
 	// Let C(p) denote the subset of segments found that contain event in their interior
 	CofP := make([]LineSegment[float64], 0)
@@ -121,7 +122,8 @@ func handleEventPointNew(
 		if upper.Eq(event.point, opts...) {
 
 			// DEBUGGING
-			log.Printf("Ignoring %s", item.segment)
+			//log.Printf("Ignoring %s", item.segment)
+
 			return true
 		}
 
@@ -130,7 +132,8 @@ func handleEventPointNew(
 		if lower.Eq(event.point, opts...) {
 
 			// DEBUGGING
-			log.Printf("Adding %s to L(p)", item.segment)
+			//log.Printf("Adding %s to L(p)", item.segment)
+
 			LofP = append(LofP, item.segment)
 			return true
 		}
@@ -139,24 +142,29 @@ func handleEventPointNew(
 		if item.segment.ContainsPoint(event.point, opts...) {
 
 			// DEBUGGING
-			log.Printf("Adding %s to C(p)", item.segment)
+			//log.Printf("Adding %s to C(p)", item.segment)
+
 			CofP = append(CofP, item.segment)
 			return true
 		}
 
 		// DEBUGGING
-		log.Printf("Ignoring %s", item.segment)
+		//log.Printf("Ignoring %s", item.segment)
+
 		return true
 	})
 
-	log.Println("U(p):", UofP)
-	log.Println("C(p):", CofP)
-	log.Println("L(p):", LofP)
+	// DEBUGGING:
+	//log.Println("U(p):", UofP)
+	//log.Println("C(p):", CofP)
+	//log.Println("L(p):", LofP)
 
 	// if L(p) ∪ U(p) ∪ C(p) contains more than one segment
 	// then Report event as an intersection, together with L(p), U(p), and C(p).
 	if len(UofP)+len(CofP)+len(LofP) > 1 {
-		log.Printf("L(p) ∪ U(p) ∪ C(p) contains more than one segment, so event '%s' is an intersection", event)
+
+		// DEBUGGING
+		//log.Printf("L(p) ∪ U(p) ∪ C(p) contains more than one segment, so event '%s' is an intersection", event)
 
 		for _, result := range FindIntersectionsSlow(append(UofP, append(CofP, LofP...)...), opts...) {
 			Results.Add(result)
@@ -169,11 +177,18 @@ func handleEventPointNew(
 					if pointValid {
 						newQItem := qItem{point: p}
 						if !EventQueue.Has(newQItem) {
-							log.Printf("Inserting overlapping segment endpoint to EventQueue: %s", newQItem.point)
+
+							// DEBUGGING:
+							//log.Printf("Inserting overlapping segment endpoint to EventQueue: %s", newQItem.point)
+
 							EventQueue.ReplaceOrInsert(newQItem)
-						} else {
-							log.Printf("Overlapping segment endpoint already exists in EventQueue: %s", newQItem.point)
+
 						}
+
+						// DEBUGGING:
+						//else {
+						//	log.Printf("Overlapping segment endpoint already exists in EventQueue: %s", newQItem.point)
+						//}
 
 					}
 				}
@@ -184,18 +199,24 @@ func handleEventPointNew(
 	// Delete the segments in L(p) ∪ C(p) from StatusStructure.
 
 	// DEBUGGING
-	log.Println("Delete the segments in L(p) ∪ C(p) from StatusStructure:")
+	//log.Println("Delete the segments in L(p) ∪ C(p) from StatusStructure:")
+
 	for _, seg := range append(LofP, CofP...) {
-		item, deleted := StatusStructure.Delete(sItem{
+
+		_, _ = StatusStructure.Delete(sItem{
 			segment: seg,
 		})
 
 		// DEBUGGING
-		if deleted {
-			log.Printf("Deleted: %s", item.String())
-		} else {
-			log.Printf("Attemted to delete but was not in StatusStructure: %s", item.String())
-		}
+		// item, deleted := StatusStructure.Delete(sItem{
+		//			segment: seg,
+		//		})
+		//
+		//if deleted {
+		//	log.Printf("Deleted: %s", item.String())
+		//} else {
+		//	log.Printf("Attemted to delete but was not in StatusStructure: %s", item.String())
+		//}
 	}
 
 	// Insert the segments in U(p) ∪ C(p) into StatusStructure.
@@ -204,21 +225,26 @@ func handleEventPointNew(
 	// If there is a horizontal segment, it comes last among all segments containing p.
 
 	// DEBUGGING
-	log.Println("Insert the segments in U(p) ∪ C(p) into StatusStructure:")
+	//log.Println("Insert the segments in U(p) ∪ C(p) into StatusStructure:")
 
 	var UCofP *btree.BTreeG[sItem]
 	UCofP = updateStatusStructure(UCofP, event, opts...)
 	for _, seg := range append(UofP, CofP...) {
-		item, replaced := UCofP.ReplaceOrInsert(sItem{segment: seg})
-		if replaced {
-			log.Printf("Replaced: %s with %s", item.String(), seg.String())
-		} else {
-			log.Printf("Inserted: %s", seg)
-		}
+		_, _ = UCofP.ReplaceOrInsert(sItem{segment: seg})
+
+		// DEBUGGING
+		// item, replaced := UCofP.ReplaceOrInsert(sItem{segment: seg})
+		//if replaced {
+		//	log.Printf("Replaced: %s with %s", item.String(), seg.String())
+		//} else {
+		//	log.Printf("Inserted: %s", seg)
+		//}
 
 	}
-	log.Println("U(p) ∪ C(p):")
-	debugStatusStructure(UCofP)
+
+	// DEBUGGING:
+	//log.Println("U(p) ∪ C(p):")
+	//debugStatusStructure(UCofP)
 
 	UCofP.Ascend(func(item sItem) bool {
 
@@ -233,48 +259,53 @@ func handleEventPointNew(
 		}
 
 		// insert or replace item
-		replacedItem, replaced := StatusStructure.ReplaceOrInsert(item)
+
+		_, _ = StatusStructure.ReplaceOrInsert(newItem)
 
 		// DEBUGGING
-		if replaced {
-			log.Printf("Replaced %s with %s", replacedItem.String(), newItem.String())
-		} else {
-			log.Printf("Inserted %s", newItem.String())
-		}
+		// replacedItem, replaced := StatusStructure.ReplaceOrInsert(newItem)
+		//if replaced {
+		//	log.Printf("Replaced %s with %s", replacedItem.String(), newItem.String())
+		//} else {
+		//	log.Printf("Inserted %s", newItem.String())
+		//}
 
 		return true
 	})
 
 	// DEBUGGING: show status structure
-	log.Println("Status structure (S):")
-	debugStatusStructure(StatusStructure)
+	//log.Println("Status structure (S):")
+	//debugStatusStructure(StatusStructure)
 
 	// if U(p) ∪ C(p) = 0
 	// ...then Let sl and sr be the left and right neighbors of event in StatusStructure.
 	if UCofP.Len() == 0 {
 
 		// DEBUGGING
-		log.Println("Let sl and sr be the left and right neighbors of event in StatusStructure:")
+		//log.Println("Let sl and sr be the left and right neighbors of event in StatusStructure:")
 
 		// find neighbors
 		sL, sR, sLFound, sRFound := findNighborsByPoint(StatusStructure, event.point, opts...)
 
 		// DEBUGGING
-		if sLFound {
-			log.Printf("sL: %s", sL.String())
-		} else {
-			log.Println("sL: not found")
-		}
+		//if sLFound {
+		//	log.Printf("sL: %s", sL.String())
+		//} else {
+		//	log.Println("sL: not found")
+		//}
 
 		// DEBUGGING
-		if sRFound {
-			log.Printf("sR: %s", sR.String())
-		} else {
-			log.Println("sR: not found")
-		}
+		//if sRFound {
+		//	log.Printf("sR: %s", sR.String())
+		//} else {
+		//	log.Println("sR: not found")
+		//}
 
 		if sRFound && sLFound {
-			log.Println("Find new event between sL & sR:")
+
+			// DEBUGGING:
+			//log.Println("Find new event between sL & sR:")
+
 			findNewEventNew(EventQueue, sL, sR, event.point, opts...)
 		}
 
@@ -282,7 +313,10 @@ func handleEventPointNew(
 
 		// Let sPrime be the leftmost segment of U(p) ∪ C(p) in StatusStructure.
 		// todo: can optimise with a lemgth check. if StatusStructure len == 1 then return the only entry
-		log.Println("Let sPrime be the leftmost segment of U(p) ∪ C(p) in StatusStructure:")
+
+		// DEBUGGING:
+		//log.Println("Let sPrime be the leftmost segment of U(p) ∪ C(p) in StatusStructure:")
+
 		var sPrime LineSegment[float64]
 		sPrimeFound := false
 		UCofP.Ascend(func(item sItem) bool {
@@ -295,33 +329,42 @@ func handleEventPointNew(
 		})
 
 		// DEBUGGING
-		if sPrimeFound {
-			log.Printf("sPrime: %s", sPrime.String())
-		} else {
-			log.Println("sPrime: not found")
-		}
+		//if sPrimeFound {
+		//	log.Printf("sPrime: %s", sPrime.String())
+		//} else {
+		//	log.Println("sPrime: not found")
+		//}
 
 		// Let sL be the left neighbor of sPrime in StatusStructure.
-		log.Println("Let sL be the left neighbor of sPrime in StatusStructure:")
+
+		// DEBUGGING:
+		// log.Println("Let sL be the left neighbor of sPrime in StatusStructure:")
+
 		if sPrimeFound {
 			sL, _, sLFound, _ := findNighborsByLineSegment(StatusStructure, sPrime, opts...)
 
 			// DEBUGGING
-			if sLFound {
-				log.Printf("sL: %s", sL.String())
-			} else {
-				log.Println("sL: not found")
-			}
+			//if sLFound {
+			//	log.Printf("sL: %s", sL.String())
+			//} else {
+			//	log.Println("sL: not found")
+			//}
 
 			if sLFound {
-				log.Println("Find new event between sL & sPrime:")
+
+				// DEBUGGING
+				//log.Println("Find new event between sL & sPrime:")
+
 				findNewEventNew(EventQueue, sL, sPrime, event.point, opts...)
 			}
 		}
 
 		// Let sDoublePrime be the rightmost segment of U(p) ∪ C(p) in StatusStructure.
 		// todo: can optimise with a lemgth check. if StatusStructure len == 1 then return the only entry
-		log.Println("Let sDoublePrime be the rightmost segment of U(p) ∪ C(p) in StatusStructure:")
+
+		// DEBUGGING:
+		//log.Println("Let sDoublePrime be the rightmost segment of U(p) ∪ C(p) in StatusStructure:")
+
 		var sDoublePrime LineSegment[float64]
 		sDoublePrimeFound := false
 		UCofP.Descend(func(item sItem) bool {
@@ -334,26 +377,32 @@ func handleEventPointNew(
 		})
 
 		// DEBUGGING
-		if sDoublePrimeFound {
-			log.Printf("sDoublePrime: %s", sDoublePrime.String())
-		} else {
-			log.Println("sDoublePrime: not found")
-		}
+		//if sDoublePrimeFound {
+		//	log.Printf("sDoublePrime: %s", sDoublePrime.String())
+		//} else {
+		//	log.Println("sDoublePrime: not found")
+		//}
 
 		// Let sR be the right neighbor of sDoublePrime in StatusStructure.
-		log.Println("Let sR be the right neighbor of sDoublePrime in StatusStructure:")
+
+		// DEBUGGING
+		//log.Println("Let sR be the right neighbor of sDoublePrime in StatusStructure:")
+
 		if sDoublePrimeFound {
 			_, sR, _, sRFound := findNighborsByLineSegment(StatusStructure, sDoublePrime, opts...)
 
 			// DEBUGGING
-			if sRFound {
-				log.Printf("sR: %s", sR.String())
-			} else {
-				log.Println("sR: not found")
-			}
+			//if sRFound {
+			//	log.Printf("sR: %s", sR.String())
+			//} else {
+			//	log.Println("sR: not found")
+			//}
 
 			if sRFound {
-				log.Println("Find new event between sDoublePrime & sR:")
+
+				// DEBUGGING
+				//log.Println("Find new event between sDoublePrime & sR:")
+
 				findNewEventNew(EventQueue, sDoublePrime, sR, event.point, opts...)
 			}
 		}
@@ -381,11 +430,16 @@ func findNewEventNew(
 				segments: nil,
 			}
 			if !EventQueue.Has(newQItem) {
-				log.Printf("Inserting intersection to EventQueue: %s", newQItem.point)
+
+				// DEBUGGING:
+				//log.Printf("Inserting intersection to EventQueue: %s", newQItem.point)
+
 				EventQueue.ReplaceOrInsert(newQItem)
-			} else {
-				log.Printf("Intersection already exists in EventQueue: %s", newQItem.point)
 			}
+			// DEBUGGING
+			//else {
+			//	log.Printf("Intersection already exists in EventQueue: %s", newQItem.point)
+			//}
 		}
 	case IntersectionOverlappingSegment:
 		log.Fatalln("overlapping segment")
