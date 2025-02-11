@@ -47,6 +47,7 @@ import (
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
 	"math"
+	"slices"
 )
 
 // LineSegment represents a line segment in a 2D space, defined by two endpoints,
@@ -900,4 +901,19 @@ func (l LineSegment[T]) YAtX(x float64) float64 {
 
 	// Compute y using interpolation
 	return A.Y() + (x-A.X())*(B.Y()-A.Y())/(B.X()-A.X())
+}
+
+// todo: doc comments, unit test
+// todo: candidate for optimisation?
+func mergeSegments(a, b []LineSegment[float64], opts ...options.GeometryOptionsFunc) []LineSegment[float64] {
+	input := append(a, b...)
+	output := make([]LineSegment[float64], 0, len(a)+len(b))
+	for _, seg := range input {
+		if !slices.ContainsFunc(output, func(l LineSegment[float64]) bool {
+			return l.Eq(seg, opts...)
+		}) {
+			output = append(output, seg)
+		}
+	}
+	return output
 }

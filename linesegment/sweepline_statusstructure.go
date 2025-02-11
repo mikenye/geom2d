@@ -37,13 +37,13 @@ func debugStatusStructure(S *btree.BTreeG[sItem]) {
 	}
 }
 
-func updateStatusStructure(S *btree.BTreeG[sItem], p qItem, opts ...options.GeometryOptionsFunc) *btree.BTreeG[sItem] {
+func updateStatusStructure(S *btree.BTreeG[sItem], p point.Point[float64], opts ...options.GeometryOptionsFunc) *btree.BTreeG[sItem] {
 	// if the status structure doesn't exist, create it
 	if S == nil {
-		return btree.NewG[sItem](2, segmentSortLessHigherOrder(p.point, opts...))
+		return btree.NewG[sItem](2, segmentSortLessHigherOrder(p, opts...))
 	}
 	// otherwise, re-create
-	newS := btree.NewG[sItem](2, segmentSortLessHigherOrder(p.point, opts...))
+	newS := btree.NewG[sItem](2, segmentSortLessHigherOrder(p, opts...))
 	S.Ascend(func(item sItem) bool {
 		newS.ReplaceOrInsert(item)
 		return true

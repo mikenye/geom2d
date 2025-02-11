@@ -1,13 +1,19 @@
 package linesegment
 
 import (
-	"fmt"
 	"github.com/google/btree"
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
 	"log"
 )
+
+type SweepLineEventQueue interface {
+	IsEmpty() bool
+	Pop() (point.Point[float64], []LineSegment[float64])
+	InsertPoint(p point.Point[float64])
+	String() string
+}
 
 // FindIntersectionsFast computes all intersection points and overlapping segments among a set of line segments
 // using the sweep line algorithm, outlined in Section 2.1 of [Computational Geometry: Algorithms and Applications].
@@ -53,7 +59,7 @@ func FindIntersectionsFast[T types.SignedNumber](
 ) []IntersectionResult[float64] {
 
 	// Initialize an empty event queue
-	EventQueue := newEventQueue(segments, opts...)
+	EventQueue := newEventQueueRBT(segments, opts...)
 
 	// Initialize status structure
 	var StatusStructure *btree.BTreeG[sItem]
@@ -63,46 +69,44 @@ func FindIntersectionsFast[T types.SignedNumber](
 	Results := newIntersectionResults[float64]()
 
 	// while EventQueue is not empty
-	iterCount := 0
-	for EventQueue.Len() > 0 {
-		iterCount++
+	//iterCount := 0
+	for !EventQueue.IsEmpty() {
+		//iterCount++
 
+		// DEBUGGING
 		//log.Printf("\n\n\n---ITERATION %d---\n\n\n", iterCount)
 
-		// DEBUGGING: show queue
-		//debugPrintQueue(EventQueue)
+		// DEBUGGING: show event queue
+		//log.Printf("contents of event queue:\n%s", EventQueue)
 
 		// Determine the next event point p in Q and delete it
-		event, ok := EventQueue.DeleteMin()
-		if !ok {
-			panic(fmt.Errorf("unexpected empty queue"))
-		}
+		eventPoint, UofP := EventQueue.Pop()
 
 		//log.Printf("Popped event: %s\n", event)
 
 		// Update the status structure based on new sweepline position
-		StatusStructure = updateStatusStructure(StatusStructure, event, opts...)
+		StatusStructure = updateStatusStructure(StatusStructure, eventPoint, opts...)
 
 		// DEBUGGING: show status structure
 		//log.Println("Status structure (S):")
 		//debugStatusStructure(StatusStructure)
 
 		// Handle the event
-		handleEventPointNew(event, EventQueue, StatusStructure, Results, opts...)
+		handleEventPointNew(eventPoint, UofP, EventQueue, StatusStructure, Results, opts...)
 	}
 	return Results.Results()
 }
 
 func handleEventPointNew(
-	event qItem,
-	EventQueue *btree.BTreeG[qItem],
+	eventPoint point.Point[float64],
+	UofP []LineSegment[float64],
+	EventQueue SweepLineEventQueue,
 	StatusStructure *btree.BTreeG[sItem],
 	Results *intersectionResults[float64],
 	opts ...options.GeometryOptionsFunc,
 ) {
 
 	// Let U(p) be the set of segments whose upper endpoint is event.point
-	UofP := event.segments
 
 	// Find all segments stored in StatusStructure that contain event
 
@@ -119,7 +123,7 @@ func handleEventPointNew(
 
 		// skip if upper matches
 		upper, _ := item.segment.sweeplineUpperPoint()
-		if upper.Eq(event.point, opts...) {
+		if upper.Eq(eventPoint, opts...) {
 
 			// DEBUGGING
 			//log.Printf("Ignoring %s", item.segment)
@@ -129,7 +133,7 @@ func handleEventPointNew(
 
 		// check lower endpoint
 		lower, _ := item.segment.sweeplineLowerPoint()
-		if lower.Eq(event.point, opts...) {
+		if lower.Eq(eventPoint, opts...) {
 
 			// DEBUGGING
 			//log.Printf("Adding %s to L(p)", item.segment)
@@ -139,7 +143,7 @@ func handleEventPointNew(
 		}
 
 		// check interior
-		if item.segment.ContainsPoint(event.point, opts...) {
+		if item.segment.ContainsPoint(eventPoint, opts...) {
 
 			// DEBUGGING
 			//log.Printf("Adding %s to C(p)", item.segment)
@@ -169,27 +173,15 @@ func handleEventPointNew(
 		for _, result := range FindIntersectionsSlow(append(UofP, append(CofP, LofP...)...), opts...) {
 			Results.Add(result)
 
+			// if the result is an overlapping segment, then the overlapping segment endpoint should
+			// be added as an event, if it is below or to the right of the sweepline.
 			if result.IntersectionType == IntersectionOverlappingSegment {
 				start, end := result.OverlappingSegment.Points()
 				for _, p := range []point.Point[float64]{start, end} {
-					pointValid := p.Y() < event.point.Y() ||
-						(p.Y() == event.point.Y() && p.X() > event.point.X())
-					if pointValid {
-						newQItem := qItem{point: p}
-						if !EventQueue.Has(newQItem) {
-
-							// DEBUGGING:
-							//log.Printf("Inserting overlapping segment endpoint to EventQueue: %s", newQItem.point)
-
-							EventQueue.ReplaceOrInsert(newQItem)
-
-						}
-
-						// DEBUGGING:
-						//else {
-						//	log.Printf("Overlapping segment endpoint already exists in EventQueue: %s", newQItem.point)
-						//}
-
+					pointBelowOrRightOfSweepline := p.Y() < eventPoint.Y() ||
+						(p.Y() == eventPoint.Y() && p.X() > eventPoint.X())
+					if pointBelowOrRightOfSweepline {
+						EventQueue.InsertPoint(p)
 					}
 				}
 			}
@@ -228,7 +220,7 @@ func handleEventPointNew(
 	//log.Println("Insert the segments in U(p) ∪ C(p) into StatusStructure:")
 
 	var UCofP *btree.BTreeG[sItem]
-	UCofP = updateStatusStructure(UCofP, event, opts...)
+	UCofP = updateStatusStructure(UCofP, eventPoint, opts...)
 	for _, seg := range append(UofP, CofP...) {
 		_, _ = UCofP.ReplaceOrInsert(sItem{segment: seg})
 
@@ -285,7 +277,7 @@ func handleEventPointNew(
 		//log.Println("Let sl and sr be the left and right neighbors of event in StatusStructure:")
 
 		// find neighbors
-		sL, sR, sLFound, sRFound := findNighborsByPoint(StatusStructure, event.point, opts...)
+		sL, sR, sLFound, sRFound := findNighborsByPoint(StatusStructure, eventPoint, opts...)
 
 		// DEBUGGING
 		//if sLFound {
@@ -306,7 +298,7 @@ func handleEventPointNew(
 			// DEBUGGING:
 			//log.Println("Find new event between sL & sR:")
 
-			findNewEventNew(EventQueue, sL, sR, event.point, opts...)
+			findNewEventNew(EventQueue, sL, sR, eventPoint, opts...)
 		}
 
 	} else {
@@ -355,7 +347,7 @@ func handleEventPointNew(
 				// DEBUGGING
 				//log.Println("Find new event between sL & sPrime:")
 
-				findNewEventNew(EventQueue, sL, sPrime, event.point, opts...)
+				findNewEventNew(EventQueue, sL, sPrime, eventPoint, opts...)
 			}
 		}
 
@@ -403,14 +395,14 @@ func handleEventPointNew(
 				// DEBUGGING
 				//log.Println("Find new event between sDoublePrime & sR:")
 
-				findNewEventNew(EventQueue, sDoublePrime, sR, event.point, opts...)
+				findNewEventNew(EventQueue, sDoublePrime, sR, eventPoint, opts...)
 			}
 		}
 	}
 }
 
 func findNewEventNew(
-	EventQueue *btree.BTreeG[qItem],
+	EventQueue SweepLineEventQueue,
 	a, b LineSegment[float64],
 	event point.Point[float64],
 	opts ...options.GeometryOptionsFunc,
@@ -423,23 +415,12 @@ func findNewEventNew(
 	case IntersectionNone:
 		return
 	case IntersectionPoint:
+
+		// check to ensure the intersection point is below or to the right of the sweepline
+		// if so, add the event
 		if intersection.IntersectionPoint.Y() < event.Y() ||
 			(intersection.IntersectionPoint.Y() == event.Y() && intersection.IntersectionPoint.X() > event.X()) {
-			newQItem := qItem{
-				point:    intersection.IntersectionPoint,
-				segments: nil,
-			}
-			if !EventQueue.Has(newQItem) {
-
-				// DEBUGGING:
-				//log.Printf("Inserting intersection to EventQueue: %s", newQItem.point)
-
-				EventQueue.ReplaceOrInsert(newQItem)
-			}
-			// DEBUGGING
-			//else {
-			//	log.Printf("Intersection already exists in EventQueue: %s", newQItem.point)
-			//}
+			EventQueue.InsertPoint(intersection.IntersectionPoint)
 		}
 	case IntersectionOverlappingSegment:
 		log.Fatalln("overlapping segment")
