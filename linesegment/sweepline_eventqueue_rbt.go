@@ -3,6 +3,7 @@ package linesegment
 import (
 	"fmt"
 	rbt "github.com/emirpasic/gods/trees/redblacktree"
+	"github.com/mikenye/geom2d/numeric"
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
@@ -12,7 +13,8 @@ import (
 // todo: doc comments for everything in file
 
 type eventQueueRBT struct {
-	queue *rbt.Tree
+	queue   *rbt.Tree
+	epsilon float64
 }
 
 func (Q *eventQueueRBT) IsEmpty() bool {
@@ -60,23 +62,27 @@ func (Q *eventQueueRBT) String() string {
 	return out.String()
 }
 
-func eventQueueComparator(a interface{}, b interface{}) int {
-	// Should return a number:
-	// negative , if a < b
-	// zero     , if a == b
-	// positive , if a > b
+func eventQueueComparatorHigherOrder(epsilon float64) func(a interface{}, b interface{}) int {
+	return func(a interface{}, b interface{}) int {
+		// Should return a number:
+		// negative , if a < b
+		// zero     , if a == b
+		// positive , if a > b
 
-	// from the book:
-	// "If p and q are two event points then we have p≺q if and only if py > qy holds or py = qy and px < qx holds."
-	p := a.(point.Point[float64])
-	q := b.(point.Point[float64])
-	if p.Y() > q.Y() || (p.Y() == q.Y() && p.X() < q.X()) {
-		return -1 // less
+		// from the book:
+		// "If p and q are two event points then we have p≺q if and only if py > qy holds or py = qy and px < qx holds."
+		p := a.(point.Point[float64])
+		q := b.(point.Point[float64])
+
+		if numeric.FloatGreaterThan(p.Y(), q.Y(), epsilon) ||
+			(numeric.FloatEquals(p.Y(), q.Y(), epsilon) && numeric.FloatLessThan(p.X(), q.X(), epsilon)) {
+			return -1 // less
+		}
+		if p.Eq(q, options.WithEpsilon(epsilon)) {
+			return 0 // equal
+		}
+		return 1
 	}
-	if p.Eq(q) {
-		return 0 // equal
-	}
-	return 1
 }
 
 func newEventQueueRBT[T types.SignedNumber](
@@ -84,8 +90,11 @@ func newEventQueueRBT[T types.SignedNumber](
 	opts ...options.GeometryOptionsFunc,
 ) *eventQueueRBT {
 
+	geoOpts := options.ApplyGeometryOptions(options.GeometryOptions{Epsilon: 0}, opts...)
+
 	Q := new(eventQueueRBT)
-	Q.queue = rbt.NewWith(eventQueueComparator)
+	Q.epsilon = geoOpts.Epsilon
+	Q.queue = rbt.NewWith(eventQueueComparatorHigherOrder(geoOpts.Epsilon))
 
 	// Insert the segment endpoints into Q.
 	// When an upper endpoint is inserted, the corresponding segment should be stored with it.

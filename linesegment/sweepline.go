@@ -4,7 +4,6 @@ import (
 	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
-	"log"
 	"math"
 )
 
@@ -81,27 +80,27 @@ func FindIntersectionsFast[T types.SignedNumber](
 	Results := newIntersectionResults[float64]()
 
 	// while EventQueue is not empty
-	iterCount := 0
+	//iterCount := 0 // used for debugging
 	for !EventQueue.IsEmpty() {
-		iterCount++
+		//iterCount++
 
 		// DEBUGGING
-		log.Printf("\n\n\n---ITERATION %d---\n\n\n", iterCount)
+		//log.Printf("\n\n\n---ITERATION %d---\n\n\n", iterCount)
 
 		// DEBUGGING: show event queue
-		log.Printf("contents of event queue:\n%s", EventQueue)
+		//log.Printf("contents of event queue:\n%s", EventQueue)
 
 		// Determine the next event point p in Q and delete it
 		eventPoint, UofP := EventQueue.Pop()
 
 		// DEBUGGING: show popped event
-		log.Printf("Popped event: %s [U(p): %v]\n", eventPoint, UofP)
+		//log.Printf("Popped event: %s [U(p): %v]\n", eventPoint, UofP)
 
 		// Update the status structure based on new sweepline position
 		StatusStructure = StatusStructure.Update(eventPoint).(*statusStructureRBT)
 
 		// DEBUGGING: show status structure
-		log.Printf("Status structure:\n%s", StatusStructure)
+		//log.Printf("Status structure:\n%s", StatusStructure)
 
 		// Handle the event
 		handleEventPointNew(eventPoint, UofP, EventQueue, StatusStructure, Results, opts...)
@@ -123,7 +122,7 @@ func handleEventPointNew(
 	// Find all segments stored in StatusStructure that contain event
 
 	// DEBUGGING
-	log.Printf("U(p): %v", UofP)
+	//log.Printf("U(p): %v", UofP)
 
 	// Find all segments stored in StatusStructure that contain event
 	// Let L(p) denote the subset of segments found whose lower endpoint is event
@@ -132,15 +131,15 @@ func handleEventPointNew(
 	CofP, LofP := StatusStructure.FindCofPAndLofP(eventPoint)
 
 	// DEBUGGING:
-	log.Printf("L(p): %v", LofP)
-	log.Printf("C(p): %v", CofP)
+	//log.Printf("L(p): %v", LofP)
+	//log.Printf("C(p): %v", CofP)
 
 	// if L(p) ∪ U(p) ∪ C(p) contains more than one segment
 	// then Report event as an intersection, together with L(p), U(p), and C(p).
 	if len(UofP)+len(CofP)+len(LofP) > 1 {
 
 		// DEBUGGING
-		log.Printf("L(p) ∪ U(p) ∪ C(p) contains more than one segment, so event '%s' is an intersection", eventPoint)
+		//log.Printf("L(p) ∪ U(p) ∪ C(p) contains more than one segment, so event '%s' is an intersection", eventPoint)
 
 		for _, result := range FindIntersectionsSlow(append(UofP, append(CofP, LofP...)...), opts...) {
 			Results.Add(result)
@@ -165,14 +164,14 @@ func handleEventPointNew(
 	// Delete the segments in L(p) ∪ C(p) from StatusStructure.
 
 	// DEBUGGING
-	log.Println("Delete the segments in L(p) ∪ C(p) from StatusStructure:")
+	//log.Println("Delete the segments in L(p) ∪ C(p) from StatusStructure:")
 
 	for _, seg := range append(LofP, CofP...) {
 		StatusStructure.Remove(seg)
 	}
 
 	// DEBUGGING: show status structure
-	log.Printf("Status structure after delete:\n%s", StatusStructure)
+	//log.Printf("Status structure after delete:\n%s", StatusStructure)
 
 	// Insert the segments in U(p) ∪ C(p) into StatusStructure.
 	// The order of the segments in StatusStructure should correspond to the order in which they are
@@ -180,44 +179,44 @@ func handleEventPointNew(
 	// If there is a horizontal segment, it comes last among all segments containing p.
 
 	// DEBUGGING
-	log.Println("Insert the segments in U(p) ∪ C(p) into StatusStructure:")
+	//log.Println("Insert the segments in U(p) ∪ C(p) into StatusStructure:")
 
 	for _, seg := range append(UofP, CofP...) {
 		StatusStructure.Insert(seg)
 	}
 
 	// DEBUGGING: show status structure
-	log.Printf("Status structure after insert:\n%s", StatusStructure)
+	//log.Printf("Status structure after insert:\n%s", StatusStructure)
 
 	// if U(p) ∪ C(p) = 0
 	// ...then Let sl and sr be the left and right neighbors of event in StatusStructure.
 	if len(UofP)+len(CofP) == 0 {
 
 		// DEBUGGING
-		log.Println("U(p) ∪ C(p) = 0")
-		log.Println("Let sL and sR be the left and right neighbors of event in StatusStructure:")
+		//log.Println("U(p) ∪ C(p) = 0")
+		//log.Println("Let sL and sR be the left and right neighbors of event in StatusStructure:")
 
 		// find neighbors
 		sL, sR := StatusStructure.FindNeighborsOfPoint(eventPoint)
 
 		// DEBUGGING
-		log.Println("sL:", sL)
-		log.Println("sR:", sR)
+		//log.Println("sL:", sL)
+		//log.Println("sR:", sR)
 
 		if sL != nil && sR != nil {
 
 			// DEBUGGING:
-			log.Println("Find new events between sL & sR")
+			//log.Println("Find new events between sL & sR")
 
 			findNewEventNew(EventQueue, *sL, *sR, eventPoint, opts...)
 
 			// DEBUGGING: show event queue
-			log.Printf("contents of event queue after find new events:\n%s", EventQueue)
+			//log.Printf("contents of event queue after find new events:\n%s", EventQueue)
 		}
 
 	} else {
 
-		log.Println("U(p) ∪ C(p) != 0")
+		//log.Println("U(p) ∪ C(p) != 0")
 
 		// Let sPrime be the leftmost segment of U(p) ∪ C(p) in StatusStructure.
 		// Let sL be the left neighbor of sPrime in StatusStructure.
@@ -226,38 +225,38 @@ func handleEventPointNew(
 		sPrime, sL, sDoublePrime, sR := StatusStructure.FindNeighborsOfUofPAndCofP(UofP, CofP)
 
 		// DEBUGGING:
-		log.Println("Let sPrime be the leftmost segment of U(p) ∪ C(p) in StatusStructure")
-		log.Println("Let sL be the left neighbor of sPrime in StatusStructure")
-		log.Println("sPrime:", sPrime)
-		log.Println("sL:", sL)
+		//log.Println("Let sPrime be the leftmost segment of U(p) ∪ C(p) in StatusStructure")
+		//log.Println("Let sL be the left neighbor of sPrime in StatusStructure")
+		//log.Println("sPrime:", sPrime)
+		//log.Println("sL:", sL)
 
 		if sPrime != nil && sL != nil {
 
 			// DEBUGGING
-			log.Println("Find new events between sL & sPrime")
+			//log.Println("Find new events between sL & sPrime")
 
 			findNewEventNew(EventQueue, *sL, *sPrime, eventPoint, opts...)
 
 			// DEBUGGING: show event queue
-			log.Printf("contents of event queue after find new events:\n%s", EventQueue)
+			//log.Printf("contents of event queue after find new events:\n%s", EventQueue)
 
 		}
 
 		// DEBUGGING:
-		log.Println("Let sDoublePrime be the rightmost segment of U(p) ∪ C(p) in StatusStructure")
-		log.Println("Let sR be the right neighbor of sDoublePrime in StatusStructure")
-		log.Println("sDoublePrime:", sDoublePrime)
-		log.Println("sR:", sR)
+		//log.Println("Let sDoublePrime be the rightmost segment of U(p) ∪ C(p) in StatusStructure")
+		//log.Println("Let sR be the right neighbor of sDoublePrime in StatusStructure")
+		//log.Println("sDoublePrime:", sDoublePrime)
+		//log.Println("sR:", sR)
 
 		if sDoublePrime != nil && sR != nil {
 
 			// DEBUGGING
-			log.Println("Find new events between sDoublePrime & sR")
+			//log.Println("Find new events between sDoublePrime & sR")
 
 			findNewEventNew(EventQueue, *sDoublePrime, *sR, eventPoint, opts...)
 
 			// DEBUGGING: show event queue
-			log.Printf("contents of event queue after find new events:\n%s", EventQueue)
+			//log.Printf("contents of event queue after find new events:\n%s", EventQueue)
 		}
 	}
 }
