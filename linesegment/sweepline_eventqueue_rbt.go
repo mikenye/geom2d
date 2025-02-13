@@ -9,17 +9,11 @@ import (
 	"strings"
 )
 
+// todo: doc comments for everything in file
+
 type eventQueueRBT struct {
 	queue *rbt.Tree
 }
-
-//func (Q *eventQueueRBT) Get(p point.Point[float64]) ([]LineSegment[float64], bool) {
-//	v, exists := Q.queue.Get(p)
-//	if !exists {
-//		return nil, exists
-//	}
-//	return v.([]LineSegment[float64]), exists
-//}
 
 func (Q *eventQueueRBT) IsEmpty() bool {
 	return Q.queue.Empty()
@@ -65,29 +59,6 @@ func (Q *eventQueueRBT) String() string {
 	}
 	return out.String()
 }
-
-//type eventQueueItem struct {
-//	// point is the point.Point of the event
-//	point point.Point[float64]
-//
-//	// segments is the list of LineSegments where point is the upper point of the segment
-//	segments []LineSegment[float64]
-//}
-
-//func (qi eventQueueItem) String() string {
-//	builder := strings.Builder{}
-//	builder.WriteString(fmt.Sprintf("Queue Item: %s, U(p): ", qi.point.String()))
-//	first := true
-//	for _, seg := range qi.segments {
-//		if first {
-//			builder.WriteString(seg.String())
-//			first = false
-//			continue
-//		}
-//		builder.WriteString(fmt.Sprintf(", %s", seg.String()))
-//	}
-//	return builder.String()
-//}
 
 func eventQueueComparator(a interface{}, b interface{}) int {
 	// Should return a number:
@@ -152,10 +123,3 @@ func newEventQueueRBT[T types.SignedNumber](
 	}
 	return Q
 }
-
-// it needs:
-//  - creator
-//  - len or isEmpty method
-//  - pop method (pop lowest)
-//  - "has" method (lookup)
-//  - "insert" method
