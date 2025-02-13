@@ -1,0 +1,13 @@
+go test fuzz v1
+int(-34)
+int(37)
+int(92)
+int(6)
+int(3)
+int(-48)
+int(3)
+int(75)
+int(5)
+int(-36)
+int(5)
+int(47)

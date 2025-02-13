@@ -5,6 +5,8 @@
 
 Geom2D is a computational geometry library for Go, designed for 2D polygon operations and other fundamental geometric types, and is currently reaching its release candidate phase, nearing production readiness.
 
+As of February 2025, the Polygon and Spatial Relationship functionalities are actively in development. However, the Point, Line Segment, Rectangle, and Circle functionalities are considered production-ready.
+
 ## Table of Contents
 - [Geom2D](#geom2d)
 - [Project Goals](#project-goals)
@@ -23,7 +25,7 @@ Geom2D aims to provide a robust, flexible, and efficient implementation of 2D ge
   - **LineSegment**: Represents a line segment and supports operations such as intersection and reflection.
   - **Circle**: Support for operations like circumference, area, and intersection checks.
   - **Rectangle**: Axis-aligned bounding box with methods for containment, intersection, and transformation.
-  - **Polygon (PolyTree)**: Supports polygons with holes and nested structures, with methods for orientation, correction, and Boolean operations.
+  - **Polygon**: Support polygons with holes and nested structures, with methods for orientation, correction, and Boolean operations.
 - **Polygon Boolean Operations**: Union, intersection, and subtraction.
 - **Geometry to Geometry Relationships**: Fast and reliable algorithms for determining geometric relationships.
 - **Generics**: The library leverages Go's generics to allow users to work with both integers (`int`) and floating-point (`float64`) types, offering precision and flexibility depending on the application's requirements.
@@ -36,93 +38,13 @@ To install Geom2D, use go get:
 go get github.com/mikenye/geom2d
 ```
 
-### Example
+### Examples
 
-For detailed examples, please see the [repository's wiki](https://github.com/mikenye/geom2d/wiki), where almost every public function has an example.
-
-```go
-package main
-
-import (
-    "fmt"
-    "github.com/mikenye/geom2d"
-)
-
-func areaOfCircle() {
-    // Create a new point
-    p := geom2d.NewPoint(3, 4)
-    
-    // Create a new circle with center p and radius 5
-    c := geom2d.NewCircle(p, 5)
-    
-    // Calculate the area of the circle
-    area := c.Area()
-    
-    // Print area
-    fmt.Printf("Circle Area: %.2f\n", area)
-    
-    // Output:
-    // Circle Area: 78.54
-}
-
-func polyIntersection() {
-    // Define root contour.
-    rootContour := []geom2d.Point[int]{
-      geom2d.NewPoint(0, 0),
-      geom2d.NewPoint(20, 0),
-      geom2d.NewPoint(20, 20),
-      geom2d.NewPoint(0, 20),
-    }
-  
-    // Define hole contour within root contour.
-    holeContour := []geom2d.Point[int]{
-      geom2d.NewPoint(5, 5),
-      geom2d.NewPoint(15, 5),
-      geom2d.NewPoint(15, 15),
-      geom2d.NewPoint(5, 15),
-    }
-  
-    // Create hole polytree.
-    pt1Hole, err := geom2d.NewPolyTree(holeContour, geom2d.PTHole)
-    if err != nil {
-	  // log.Fatal is used in the examples for simplicity and should be replaced with proper error handling in production applications.
-      log.Fatal(err)
-    }
-  
-    // Create root polytree with hole as child.
-    pt1, err := geom2d.NewPolyTree(rootContour, geom2d.PTSolid, geom2d.WithChildren(pt1Hole))
-    if err != nil {
-      log.Fatal(err)
-    }
-  
-    // Create a new polytree from pt1, translated by (7, 7), so there is overlap of the solid and hole regions.
-    pt2 := pt1.Translate(geom2d.NewPoint(7, 7))
-  
-    // Perform Intersection operation, returning a PolyTree that contains only the overlapping areas
-    pt3, err := pt1.BooleanOperation(pt2, geom2d.BooleanIntersection)
-    if err != nil {
-      log.Fatal(err)
-    }
-  
-    // print pt3
-    fmt.Println(pt3)
-  
-    // Output is overlapping areas, given as two solid, sibling polygons:
-    // PolyTree: PTSolid
-    // Contour Points: [(15, 7), (20, 7), (20, 12), (15, 12)]
-    // PolyTree: PTSolid
-    // Contour Points: [(7, 15), (12, 15), (12, 20), (7, 20)]
-}
-
-func main() {
-	areaOfCircle()
-	polyIntersection()
-}
-```
+For detailed examples, please see the [package documentation](https://pkg.go.dev/github.com/mikenye/geom2d), where almost every public function has an example.
 
 ## Documentation
 
-Comprehensive documentation, including detailed examples, API references, and advanced usage, is available in the [repository's wiki](https://github.com/mikenye/geom2d/wiki).
+For detailed API documentation and usage examples, visit the [geom2d documentation at the Go Package Discovery and Documentation site](https://pkg.go.dev/github.com/mikenye/geom2d).
 
 ## Geometric Relationships
 
@@ -151,9 +73,11 @@ Each cell indicates the valid relationship types.
 
 Geom2D builds upon the work of others and is grateful for the foundations they have laid. Specifically:
 
-- **Martínez et al.**: Their paper on Boolean operations on polygons has been instrumental in the implementation of Martínez's algorithm in this library. See [A simple algorithm for Boolean operations on polygons](https://web.archive.org/web/20230514184409/https://www.sciencedirect.com/science/article/abs/pii/S0925772199000124).
+- **Computational Geometry: Algorithms and Applications**: The implementation of geometric algorithms in Geom2D follows the approach presented in [Computational Geometry: Algorithms and Applications (3rd edition)](https://link.springer.com/book/10.1007/978-3-540-77974-2) by Mark de Berg, Otfried Cheong, Marc van Kreveld, and Mark Overmars. This book serves as the primary reference for methods such as the sweep line algorithm for line segment intersections, polygon operations, and spatial relationships.
 
-- **Bentley-Ottmann Algorithm**: The implementation of line segment intersection detection in Geom2D is based on the Bentley-Ottmann algorithm for efficiently finding all intersections among a set of line segments. See Bentley, J. L., & Ottmann, T. A. ["Algorithms for reporting and counting geometric intersections."](https://doi.org/10.1145/361002.361007) Communications of the ACM, 1979, or [the "Bentley–Ottmann algorithm" article on Wikipedia](https://en.wikipedia.org/wiki/Bentley–Ottmann_algorithm).
+- **Martínez et al.**: the work of Martínez et al. on Boolean operations for polygons provided valuable insight into polygonal computational geometry. See [A simple algorithm for Boolean operations on polygons](https://web.archive.org/web/20230514184409/https://www.sciencedirect.com/science/article/abs/pii/S0925772199000124).
+
+- **Bentley-Ottmann Algorithm**: The Bentley-Ottmann algorithm for efficiently reporting line segment intersections served as the foundation for the sweep line approach used in this library. While Geom2D follows the refined method outlined in Computational Geometry: Algorithms and Applications, the Bentley-Ottmann technique remains an influential cornerstone in computational geometry. See Bentley, J. L., & Ottmann, T. A. ["Algorithms for reporting and counting geometric intersections."](https://doi.org/10.1145/361002.361007) Communications of the ACM, 1979, or [the "Bentley–Ottmann algorithm" article on Wikipedia](https://en.wikipedia.org/wiki/Bentley–Ottmann_algorithm).
 
 - **Tom Wright**: The inspiration for starting this library came from Tom Wright’s repository [Provably Correct Polygon Algorithms](https://github.com/TooOldCoder/Provably-Correct-Polygon-Algorithms) and his accompanying paper. While Geom2D follows its own approach, certain ideas have been influenced by his work.
 
