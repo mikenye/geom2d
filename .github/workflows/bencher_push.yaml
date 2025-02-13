@@ -29,7 +29,7 @@ jobs:
       - uses: bencherdev/bencher@main
       - name: Track base branch benchmarks with Bencher
         run: |
-          go test -bench . | bencher run \
+          go test -bench=. -benchmem -run=^$ ./... | bencher run \
           --project geom2d \
           --token '${{ secrets.BENCHER_TOKEN }}' \
           --branch main \
