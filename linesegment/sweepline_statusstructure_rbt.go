@@ -27,12 +27,12 @@ func (S *statusStructureRBT) containsPoint(
 	//log.Println("checking:", seg)
 
 	// if we've found an upper p, do nothing as these are already stored with the event p
-	if seg.Start().Eq(p) {
+	if seg.start.Eq(p) {
 		// do nothing
 		//log.Println("start point matches, do nothing")
 
 		// if we've found a lower p, add to LofP
-	} else if seg.End().Eq(p) {
+	} else if seg.end.Eq(p) {
 		//log.Println("end point matches, add to L(p)")
 		LofPset[seg] = false
 
@@ -224,9 +224,7 @@ func (S *statusStructureRBT) Remove(seg LineSegment[float64]) {
 	e.slope = seg.Slope()
 	e.isHorizontal = e.slope == 0
 	e.isVertical = math.IsNaN(e.slope)
-
-	// todo: move epsilon to S
-	//e.epsilon = epsilon
+	e.epsilon = S.epsilon
 
 	// dynamic fields
 	e.update(S.sweepPoint)
@@ -372,19 +370,6 @@ func statusStructureComparator(sweepPointPtr *point.Point[float64], epsilonPtr *
 
 		if A.entryType == statusStructureEntryNormal && B.entryType == statusStructureEntryNormal {
 
-			// todo: try running with this commented out
-			// do we need to update any of a's dynamic fields
-			if !A.sweepLinePoint.Eq(p) {
-				//debugLog.WriteString("Updated A. ")
-				A.update(p)
-			}
-
-			// do we need to update any of b's dynamic fields
-			if !B.sweepLinePoint.Eq(p) {
-				//debugLog.WriteString("Updated B. ")
-				B.update(p)
-			}
-
 			aX := A.currX
 			bX := B.currX
 
@@ -465,31 +450,31 @@ func statusStructureComparator(sweepPointPtr *point.Point[float64], epsilonPtr *
 					//debugLog.WriteString("A and B are collinear, ")
 
 					// if start Y points differ, order by start y
-					if A.segment.Start().Y() != B.segment.Start().Y() {
+					if A.segment.start.Y() != B.segment.start.Y() {
 						//debugLog.WriteString("order by start y: ")
-						//debugLog.WriteString(debugPrintOrder(cmp.Compare(B.segment.Start().Y(), A.segment.Start().Y())))
-						return cmp.Compare(B.segment.Start().Y(), A.segment.Start().Y()) // order by start y, highest first
+						//debugLog.WriteString(debugPrintOrder(cmp.Compare(B.segment.start.Y(), A.segment.start.Y())))
+						return cmp.Compare(B.segment.start.Y(), A.segment.start.Y()) // order by start y, highest first
 					}
 
 					// if start Y are equal, if start X differ, order by start x
-					if A.segment.Start().X() != B.segment.Start().X() {
+					if A.segment.start.X() != B.segment.start.X() {
 						//debugLog.WriteString("start y equal, so order by start x: ")
-						//debugLog.WriteString(debugPrintOrder(cmp.Compare(A.segment.Start().X(), B.segment.Start().X())))
-						return cmp.Compare(A.segment.Start().X(), B.segment.Start().X()) // order by start x, lowest first
+						//debugLog.WriteString(debugPrintOrder(cmp.Compare(A.segment.start.X(), B.segment.start.X())))
+						return cmp.Compare(A.segment.start.X(), B.segment.start.X()) // order by start x, lowest first
 					}
 
 					// if start points are equal, if end Y differ, order by end y
-					if A.segment.End().Y() != B.segment.End().Y() {
+					if A.segment.end.Y() != B.segment.end.Y() {
 						//debugLog.WriteString("start points equal, so order by end y: ")
-						//debugLog.WriteString(debugPrintOrder(cmp.Compare(B.segment.End().Y(), A.segment.End().Y())))
-						return cmp.Compare(B.segment.End().Y(), A.segment.End().Y()) // / order by end y, highest first
+						//debugLog.WriteString(debugPrintOrder(cmp.Compare(B.segment.end.Y(), A.segment.end.Y())))
+						return cmp.Compare(B.segment.end.Y(), A.segment.end.Y()) // / order by end y, highest first
 					}
 
 					// if start points are equal and end y is equal, if end x differ, order by end x
-					if A.segment.End().X() != B.segment.End().X() {
+					if A.segment.end.X() != B.segment.end.X() {
 						//debugLog.WriteString("start points equal, end y equal, so order by end x: ")
-						//debugLog.WriteString(debugPrintOrder(cmp.Compare(A.segment.End().X(), B.segment.End().X())))
-						return cmp.Compare(A.segment.End().X(), B.segment.End().X()) // order by end x, lowest first
+						//debugLog.WriteString(debugPrintOrder(cmp.Compare(A.segment.end.X(), B.segment.end.X())))
+						return cmp.Compare(A.segment.end.X(), B.segment.end.X()) // order by end x, lowest first
 					}
 				}
 
