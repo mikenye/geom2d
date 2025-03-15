@@ -1,4 +1,4 @@
-package linesegment
+package _torefactor
 
 import (
 	"github.com/mikenye/geom2d/point"

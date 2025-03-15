@@ -1,31 +1,19 @@
-package point_test
+package _torefactor_test
 
 import (
 	"fmt"
-	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"image"
 	"math"
 )
 
 func ExampleNew() {
-	// Create a new point with integer coordinates
-	pointInt := point.New[int](10, 20)
-	fmt.Printf("Integer Point: %s, type %T\n", pointInt, pointInt)
-
 	// Create a new point with floating-point coordinates
-	pointFloat := point.New[float64](10.5, 20.25)
-	fmt.Printf("Floating-Point Point: %s, type %T\n", pointFloat, pointFloat)
-
-	// Create a new point with type inference.
-	// As x and y are given as integer values, pointInferred will be of type Point[int].
-	pointInferred := point.New(10, 20)
-	fmt.Printf("Inferred Point: %s, type %T\n", pointInferred, pointInferred)
+	p := point.New(10.5, 20.25)
+	fmt.Printf("Point: %s\n", p)
 
 	// Output:
-	// Integer Point: (10,20), type point.Point[int]
-	// Floating-Point Point: (10.5,20.25), type point.Point[float64]
-	// Inferred Point: (10,20), type point.Point[int]
+	// Point: (10.5,20.25)
 }
 
 func ExampleNewFromImagePoint() {
@@ -50,7 +38,7 @@ func ExamplePoint_AngleBetween() {
 	pointA := point.New(10, 0)
 	pointB := point.New(10, 10)
 
-	radians := origin.AngleBetween(pointA, pointB, options.WithEpsilon(1e-8))
+	radians := origin.AngleBetween(pointA, pointB)
 	degrees := radians * 180 / math.Pi
 
 	fmt.Printf(
@@ -65,51 +53,11 @@ func ExamplePoint_AngleBetween() {
 	// The angle between point (10,0) and point (10,10) relative to point (0,0) is 45 degrees
 }
 
-func ExamplePoint_AsFloat32() {
-	intPoint := point.New(3, 4)
-	fltPoint := intPoint.AsFloat32()
-	fmt.Printf("intPoint is %v of type: %T\n", intPoint, intPoint)
-	fmt.Printf("fltPoint is %v of type: %T\n", fltPoint, fltPoint)
-	// Output:
-	// intPoint is (3,4) of type: point.Point[int]
-	// fltPoint is (3,4) of type: point.Point[float32]
-}
-
-func ExamplePoint_AsFloat64() {
-	intPoint := point.New(3, 4)
-	fltPoint := intPoint.AsFloat64()
-	fmt.Printf("intPoint is %v of type: %T\n", intPoint, intPoint)
-	fmt.Printf("fltPoint is %v of type: %T\n", fltPoint, fltPoint)
-	// Output:
-	// intPoint is (3,4) of type: point.Point[int]
-	// fltPoint is (3,4) of type: point.Point[float64]
-}
-
-func ExamplePoint_AsInt() {
-	fltPoint := point.New(3.7, 4.1)
-	intPoint := fltPoint.AsInt()
-	fmt.Printf("fltPoint is %v of type: %T\n", fltPoint, fltPoint)
-	fmt.Printf("intPoint is %v of type: %T\n", intPoint, intPoint)
-	// Output:
-	// fltPoint is (3.7,4.1) of type: point.Point[float64]
-	// intPoint is (3,4) of type: point.Point[int]
-}
-
-func ExamplePoint_AsIntRounded() {
-	fltPoint := point.New(3.7, 4.1)
-	intPoint := fltPoint.AsIntRounded()
-	fmt.Printf("fltPoint is %v of type: %T\n", fltPoint, fltPoint)
-	fmt.Printf("intPoint is %v of type: %T\n", intPoint, intPoint)
-	// Output:
-	// fltPoint is (3.7,4.1) of type: point.Point[float64]
-	// intPoint is (4,4) of type: point.Point[int]
-}
-
 func ExamplePoint_Coordinates() {
 	p := point.New(5, -3)
 
 	x, y := p.Coordinates()
-	fmt.Printf("Point coordinates: (%d, %d)\n", x, y)
+	fmt.Printf("Point coordinates: (%f, %f)\n", x, y)
 
 	// Output:
 	// Point coordinates: (5, -3)
@@ -136,14 +84,14 @@ func ExamplePoint_CosineOfAngleBetween() {
 
 func ExamplePoint_DistanceSquaredToPoint() {
 	// Define two points
-	p := point.New[int](3, 4)
-	q := point.New[int](6, 8)
+	p := point.New(3, 4)
+	q := point.New(6, 8)
 
 	// Calculate the squared Euclidean distance between the points
 	distanceSquared := p.DistanceSquaredToPoint(q)
 
 	// Display the result
-	fmt.Printf("The squared distance between %v and %v is %d\n", p, q, distanceSquared)
+	fmt.Printf("The squared distance between %v and %v is %f\n", p, q, distanceSquared)
 
 	// Output:
 	// The squared distance between (3,4) and (6,8) is 25
@@ -151,11 +99,11 @@ func ExamplePoint_DistanceSquaredToPoint() {
 
 func ExamplePoint_DistanceToPoint() {
 	// Define two points
-	p1 := point.New[float64](3, 4)
-	p2 := point.New[float64](0, 0)
+	p1 := point.New(3, 4)
+	p2 := point.New(0, 0)
 
 	// Calculate the Euclidean distance between the points
-	distance := p1.DistanceToPoint(p2, options.WithEpsilon(1e-8))
+	distance := p1.DistanceToPoint(p2)
 
 	// Display the result
 	fmt.Printf("The Euclidean distance between %v and %v is %.2f\n", p1, p2, distance)
@@ -166,8 +114,8 @@ func ExamplePoint_DistanceToPoint() {
 
 func ExamplePoint_DotProduct() {
 	// Define two vectors as points
-	p1 := point.New[float64](3, 4)
-	p2 := point.New[float64](1, 2)
+	p1 := point.New(3, 4)
+	p2 := point.New(1, 2)
 
 	// Calculate the dot product of the vectors
 	dotProduct := p1.DotProduct(p2)
@@ -180,26 +128,14 @@ func ExamplePoint_DotProduct() {
 }
 
 func ExamplePoint_Eq() {
-	p := point.New[float64](3, 4)
-	q := point.New[float64](3, 4)
+	p := point.New(3, 4)
+	q := point.New(3, 4)
 
 	isEqual := p.Eq(q)
 	fmt.Printf("Are %s and %s equal: %t\n", p, q, isEqual)
 
 	// Output:
 	// Are (3,4) and (3,4) equal: true
-}
-
-func ExamplePoint_Eq_epsilon() {
-	p := point.New[float64](3, 4)
-	q := point.New[float64](3.00000000001, 4.00000000001)
-	epsilon := 1e-8
-
-	isEqual := p.Eq(q, options.WithEpsilon(epsilon))
-	fmt.Printf("Are %s and %s equal: %t (with epsilon: %0.0e)\n", p, q, isEqual, epsilon)
-
-	// Output:
-	// Are (3,4) and (3.00000000001,4.00000000001) equal: true (with epsilon: 1e-08)
 }
 
 func ExamplePoint_Negate() {
@@ -224,7 +160,7 @@ func ExamplePoint_Rotate() {
 	radians := math.Pi / 2 // 90 degrees
 
 	// Rotates the point 90 degrees counter-clockwise around (0, 0)
-	rotated := p.Rotate(pivot, radians, options.WithEpsilon(1e-8))
+	rotated := p.Rotate(pivot, radians)
 
 	fmt.Printf(
 		"Point %s rotated 90 degrees counter-clockwise around %s is: %s\n",
@@ -240,7 +176,7 @@ func ExamplePoint_Rotate() {
 func ExamplePoint_Scale() {
 	p := point.New(3, 4)
 	ref := point.New(1, 1)
-	factor := 2
+	factor := 2.0
 
 	scaled := p.Scale(ref, factor)
 
@@ -288,7 +224,7 @@ func ExamplePoint_Translate() {
 func ExamplePoint_X() {
 	p := point.New(1, 2)
 
-	fmt.Printf("The X coordinate of point %s is %d", p, p.X())
+	fmt.Printf("The X coordinate of point %s is %f", p, p.X())
 
 	// Output:
 	// The X coordinate of point (1,2) is 1
@@ -297,7 +233,7 @@ func ExamplePoint_X() {
 func ExamplePoint_Y() {
 	p := point.New(1, 2)
 
-	fmt.Printf("The Y coordinate of point %s is %d", p, p.X())
+	fmt.Printf("The Y coordinate of point %s is %f", p, p.X())
 
 	// Output:
 	// The Y coordinate of point (1,2) is 1

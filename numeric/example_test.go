@@ -5,25 +5,6 @@ import (
 	"github.com/mikenye/geom2d/numeric"
 )
 
-func ExampleAbs() {
-	// Integers
-	fmt.Println(numeric.Abs(-5))
-	fmt.Println(numeric.Abs(5))
-	fmt.Println(numeric.Abs(0))
-
-	// Floating point numbers
-	fmt.Println(numeric.Abs(-3.14))
-	fmt.Println(numeric.Abs(2.71))
-
-	// Output:
-	// 5
-	// 5
-	// 0
-	// 3.14
-	// 2.71
-
-}
-
 func ExampleFloatEquals() {
 	a := 0.3333333
 	b := 1.0 / 3.0

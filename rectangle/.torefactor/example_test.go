@@ -1,4 +1,4 @@
-package rectangle_test
+package _torefactor_test
 
 import (
 	"fmt"

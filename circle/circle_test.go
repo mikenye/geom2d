@@ -2,7 +2,7 @@ package circle
 
 import (
 	"encoding/json"
-	"github.com/mikenye/geom2d/options"
+	"github.com/mikenye/geom2d"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
 	"github.com/stretchr/testify/assert"
@@ -13,164 +13,40 @@ import (
 
 func TestCircle_Area(t *testing.T) {
 	tests := map[string]struct {
-		circle   Circle[float64]
-		inDelta  float64
+		circle   Circle
 		expected float64
 	}{
 		"radius 1": {
-			circle:   New[float64](0, 0, 1),
-			inDelta:  0.0001,
+			circle:   New(0, 0, 1),
 			expected: math.Pi,
 		},
 		"radius 2": {
-			circle:   New[float64](0, 0, 2),
-			inDelta:  0.0001,
+			circle:   New(0, 0, 2),
 			expected: 4 * math.Pi,
 		},
 		"radius 0": {
-			circle:   New[float64](0, 0, 0),
-			inDelta:  0.0001,
+			circle:   New(0, 0, 0),
 			expected: 0,
 		},
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			assert.InDelta(t, tc.expected, tc.circle.Area(), tc.inDelta)
-		})
-	}
-}
-
-func TestCircle_AsFloat32(t *testing.T) {
-	tests := map[string]struct {
-		circle   Circle[int]
-		expected Circle[float32]
-	}{
-		"integer center and radius": {
-			circle:   New[int](3, 4, 5),
-			expected: New[float32](3, 4, 5),
-		},
-		"zero center and radius": {
-			circle:   NewFromPoint(point.New(0, 0), 0),
-			expected: New[float32](0, 0, 0),
-		},
-		"negative center and radius": {
-			circle:   New(-3, -4, 5),
-			expected: NewFromPoint[float32](point.New[float32](-3, -4), 5),
-		},
-	}
-
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			result := tc.circle.AsFloat32()
-			assert.Equal(t, tc.expected.center, result.center)
-			assert.Equal(t, tc.expected.radius, result.radius)
-		})
-	}
-}
-
-func TestCircle_AsFloat64(t *testing.T) {
-	tests := map[string]struct {
-		circle   Circle[int]
-		expected Circle[float64]
-	}{
-		"integer center and radius": {
-			circle:   New[int](3, 4, 5),
-			expected: New[float64](3, 4, 5),
-		},
-		"zero center and radius": {
-			circle:   New[int](0, 0, 0),
-			expected: New[float64](0, 0, 0),
-		},
-		"negative center and radius": {
-			circle:   New[int](-3, -4, 5),
-			expected: New[float64](-3, -4, 5),
-		},
-	}
-
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			result := tc.circle.AsFloat64()
-			assert.Equal(t, tc.expected.center, result.center)
-			assert.Equal(t, tc.expected.radius, result.radius)
-		})
-	}
-}
-
-func TestCircle_AsInt(t *testing.T) {
-	tests := map[string]struct {
-		circle   Circle[float64]
-		expected Circle[int]
-	}{
-		"positive float center and radius": {
-			circle:   New[float64](3.9, 4.5, 5.8),
-			expected: New[int](3, 4, 5),
-		},
-		"zero center and radius": {
-			circle:   New[float64](0, 0, 0),
-			expected: New[int](0, 0, 0),
-		},
-		"negative float center and radius": {
-			circle:   New[float64](-3.7, -4.2, 5.9),
-			expected: New[int](-3, -4, 5),
-		},
-	}
-
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			result := tc.circle.AsInt()
-			assert.Equal(t, tc.expected.center, result.center)
-			assert.Equal(t, tc.expected.radius, result.radius)
-		})
-	}
-}
-
-func TestCircle_AsIntRounded(t *testing.T) {
-	tests := map[string]struct {
-		circle   Circle[float64]
-		expected Circle[int]
-	}{
-		"positive float center and radius with rounding up": {
-			circle:   New[float64](3.6, 4.5, 5.7),
-			expected: New[int](4, 5, 6),
-		},
-		"positive float center and radius with rounding down": {
-			circle:   New[float64](3.4, 4.4, 5.2),
-			expected: New[int](3, 4, 5),
-		},
-		"zero center and radius": {
-			circle:   New[float64](0, 0, 0),
-			expected: New[int](0, 0, 0),
-		},
-		"negative float center and radius with rounding up": {
-			circle:   New[float64](-3.6, -4.5, 5.7),
-			expected: New[int](-4, -5, 6),
-		},
-		"negative float center and radius with rounding down": {
-			circle:   New[float64](-3.4, -4.4, 5.2),
-			expected: New[int](-3, -4, 5),
-		},
-	}
-
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			result := tc.circle.AsIntRounded()
-			assert.Equal(t, tc.expected.center, result.center)
-			assert.Equal(t, tc.expected.radius, result.radius)
+			assert.InDelta(t, tc.expected, tc.circle.Area(), geom2d.GetEpsilon())
 		})
 	}
 }
 
 func TestCircle_Bresenham(t *testing.T) {
 	tests := map[string]struct {
-		center   point.Point[int]
-		radius   int
-		expected []point.Point[int]
+		center   point.Point
+		radius   float64
+		expected []point.Point
 	}{
 		"circle at origin, radius 2": {
 			center: point.New(0, 0),
 			radius: 2,
-			expected: []point.Point[int]{
+			expected: []point.Point{
 				point.New(-1, -2),
 				point.New(-1, 2),
 				point.New(-2, -1),
@@ -188,7 +64,7 @@ func TestCircle_Bresenham(t *testing.T) {
 		"circle offset, radius 3": {
 			center: point.New(5, 5),
 			radius: 3,
-			expected: []point.Point[int]{
+			expected: []point.Point{
 				point.New(2, 4),
 				point.New(2, 5),
 				point.New(2, 6),
@@ -212,7 +88,7 @@ func TestCircle_Bresenham(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			c := NewFromPoint(tc.center, tc.radius)
-			c.Bresenham(func(p point.Point[int]) bool {
+			c.Bresenham(func(p point.Point) bool {
 				assert.Contains(t, tc.expected, p, "Points should match expected circle perimeter")
 				return true
 			})
@@ -222,20 +98,20 @@ func TestCircle_Bresenham(t *testing.T) {
 
 func TestCircle_Center(t *testing.T) {
 	tests := map[string]struct {
-		circle   Circle[float64]
-		expected point.Point[float64]
+		circle   Circle
+		expected point.Point
 	}{
 		"positive center coordinates": {
-			circle:   New[float64](3.5, 4.5, 5.5),
-			expected: point.New[float64](3.5, 4.5),
+			circle:   New(3.5, 4.5, 5.5),
+			expected: point.New(3.5, 4.5),
 		},
 		"zero center coordinates": {
-			circle:   New[float64](0.0, 0.0, 5.5),
-			expected: point.New[float64](0.0, 0.0),
+			circle:   New(0.0, 0.0, 5.5),
+			expected: point.New(0.0, 0.0),
 		},
 		"negative center coordinates": {
-			circle:   New[float64](-3.5, -4.5, 5.5),
-			expected: point.New[float64](-3.5, -4.5),
+			circle:   New(-3.5, -4.5, 5.5),
+			expected: point.New(-3.5, -4.5),
 		},
 	}
 
@@ -249,70 +125,66 @@ func TestCircle_Center(t *testing.T) {
 
 func TestCircle_Circumference(t *testing.T) {
 	tests := map[string]struct {
-		circle   Circle[float64]
+		circle   Circle
 		expected float64
 	}{
 		"radius 1": {
-			circle:   New[float64](0, 0, 1),
+			circle:   New(0, 0, 1),
 			expected: 2 * math.Pi,
 		},
 		"radius 2": {
-			circle:   New[float64](0, 0, 2),
+			circle:   New(0, 0, 2),
 			expected: 4 * math.Pi,
 		},
 		"radius 0": {
-			circle:   New[float64](0, 0, 0),
+			circle:   New(0, 0, 0),
 			expected: 0,
 		},
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			assert.InDelta(t, tc.expected, tc.circle.Circumference(), 0.0001)
+			assert.InDelta(t, tc.expected, tc.circle.Circumference(), geom2d.GetEpsilon())
 		})
 	}
 }
 
 func TestCircle_Eq(t *testing.T) {
 	tests := map[string]struct {
-		circle1  Circle[float64]
-		circle2  Circle[float64]
-		opts     []options.GeometryOptionsFunc
+		circle1  Circle
+		circle2  Circle
 		expected bool
 	}{
 		"equal circles with same center and radius": {
-			circle1:  New[float64](3, 4, 5),
-			circle2:  New[float64](3, 4, 5),
+			circle1:  New(3, 4, 5),
+			circle2:  New(3, 4, 5),
 			expected: true,
 		},
 		"different center but same radius": {
-			circle1:  New[float64](3, 4, 5),
-			circle2:  New[float64](2, 4, 5),
+			circle1:  New(3, 4, 5),
+			circle2:  New(2, 4, 5),
 			expected: false,
 		},
 		"same center but different radius": {
-			circle1:  New[float64](3, 4, 5),
-			circle2:  New[float64](3, 4, 6),
+			circle1:  New(3, 4, 5),
+			circle2:  New(3, 4, 6),
 			expected: false,
 		},
 		"different center and different radius": {
-			circle1:  New[float64](3, 4, 5),
-			circle2:  New[float64](2, 3, 6),
+			circle1:  New(3, 4, 5),
+			circle2:  New(2, 3, 6),
 			expected: false,
 		},
 		"epsilon-equal circles with same center and radius": {
-			circle1: New[float64](3, 4, 5),
-			circle2: New[float64](2.999999999, 3.999999999, 4.999999999),
-			opts: []options.GeometryOptionsFunc{
-				options.WithEpsilon(1e-8),
-			},
+			circle1:  New(3, 4, 5),
+			circle2:  New(2.9999999999999, 3.9999999999999, 4.9999999999999),
 			expected: true,
 		},
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			result := tc.circle1.Eq(tc.circle2, tc.opts...)
+			result := tc.circle1.Eq(tc.circle2)
 			assert.Equal(t, tc.expected, result)
 		})
 	}
@@ -320,24 +192,12 @@ func TestCircle_Eq(t *testing.T) {
 
 func TestCircle_MarshalUnmarshalJSON(t *testing.T) {
 	tests := map[string]struct {
-		circle   any // Input circle
-		expected any // Expected output after Marshal -> Unmarshal
+		circle   Circle // Input circle
+		expected Circle // Expected output after Marshal -> Unmarshal
 	}{
-		"Circle[int]": {
-			circle:   NewFromPoint[int](point.New[int](3, 4), 5),
-			expected: NewFromPoint[int](point.New[int](3, 4), 5),
-		},
-		"Circle[int64]": {
-			circle:   NewFromPoint[int64](point.New[int64](10, 20), 100),
-			expected: NewFromPoint[int64](point.New[int64](10, 20), 100),
-		},
-		"Circle[float32]": {
-			circle:   NewFromPoint[float32](point.New[float32](1.5, 2.5), 4.5),
-			expected: NewFromPoint[float32](point.New[float32](1.5, 2.5), 4.5),
-		},
 		"Circle[float64]": {
-			circle:   NewFromPoint[float64](point.New[float64](3.5, 7.2), 2.8),
-			expected: NewFromPoint[float64](point.New[float64](3.5, 7.2), 2.8),
+			circle:   NewFromPoint(point.New(3.5, 7.2), 2.8),
+			expected: NewFromPoint(point.New(3.5, 7.2), 2.8),
 		},
 	}
 
@@ -348,57 +208,33 @@ func TestCircle_MarshalUnmarshalJSON(t *testing.T) {
 			require.NoErrorf(t, err, "Failed to marshal %s: %v", tc.circle, err)
 
 			// Determine the correct type for unmarshalling
-			switch expected := tc.expected.(type) {
-			case Circle[int]:
-				var result Circle[int]
-				err := json.Unmarshal(data, &result)
-				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
-				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
-
-			case Circle[int64]:
-				var result Circle[int64]
-				err := json.Unmarshal(data, &result)
-				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
-				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
-
-			case Circle[float32]:
-				var result Circle[float32]
-				err := json.Unmarshal(data, &result)
-				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
-				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
-
-			case Circle[float64]:
-				var result Circle[float64]
-				err := json.Unmarshal(data, &result)
-				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
-				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
-
-			default:
-				t.Fatalf("Unhandled type in test case: %s", name)
-			}
+			var result Circle
+			err = json.Unmarshal(data, &result)
+			require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
+			assert.Equalf(t, tc.expected, result, "Expected %v, got %v", tc.expected, result)
 		})
 	}
 }
 
 func TestCircle_Radius(t *testing.T) {
 	tests := map[string]struct {
-		circle   Circle[float64]
+		circle   Circle
 		expected float64
 	}{
 		"positive radius": {
-			circle:   New[float64](3, 4, 5),
+			circle:   New(3, 4, 5),
 			expected: 5,
 		},
 		"zero radius": {
-			circle:   New[float64](3, 4, 0),
+			circle:   New(3, 4, 0),
 			expected: 0,
 		},
 		"small radius": {
-			circle:   New[float64](3, 4, 0.001),
+			circle:   New(3, 4, 0.001),
 			expected: 0.001,
 		},
 		"negative radius (edge case)": {
-			circle:   New[float64](3, 4, -5),
+			circle:   New(3, 4, -5),
 			expected: 5,
 		},
 	}
@@ -413,74 +249,74 @@ func TestCircle_Radius(t *testing.T) {
 
 func TestCircle_RelationshipToPoint(t *testing.T) {
 	testCases := map[string]struct {
-		point       point.Point[float64]
-		circle      Circle[float64]
+		point       point.Point
+		circle      Circle
 		expectedRel types.Relationship
 	}{
 		"Point inside circle": {
-			point:       point.New[float64](2, 2),
-			circle:      New[float64](0, 0, 5),
+			point:       point.New(2, 2),
+			circle:      New(0, 0, 5),
 			expectedRel: types.RelationshipContainedBy,
 		},
 		"Point on circle boundary": {
-			point:       point.New[float64](3, 4),
-			circle:      New[float64](0, 0, 5),
+			point:       point.New(3, 4),
+			circle:      New(0, 0, 5),
 			expectedRel: types.RelationshipIntersection,
 		},
 		"Point outside circle": {
-			point:       point.New[float64](6, 8),
-			circle:      New[float64](0, 0, 5),
+			point:       point.New(6, 8),
+			circle:      New(0, 0, 5),
 			expectedRel: types.RelationshipDisjoint,
 		},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, tc.expectedRel, tc.circle.RelationshipToPoint(tc.point, options.WithEpsilon(1e-8)), "unexpected relationship")
+			assert.Equal(t, tc.expectedRel, tc.circle.RelationshipToPoint(tc.point), "unexpected relationship")
 		})
 	}
 }
 
 func TestCircle_Rotate(t *testing.T) {
 	tests := map[string]struct {
-		circle   Circle[float64]
-		pivot    point.Point[float64]
+		circle   Circle
+		pivot    point.Point
 		radians  float64
-		expected Circle[float64]
+		expected Circle
 	}{
 		"rotate 90 degrees around origin": {
-			circle:  NewFromPoint(point.New[float64](3.0, 0.0), 5.0),
-			pivot:   point.New[float64](0.0, 0.0),
+			circle:  NewFromPoint(point.New(3.0, 0.0), 5.0),
+			pivot:   point.New(0.0, 0.0),
 			radians: math.Pi / 2,
 			expected: NewFromPoint(
-				point.New[float64](0.0, 3.0),
+				point.New(0.0, 3.0),
 				5.0,
 			),
 		},
 		"rotate 180 degrees around origin": {
-			circle:  NewFromPoint(point.New[float64](3.0, 0.0), 5.0),
-			pivot:   point.New[float64](0.0, 0.0),
+			circle:  NewFromPoint(point.New(3.0, 0.0), 5.0),
+			pivot:   point.New(0.0, 0.0),
 			radians: math.Pi,
 			expected: NewFromPoint(
-				point.New[float64](-3.0, 0.0),
+				point.New(-3.0, 0.0),
 				5.0,
 			),
 		},
 		"rotate 90 degrees around custom pivot": {
-			circle:  NewFromPoint(point.New[float64](3.0, 0.0), 5.0),
-			pivot:   point.New[float64](1.0, 1.0),
+			circle:  NewFromPoint(point.New(3.0, 0.0), 5.0),
+			pivot:   point.New(1.0, 1.0),
 			radians: math.Pi / 2,
 			expected: NewFromPoint(
-				point.New[float64](2.0, 3.0),
+				point.New(2.0, 3.0),
 				5.0,
 			),
 		},
 		"rotate 0 degrees around custom pivot": {
-			circle:  NewFromPoint(point.New[float64](3.0, 0.0), 5.0),
-			pivot:   point.New[float64](1.0, 1.0),
+			circle:  NewFromPoint(point.New(3.0, 0.0), 5.0),
+			pivot:   point.New(1.0, 1.0),
 			radians: 0,
 			expected: NewFromPoint(
-				point.New[float64](3.0, 0),
+				point.New(3.0, 0),
 				5.0,
 			),
 		},
@@ -498,34 +334,34 @@ func TestCircle_Rotate(t *testing.T) {
 
 func TestCircle_Scale(t *testing.T) {
 	tests := map[string]struct {
-		circle   Circle[float64]
+		circle   Circle
 		factor   float64
-		expected Circle[float64]
+		expected Circle
 	}{
 		"scale up by factor of 2": {
-			circle:   New[float64](3, 4, 5),
+			circle:   New(3, 4, 5),
 			factor:   2,
-			expected: New[float64](3, 4, 10),
+			expected: New(3, 4, 10),
 		},
 		"scale down by factor of 0.5": {
-			circle:   New[float64](3, 4, 5),
+			circle:   New(3, 4, 5),
 			factor:   0.5,
-			expected: New[float64](3, 4, 2.5),
+			expected: New(3, 4, 2.5),
 		},
 		"no change with factor of 1": {
-			circle:   New[float64](3, 4, 5),
+			circle:   New(3, 4, 5),
 			factor:   1,
-			expected: New[float64](3, 4, 5),
+			expected: New(3, 4, 5),
 		},
 		"scale to zero radius with factor of 0": {
-			circle:   New[float64](3, 4, 5),
+			circle:   New(3, 4, 5),
 			factor:   0,
-			expected: New[float64](3, 4, 0),
+			expected: New(3, 4, 0),
 		},
 		"scale with negative factor": {
-			circle:   New[float64](3, 4, 5),
+			circle:   New(3, 4, 5),
 			factor:   -2,
-			expected: New[float64](3, 4, 10),
+			expected: New(3, 4, 10),
 		},
 	}
 
@@ -540,20 +376,20 @@ func TestCircle_Scale(t *testing.T) {
 
 func TestCircle_String(t *testing.T) {
 	tests := map[string]struct {
-		circle   Circle[float64]
+		circle   Circle
 		expected string
 	}{
 		"positive center and radius": {
-			circle:   New[float64](3.5, 4.5, 5.5),
-			expected: "(3.5,4.5; r=5.5)",
+			circle:   New(3.5, 4.5, 5.5),
+			expected: "(3.500000,4.500000; r=5.500000)",
 		},
 		"zero center and radius": {
-			circle:   New[float64](0, 0, 0),
-			expected: "(0,0; r=0)",
+			circle:   New(0, 0, 0),
+			expected: "(0.000000,0.000000; r=0.000000)",
 		},
 		"negative center and radius": {
-			circle:   New[float64](-3.5, -4.5, -5.5),
-			expected: "(-3.5,-4.5; r=5.5)",
+			circle:   New(-3.5, -4.5, -5.5),
+			expected: "(-3.500000,-4.500000; r=5.500000)",
 		},
 	}
 
@@ -567,24 +403,24 @@ func TestCircle_String(t *testing.T) {
 
 func TestCircle_Translate(t *testing.T) {
 	tests := map[string]struct {
-		circle   Circle[float64]
-		vector   point.Point[float64]
-		expected Circle[float64]
+		circle   Circle
+		vector   point.Point
+		expected Circle
 	}{
 		"translate circle by positive vector": {
-			circle:   New[float64](3, 4, 5),
-			vector:   point.New[float64](2, 3),
-			expected: New[float64](5, 7, 5),
+			circle:   New(3, 4, 5),
+			vector:   point.New(2, 3),
+			expected: New(5, 7, 5),
 		},
 		"translate circle by negative vector": {
-			circle:   New[float64](3, 4, 5),
-			vector:   point.New[float64](-1, -2),
-			expected: New[float64](2, 2, 5),
+			circle:   New(3, 4, 5),
+			vector:   point.New(-1, -2),
+			expected: New(2, 2, 5),
 		},
 		"translate circle by zero vector": {
-			circle:   New[float64](3, 4, 5),
-			vector:   point.New[float64](0, 0),
-			expected: New[float64](3, 4, 5),
+			circle:   New(3, 4, 5),
+			vector:   point.New(0, 0),
+			expected: New(3, 4, 5),
 		},
 	}
 
@@ -599,12 +435,12 @@ func TestCircle_Translate(t *testing.T) {
 
 func TestReflectAcrossCircleOctants(t *testing.T) {
 	tests := map[string]struct {
-		xc, yc, x, y int
-		expected     []point.Point[int]
+		xc, yc, x, y float64
+		expected     []point.Point
 	}{
 		"center at origin, simple point": {
 			xc: 0, yc: 0, x: 2, y: 1,
-			expected: []point.Point[int]{
+			expected: []point.Point{
 				point.New(2, 1),   // Octant 1
 				point.New(-2, 1),  // Octant 2
 				point.New(2, -1),  // Octant 8
@@ -617,7 +453,7 @@ func TestReflectAcrossCircleOctants(t *testing.T) {
 		},
 		"center offset, simple point": {
 			xc: 3, yc: 4, x: 2, y: 1,
-			expected: []point.Point[int]{
+			expected: []point.Point{
 				point.New(5, 5), // Octant 1
 				point.New(1, 5), // Octant 2
 				point.New(5, 3), // Octant 8

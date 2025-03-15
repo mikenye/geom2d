@@ -28,8 +28,8 @@ package circle
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mikenye/geom2d"
 	"github.com/mikenye/geom2d/numeric"
-	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
 	"math"
@@ -40,9 +40,9 @@ import (
 // The Circle type provides methods for calculating its circumference and area,
 // determining if a point lies within the circle, checking if a line segment
 // intersects the circle, and checking the relationship between the circle and other geometric shapes.
-type Circle[T types.SignedNumber] struct {
-	center point.Point[T] // The center point of the circle
-	radius T              // The radius of the circle
+type Circle struct {
+	center point.Point // The center point of the circle
+	radius float64     // The radius of the circle
 }
 
 // New creates a new [Circle] with the specified center coordinates and radius.
@@ -53,10 +53,10 @@ type Circle[T types.SignedNumber] struct {
 //
 // Returns:
 //   - Circle[T]: A new Circle with the specified center and radius.
-func New[T types.SignedNumber](x, y, radius T) Circle[T] {
-	return Circle[T]{
-		center: point.New[T](x, y),
-		radius: numeric.Abs(radius),
+func New(x, y, radius float64) Circle {
+	return Circle{
+		center: point.New(x, y),
+		radius: math.Abs(radius),
 	}
 }
 
@@ -68,10 +68,10 @@ func New[T types.SignedNumber](x, y, radius T) Circle[T] {
 //
 // Returns:
 //   - Circle[T]: A new Circle with the specified center and radius.
-func NewFromPoint[T types.SignedNumber](center point.Point[T], radius T) Circle[T] {
-	return Circle[T]{
+func NewFromPoint(center point.Point, radius float64) Circle {
+	return Circle{
 		center: center,
-		radius: numeric.Abs(radius),
+		radius: math.Abs(radius),
 	}
 }
 
@@ -79,57 +79,8 @@ func NewFromPoint[T types.SignedNumber](center point.Point[T], radius T) Circle[
 //
 // Returns:
 //   - float64: The area of the circle, computed as π * radius².
-func (c Circle[T]) Area() float64 {
-	return math.Pi * float64(c.radius) * float64(c.radius)
-}
-
-// AsFloat32 converts the Circle's center coordinates and radius to the float32 type, returning a new Circle[float32].
-// This method is useful for cases where higher precision or floating-point arithmetic is required.
-//
-// Returns:
-//   - Circle[float32]: A new Circle with the center coordinates and radius converted to float64.
-func (c Circle[T]) AsFloat32() Circle[float32] {
-	return Circle[float32]{
-		center: c.center.AsFloat32(),
-		radius: float32(c.radius),
-	}
-}
-
-// AsFloat64 converts the Circle's center coordinates and radius to the float64 type, returning a new Circle[float64].
-// This method is useful for cases where higher precision or floating-point arithmetic is required.
-//
-// Returns:
-//   - Circle[float64]: A new Circle with the center coordinates and radius converted to float64.
-func (c Circle[T]) AsFloat64() Circle[float64] {
-	return Circle[float64]{
-		center: c.center.AsFloat64(),
-		radius: float64(c.radius),
-	}
-}
-
-// AsInt converts the Circle's center coordinates and radius to the int type by truncating any decimal values.
-// This method is useful when integer values are needed, such as for pixel-based or grid-based calculations.
-//
-// Returns:
-//   - Circle[int]: A new Circle with center coordinates and radius converted to int by truncating any decimal portion.
-func (c Circle[T]) AsInt() Circle[int] {
-	return Circle[int]{
-		center: c.center.AsInt(),
-		radius: int(c.radius),
-	}
-}
-
-// AsIntRounded converts the Circle's center coordinates and radius to the int type by rounding to the nearest integer.
-// This method is useful when integer values are needed and rounding provides a more accurate representation
-// compared to truncation.
-//
-// Returns:
-//   - Circle[int]: A new Circle with center coordinates and radius converted to int by rounding to the nearest integer.
-func (c Circle[T]) AsIntRounded() Circle[int] {
-	return Circle[int]{
-		center: c.center.AsIntRounded(),
-		radius: int(math.Round(float64(c.radius))),
-	}
+func (c Circle) Area() float64 {
+	return math.Pi * c.radius * c.radius
 }
 
 // Bresenham generates all points on the perimeter of a circle using Bresenham's circle-drawing algorithm.
@@ -149,8 +100,8 @@ func (c Circle[T]) AsIntRounded() Circle[int] {
 // Parameters:
 //   - yield (func([point.Point][int]) bool): A function that processes each generated point.
 //     Returning false will stop further point generation.
-func (c Circle[int]) Bresenham(yield func(point.Point[int]) bool) {
-	var xc, yc, r, x, y, p int
+func (c Circle) Bresenham(yield func(point.Point) bool) {
+	var xc, yc, r, x, y, p float64
 
 	xc = c.center.X()
 	yc = c.center.Y()
@@ -193,7 +144,7 @@ func (c Circle[int]) Bresenham(yield func(point.Point[int]) bool) {
 //
 // Returns:
 //   - Point[T]: The center [Point] of the Circle.
-func (c Circle[T]) Center() point.Point[T] {
+func (c Circle) Center() point.Point {
 	return c.center
 }
 
@@ -201,8 +152,8 @@ func (c Circle[T]) Center() point.Point[T] {
 //
 // Returns:
 //   - float64: The circumference of the circle, computed as 2 * π * radius.
-func (c Circle[T]) Circumference() float64 {
-	return 2 * math.Pi * float64(c.radius)
+func (c Circle) Circumference() float64 {
+	return 2 * math.Pi * c.radius
 }
 
 // RelationshipToPoint determines the spatial relationship between the Circle and a [point.Point].
@@ -235,13 +186,12 @@ func (c Circle[T]) Circumference() float64 {
 //     to the circle's radius.
 //
 // [Euclidean distance]: https://en.wikipedia.org/wiki/Euclidean_distance
-func (c Circle[T]) RelationshipToPoint(p point.Point[T], opts ...options.GeometryOptionsFunc) types.Relationship {
-	distancePointToCircleCenter := p.DistanceToPoint(c.center, opts...)
-	circleFloat := c.AsFloat64()
+func (c Circle) RelationshipToPoint(p point.Point) types.Relationship {
+	distancePointToCircleCenter := p.DistanceToPoint(c.center)
 	switch {
-	case distancePointToCircleCenter == circleFloat.radius:
+	case distancePointToCircleCenter == c.radius:
 		return types.RelationshipIntersection
-	case distancePointToCircleCenter < circleFloat.radius:
+	case distancePointToCircleCenter < c.radius:
 		return types.RelationshipContainedBy
 	default:
 		return types.RelationshipDisjoint
@@ -270,27 +220,22 @@ func (c Circle[T]) RelationshipToPoint(p point.Point[T], opts ...options.Geometr
 // Notes:
 //   - Approximate equality is particularly useful when comparing circles with floating-point
 //     coordinates or radii, where small precision errors might otherwise cause inequality.
-func (c Circle[T]) Eq(other Circle[T], opts ...options.GeometryOptionsFunc) bool {
-	// Apply options with defaults
-	geoOpts := options.ApplyGeometryOptions(options.GeometryOptions{Epsilon: 0}, opts...)
-
-	cf := c.AsFloat64()
-	otherf := other.AsFloat64()
-
+func (c Circle) Eq(other Circle) bool {
 	// Check equality for the center points
-	centersEqual := cf.center.Eq(otherf.center, opts...)
+	centersEqual := c.center.Eq(other.center)
 
 	// Check equality for the radii with epsilon adjustment
-	radiiEqual := numeric.FloatEquals(cf.radius, otherf.radius, geoOpts.Epsilon)
+	radiiEqual := numeric.FloatEquals(c.radius, other.radius, geom2d.GetEpsilon())
 
+	// Equal if centers and radii are equal
 	return centersEqual && radiiEqual
 }
 
 // MarshalJSON serializes Circle as JSON while preserving its original type.
-func (c Circle[T]) MarshalJSON() ([]byte, error) {
+func (c Circle) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Center point.Point[T] `json:"center"`
-		Radius T              `json:"radius"`
+		Center point.Point `json:"center"`
+		Radius float64     `json:"radius"`
 	}{
 		Center: c.center,
 		Radius: c.radius,
@@ -301,7 +246,7 @@ func (c Circle[T]) MarshalJSON() ([]byte, error) {
 //
 // Returns:
 //   - T: The radius of the Circle.
-func (c Circle[T]) Radius() T {
+func (c Circle) Radius() float64 {
 	return c.radius
 }
 
@@ -333,10 +278,10 @@ func (c Circle[T]) Radius() T {
 //     that could result in minor inaccuracies.
 //   - The returned [Circle] always has a center with float64 coordinates, ensuring precision regardless
 //     of the coordinate type of the original [Circle].
-func (c Circle[T]) Rotate(pivot point.Point[T], radians float64, opts ...options.GeometryOptionsFunc) Circle[float64] {
-	return NewFromPoint[float64](
-		c.center.Rotate(pivot, radians, opts...),
-		float64(c.radius),
+func (c Circle) Rotate(pivot point.Point, radians float64) Circle {
+	return NewFromPoint(
+		c.center.Rotate(pivot, radians),
+		c.radius,
 	)
 }
 
@@ -349,8 +294,8 @@ func (c Circle[T]) Rotate(pivot point.Point[T], radians float64, opts ...options
 //   - Circle[T]: A new circle with the radius scaled by the specified factor.
 //
 // todo: update doc comment, examples after adding numeric.Abs to radius
-func (c Circle[T]) Scale(factor T) Circle[T] {
-	return Circle[T]{center: c.center, radius: numeric.Abs(c.radius * factor)}
+func (c Circle) Scale(factor float64) Circle {
+	return Circle{center: c.center, radius: math.Abs(c.radius * factor)}
 }
 
 // String returns a string representation of the Circle, including its center coordinates and radius.
@@ -360,8 +305,8 @@ func (c Circle[T]) Scale(factor T) Circle[T] {
 //   - h: x-coordinate of the center.
 //   - k: y-coordinate of the center.
 //   - r: radius
-func (c Circle[T]) String() string {
-	return fmt.Sprintf("(%v,%v; r=%v)", c.center.X(), c.center.Y(), c.radius)
+func (c Circle) String() string {
+	return fmt.Sprintf("(%f,%f; r=%f)", c.center.X(), c.center.Y(), c.radius)
 }
 
 // Translate moves the circle by a specified vector (given as a [point.Point]).
@@ -375,15 +320,15 @@ func (c Circle[T]) String() string {
 //
 // Returns:
 //   - Circle[T]: A new Circle translated by the specified vector.
-func (c Circle[T]) Translate(v point.Point[T]) Circle[T] {
-	return Circle[T]{center: c.center.Translate(v), radius: c.radius}
+func (c Circle) Translate(v point.Point) Circle {
+	return Circle{center: c.center.Translate(v), radius: c.radius}
 }
 
 // UnmarshalJSON deserializes JSON into a Circle while keeping the exact original type.
-func (c *Circle[T]) UnmarshalJSON(data []byte) error {
+func (c *Circle) UnmarshalJSON(data []byte) error {
 	var temp struct {
-		Center point.Point[T] `json:"center"`
-		Radius T              `json:"radius"`
+		Center point.Point `json:"center"`
+		Radius float64     `json:"radius"`
 	}
 	if err := json.Unmarshal(data, &temp); err != nil {
 		return err
@@ -419,15 +364,15 @@ func (c *Circle[T]) UnmarshalJSON(data []byte) error {
 //     6. Octant 4: (xc - y, yc + x)
 //     7. Octant 6: (xc + y, yc - x)
 //     8. Octant 5: (xc - y, yc - x)
-func reflectAcrossCircleOctants[T types.SignedNumber](xc, yc, x, y T) []point.Point[T] {
-	return []point.Point[T]{
-		point.New[T](xc+x, yc+y), // Octant 1
-		point.New[T](xc-x, yc+y), // Octant 2
-		point.New[T](xc+x, yc-y), // Octant 8
-		point.New[T](xc-x, yc-y), // Octant 7
-		point.New[T](xc+y, yc+x), // Octant 3
-		point.New[T](xc-y, yc+x), // Octant 4
-		point.New[T](xc+y, yc-x), // Octant 6
-		point.New[T](xc-y, yc-x), // Octant 5
+func reflectAcrossCircleOctants(xc, yc, x, y float64) []point.Point {
+	return []point.Point{
+		point.New(xc+x, yc+y), // Octant 1
+		point.New(xc-x, yc+y), // Octant 2
+		point.New(xc+x, yc-y), // Octant 8
+		point.New(xc-x, yc-y), // Octant 7
+		point.New(xc+y, yc+x), // Octant 3
+		point.New(xc-y, yc+x), // Octant 4
+		point.New(xc+y, yc-x), // Octant 6
+		point.New(xc-y, yc-x), // Octant 5
 	}
 }

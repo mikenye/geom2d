@@ -1,9 +1,8 @@
-package linesegment
+package _torefactor
 
 import (
 	"embed"
 	"encoding/json"
-	"github.com/mikenye/geom2d/options"
 	"io/fs"
 	"testing"
 )
