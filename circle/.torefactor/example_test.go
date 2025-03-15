@@ -1,4 +1,4 @@
-package circle_test
+package _torefactor_test
 
 import (
 	"fmt"

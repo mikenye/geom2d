@@ -42,109 +42,57 @@ package linesegment
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mikenye/geom2d/numeric"
-	"github.com/mikenye/geom2d/options"
+	"github.com/mikenye/geom2d"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
 	"math"
-	"slices"
 )
 
 // LineSegment represents a line segment in a 2D space, defined by two endpoints,
 // a start [point.Point] and an end [point.Point].
-//
-// The generic type parameter T must satisfy the [types.SignedNumber] constraint, allowing the segment
-// to use various numeric types such as int or float64 for its coordinates.
-type LineSegment[T types.SignedNumber] struct {
-	start point.Point[T]
-	end   point.Point[T]
+type LineSegment struct {
+	upper point.Point
+	lower point.Point
 }
 
 // New creates a new LineSegment with the specified start and end x and y coordinates.
 //
 // This constructor function initializes a [LineSegment] with the specified starting and ending points.
-// The generic type parameter "T" must satisfy the [types.SignedNumber] constraint, allowing various numeric types
-// (such as int or float64) to be used for the segment’s coordinates.
 //
 // Parameters:
-//   - x1,y1 (T): The starting point of the LineSegment.
-//   - x2,y2 (T): The ending point of the LineSegment.
+//   - x1,y1 (float64): The starting point of the LineSegment.
+//   - x2,y2 (float64): The ending point of the LineSegment.
 //
 // Returns:
-//   - LineSegment[T] - A new line segment defined by the start and end points.
-func New[T types.SignedNumber](x1, y1, x2, y2 T) LineSegment[T] {
-	return LineSegment[T]{
-		start: point.New[T](x1, y1),
-		end:   point.New[T](x2, y2),
-	}
+//   - LineSegment: A new line segment defined by the start and end points.
+func New(x1, y1, x2, y2 float64) LineSegment {
+	p1 := point.New(x1, y1)
+	p2 := point.New(x2, y2)
+
+	return NewFromPoints(p1, p2)
 }
 
 // NewFromPoints creates a new LineSegment from two endpoints, a start [point.Point] and an end [point.Point].
 //
 // This constructor function initializes a [LineSegment] with the specified starting and ending points.
-// The generic type parameter "T" must satisfy the [types.SignedNumber] constraint, allowing various numeric types
-// (such as int or float64) to be used for the segment’s coordinates.
 //
 // Parameters:
-//   - start ([point.Point][T]): The starting [point.Point] of the LineSegment.
-//   - end ([point.Point][T]): The ending [point.Point] of the LineSegment.
+//   - start ([point.Point]): The starting [point.Point] of the LineSegment.
+//   - end ([point.Point]): The ending [point.Point] of the LineSegment.
 //
 // Returns:
-//   - LineSegment[T] - A new line segment defined by the start and end points.
-func NewFromPoints[T types.SignedNumber](start, end point.Point[T]) LineSegment[T] {
-	return LineSegment[T]{
-		start: start,
-		end:   end,
+//   - LineSegment: A new line segment defined by the start and end points.
+func NewFromPoints(p1, p2 point.Point) LineSegment {
+
+	// Ensure p1 is the "upper" point (higher Y first, or rightmost X if tied)
+	if p2.Y() > p1.Y() || (p2.Y() == p1.Y() && p2.X() < p1.X()) {
+		p1, p2 = p2, p1 // Swap to maintain order
 	}
-}
 
-// AsFloat32 converts the line segment to a LineSegment[float32] type.
-//
-// This function converts both endpoints of the LineSegment l to [Point][float32]
-// values, creating a new line segment with floating-point coordinates.
-// It is useful for precise calculations where floating-point accuracy is needed.
-//
-// Returns:
-//   - LineSegment[float32] - The line segment with both endpoints converted to float32.
-func (l LineSegment[T]) AsFloat32() LineSegment[float32] {
-	return NewFromPoints(l.start.AsFloat32(), l.end.AsFloat32())
-}
-
-// AsFloat64 converts the line segment to a LineSegment[float64] type.
-//
-// This function converts both endpoints of the LineSegment l to [Point][float64]
-// values, creating a new line segment with floating-point coordinates.
-// It is useful for precise calculations where floating-point accuracy is needed.
-//
-// Returns:
-//   - LineSegment[float64] - The line segment with both endpoints converted to float64.
-func (l LineSegment[T]) AsFloat64() LineSegment[float64] {
-	return NewFromPoints(l.start.AsFloat64(), l.end.AsFloat64())
-}
-
-// AsInt converts the line segment to a LineSegment[int] type.
-//
-// This function converts both endpoints of the line segment l to [Point][int]
-// by truncating any decimal places. It is useful for converting a floating-point
-// line segment to integer coordinates without rounding.
-//
-// Returns:
-//   - LineSegment[int] - The line segment with both endpoints converted to integer coordinates by truncation.
-func (l LineSegment[T]) AsInt() LineSegment[int] {
-	return NewFromPoints(l.start.AsInt(), l.end.AsInt())
-}
-
-// AsIntRounded converts the line segment to a LineSegment[int] type with rounded coordinates.
-//
-// This function converts both endpoints of the line segment l to [Point][int]
-// by rounding each coordinate to the nearest integer. It is useful when you need to
-// approximate the segment’s position with integer coordinates while minimizing the
-// rounding error.
-//
-// Returns:
-//   - LineSegment[int] - The line segment with both endpoints converted to integer coordinates by rounding.
-func (l LineSegment[T]) AsIntRounded() LineSegment[int] {
-	return NewFromPoints(l.start.AsIntRounded(), l.end.AsIntRounded())
+	return LineSegment{
+		upper: p1, // Always uppermost point first
+		lower: p2,
+	}
 }
 
 // Bresenham generates all the integer points along the LineSegment using
@@ -160,22 +108,22 @@ func (l LineSegment[T]) AsIntRounded() LineSegment[int] {
 //   - Generating grid points for pathfinding.
 //
 // Parameters:
-//   - yield (func([point.Point][int]) bool): A function that processes each generated point.
+//   - yield (func([point.Point]) bool): A function that processes each generated point.
 //     Returning false will stop further point generation.
 //
 // Note: This method requires integer-type coordinates for the line segment.
-func (l LineSegment[int]) Bresenham(yield func(point.Point[int]) bool) {
+func (l LineSegment) Bresenham(yield func(point.Point) bool) {
 
-	var x1, x2, y1, y2, dx, dy, sx, sy int
+	var x1, x2, y1, y2, dx, dy, sx, sy float64
 
-	x1 = l.start.X()
-	x2 = l.end.X()
-	y1 = l.start.Y()
-	y2 = l.end.Y()
+	x1 = l.upper.X()
+	x2 = l.lower.X()
+	y1 = l.upper.Y()
+	y2 = l.lower.Y()
 
 	// Calculate absolute deltas
-	dx = numeric.Abs(x2 - x1)
-	dy = numeric.Abs(y2 - y1)
+	dx = math.Abs(x2 - x1)
+	dy = math.Abs(y2 - y1)
 
 	// Determine the direction of the increments
 	sx = 1
@@ -215,55 +163,29 @@ func (l LineSegment[int]) Bresenham(yield func(point.Point[int]) bool) {
 // Center calculates the midpoint of the line segment, optionally applying an epsilon
 // threshold to adjust the precision of the result.
 //
-// Parameters:
-//   - opts: A variadic slice of [Option] functions to customize the behavior of the calculation.
-//     [WithEpsilon](epsilon float64): Specifies a tolerance for snapping near-integer or
-//     near-zero results to cleaner values, improving robustness in floating-point calculations.
-//
 // Behavior:
 //   - The midpoint is calculated by averaging the x and y coordinates of the start and end
 //     points of the line segment.
-//   - If [WithEpsilon] is provided, the resulting midpoint coordinates are adjusted such that
-//     small deviations due to floating-point precision errors are corrected.
 //
 // Returns:
-//   - [Point][float64]: The midpoint of the line segment as a point with floating-point coordinates,
+//   - Point: The midpoint of the line segment as a point with floating-point coordinates,
 //     optionally adjusted based on epsilon.
-//
-// Notes:
-//   - Epsilon adjustment is particularly useful when working with floating-point coordinates
-//     where minor imprecision could affect the midpoint calculation.
-//   - The midpoint is always returned as [Point][float64], ensuring precision regardless of the
-//     coordinate type of the original line segment.
-func (l LineSegment[T]) Center(opts ...options.GeometryOptionsFunc) point.Point[float64] {
-	// Apply geomOptions with defaults
-	geoOpts := options.ApplyGeometryOptions(options.GeometryOptions{Epsilon: 0}, opts...)
+func (l LineSegment) Center() point.Point {
 
-	start := l.start.AsFloat64()
-	end := l.end.AsFloat64()
+	midX := (l.upper.X() + l.lower.X()) / 2
+	midY := (l.upper.Y() + l.lower.Y()) / 2
 
-	midX := (start.X() + end.X()) / 2
-	midY := (start.Y() + end.Y()) / 2
-
-	// Apply epsilon if specified
-	if geoOpts.Epsilon > 0 {
-		midX = numeric.SnapToEpsilon(midX, geoOpts.Epsilon)
-		midY = numeric.SnapToEpsilon(midY, geoOpts.Epsilon)
-	}
-
-	return point.New[float64](midX, midY)
+	return point.New(midX, midY)
 }
 
 // ContainsPoint determines whether the given [point.Point] lies on the LineSegment.
 //
 // This method calculates the shortest distance from the given point to the LineSegment
-// using the DistanceToPoint method. If the distance is zero (considering an epsilon threshold),
+// using the DistanceToPoint method. If the distance is zero (considering epsilon threshold),
 // the point is determined to be on the segment.
 //
 // Parameters:
-//   - p ([point.Point][T]): The [Point] to test against the LineSegment.
-//   - opts: A variadic slice of [options.GeometryOptionsFunc] to customize the epsilon for
-//     floating-point precision adjustments.
+//   - p ([point.Point]): The [Point] to test against the LineSegment.
 //
 // Returns:
 //   - bool: true if the [point.Point] lies on the LineSegment, false otherwise.
@@ -272,26 +194,26 @@ func (l LineSegment[T]) Center(opts ...options.GeometryOptionsFunc) point.Point[
 //   - This function uses the DistanceToPoint method to compute the distance.
 //   - Floating-point precision issues are handled using the epsilon parameter if provided in opts.
 //   - The [point.Point] must also be within the bounding box defined by the segment endpoints to return true.
-func (l LineSegment[T]) ContainsPoint(p point.Point[T], opts ...options.GeometryOptionsFunc) bool {
+func (l LineSegment) ContainsPoint(p point.Point) bool {
 
-	geoOpts := options.ApplyGeometryOptions(options.GeometryOptions{Epsilon: 0}, opts...)
+	epsilon := geom2d.GetEpsilon()
 
-	lf := l.AsFloat64()
-	pf := p.AsFloat64()
+	// Compute vectors AP and AB
+	ap := p.Sub(l.upper)
+	ab := l.lower.Sub(l.upper)
 
-	// Early bounding box check
-	if pf.X() < min(lf.start.X(), lf.end.X())-geoOpts.Epsilon ||
-		pf.X() > max(lf.start.X(), lf.end.X())+geoOpts.Epsilon ||
-		pf.Y() < min(lf.start.Y(), lf.end.Y())-geoOpts.Epsilon ||
-		pf.Y() > max(lf.start.Y(), lf.end.Y())+geoOpts.Epsilon {
-		return false
+	// Check if cross product is within epsilon (collinearity test)
+	cross := math.Abs(ap.CrossProduct(ab))
+	if cross > epsilon {
+		return false // P is not on the line
 	}
 
-	// Check distance to the segment
-	d := numeric.SnapToEpsilon(l.DistanceToPoint(p, opts...), geoOpts.Epsilon)
+	// Check if P is within the bounding box of the segment
+	xMin, xMax := math.Min(l.upper.X(), l.lower.X()), math.Max(l.upper.X(), l.lower.X())
+	yMin, yMax := math.Min(l.upper.Y(), l.lower.Y()), math.Max(l.upper.Y(), l.lower.Y())
 
-	// if d == 0 then point is on the segment
-	return d == 0
+	return (p.X() >= xMin-epsilon && p.X() <= xMax+epsilon) &&
+		(p.Y() >= yMin-epsilon && p.Y() <= yMax+epsilon)
 }
 
 // DistanceToLineSegment calculates the minimum distance between two line segments, l and other.
@@ -302,11 +224,7 @@ func (l LineSegment[T]) ContainsPoint(p point.Point[T], opts ...options.Geometry
 //  2. The distances from endpoints of one segment to the perpendicular projections onto the other segment.
 //
 // Parameters:
-//   - other (LineSegment[T]): The line segment to compare with l.
-//   - opts: A variadic slice of [options.GeometryOptionsFunc] functions to customize the calculation behavior.
-//     Common options include:
-//   - [options.WithEpsilon](epsilon float64): Specifies a tolerance to handle small floating-point deviations
-//     in distance calculations and ensure near-zero results are treated as zero.
+//   - other (LineSegment): The line segment to compare with l.
 //
 // Returns:
 //   - float64: The minimum distance between the two line segments. If the segments intersect or touch, this value is 0.
@@ -324,49 +242,29 @@ func (l LineSegment[T]) ContainsPoint(p point.Point[T], opts ...options.Geometry
 // Notes:
 //   - This function converts the line segments to float64 precision for robust calculations.
 //   - This is a comprehensive calculation suitable for exact and approximate (epsilon-adjusted) distance checks.
-func (l LineSegment[T]) DistanceToLineSegment(other LineSegment[T], opts ...options.GeometryOptionsFunc) float64 {
-	// If line segments intersect, the distance is zero.
-	intersection := l.Intersection(other, opts...)
-	if intersection.IntersectionType != IntersectionNone {
+//
+// DistanceToLineSegment returns the shortest distance between two line segments.
+func (l LineSegment) DistanceToLineSegment(other LineSegment) float64 {
+	// If segments intersect, the distance is zero.
+	if l.Intersects(other) {
 		return 0
 	}
 
-	// Convert segments to float for precise calculations.
-	ABf, CDf := l.AsFloat64(), other.AsFloat64()
+	// Compute distances from endpoints to the other segment
+	d1 := l.DistanceToPoint(other.Upper()) // Distance from A to C-D
+	d2 := l.DistanceToPoint(other.Lower()) // Distance from B to C-D
+	d3 := other.DistanceToPoint(l.Upper()) // Distance from C to A-B
+	d4 := other.DistanceToPoint(l.Lower()) // Distance from D to A-B
 
-	// Track the minimum distance.
-	minDist := math.MaxFloat64
-
-	// Helper function to update minimum distance.
-	updateMinDist := func(d float64) {
-		if d < minDist {
-			minDist = d
-		}
-	}
-
-	// Calculate distances between endpoints.
-	updateMinDist(ABf.start.DistanceToPoint(CDf.start, opts...))
-	updateMinDist(ABf.start.DistanceToPoint(CDf.end, opts...))
-	updateMinDist(ABf.end.DistanceToPoint(CDf.start, opts...))
-	updateMinDist(ABf.end.DistanceToPoint(CDf.end, opts...))
-
-	// Calculate distances to projections on the opposite segment.
-	updateMinDist(ABf.start.DistanceToPoint(CDf.ProjectPoint(ABf.start), opts...))
-	updateMinDist(ABf.end.DistanceToPoint(CDf.ProjectPoint(ABf.end), opts...))
-	updateMinDist(CDf.start.DistanceToPoint(ABf.ProjectPoint(CDf.start), opts...))
-	updateMinDist(CDf.end.DistanceToPoint(ABf.ProjectPoint(CDf.end), opts...))
-
-	return minDist
+	// Return the minimum distance
+	return math.Min(math.Min(d1, d2), math.Min(d3, d4))
 }
 
 // DistanceToPoint calculates the orthogonal (shortest) distance from the [LineSegment] l to the [point.Point] p.
 // This distance is the length of the perpendicular line from p to the closest point on l.
 //
 // Parameters:
-//   - p ([point.Point][T]): The [point.Point] to which the distance is calculated from [LineSegment] l.
-//   - opts: A variadic slice of [options.GeometryOptionsFunc] functions to customize the calculation behavior.
-//     [options.WithEpsilon](epsilon float64): Adjusts the result by snapping small floating-point
-//     deviations to cleaner values based on the specified epsilon threshold.
+//   - p ([point.Point]): The [point.Point] to which the distance is calculated from [LineSegment] l.
 //
 // Behavior:
 //   - The function first computes the projection of p onto the given [LineSegment] l. This is
@@ -382,18 +280,9 @@ func (l LineSegment[T]) DistanceToLineSegment(other LineSegment[T], opts ...opti
 //   - If the point p lies exactly on the line segment, the distance will be zero (or adjusted
 //     to zero if within epsilon).
 //   - This method ensures precision by converting points to float64 before performing calculations.
-func (l LineSegment[T]) DistanceToPoint(p point.Point[T], opts ...options.GeometryOptionsFunc) float64 {
+func (l LineSegment) DistanceToPoint(p point.Point) float64 {
 	projectedPoint := l.ProjectPoint(p)
-	pf := p.AsFloat64()
-	return pf.DistanceToPoint(projectedPoint, opts...)
-}
-
-// End returns the ending [point.Point] of the LineSegment.
-//
-// This function provides access to the ending [point.Point] of the LineSegment l, typically representing
-// the endpoint of the segment.
-func (l LineSegment[T]) End() point.Point[T] {
-	return l.end
+	return p.DistanceToPoint(projectedPoint)
 }
 
 // Eq checks if two line segments are equal by comparing their start and end points.
@@ -423,23 +312,43 @@ func (l LineSegment[T]) End() point.Point[T] {
 //   - This function relies on the [Point.Eq] method, which supports epsilon adjustments.
 //
 // todo: update doc comments to define equality: A line segment is typically unordered—it is the set of points between two endpoints. So (0,0) → (10,10) should be equal to (10,10) → (0,0).
-func (l LineSegment[T]) Eq(other LineSegment[T], opts ...options.GeometryOptionsFunc) bool {
-	return (l.start.Eq(other.start, opts...) && l.end.Eq(other.end, opts...)) ||
-		(l.start.Eq(other.end, opts...) && l.end.Eq(other.start, opts...))
+func (l LineSegment) Eq(other LineSegment) bool {
+	return l.upper.Eq(other.upper) && l.lower.Eq(other.lower)
 }
 
-// Flip returns a new LineSegment with the start and end points swapped.
-func (l LineSegment[T]) Flip() LineSegment[T] {
-	return NewFromPoints(l.End(), l.Start())
+func (l LineSegment) Intersects(other LineSegment) bool {
+	a, b := l.upper, l.lower
+	c, d := other.upper, other.lower
+
+	// Compute orientation values
+	o1 := point.Orientation(a, b, c)
+	o2 := point.Orientation(a, b, d)
+	o3 := point.Orientation(c, d, a)
+	o4 := point.Orientation(c, d, b)
+
+	// General case: If the two segments straddle each other
+	if o1 != o2 && o3 != o4 {
+		return true
+	}
+
+	// Special case: Check for collinear overlap
+	if o1 == 0 && NewFromPoints(a, c).ContainsPoint(b) {
+		return true
+	}
+	if o2 == 0 && NewFromPoints(a, d).ContainsPoint(b) {
+		return true
+	}
+	if o3 == 0 && NewFromPoints(c, a).ContainsPoint(d) {
+		return true
+	}
+	if o4 == 0 && NewFromPoints(c, b).ContainsPoint(d) {
+		return true
+	}
+
+	return false
 }
 
 // Length calculates the Euclidean distance (length) between the start and end points of the line segment.
-//
-// Parameters:
-//   - opts: A variadic slice of [options.GeometryOptionsFunc] functions to customize the calculation behavior.
-//     Common options include:
-//   - [options.WithEpsilon](epsilon float64): Specifies a tolerance for snapping small floating-point
-//     deviations to cleaner values, ensuring robustness in length calculations.
 //
 // Returns:
 //   - float64: The length of the line segment, optionally adjusted based on epsilon.
@@ -447,53 +356,24 @@ func (l LineSegment[T]) Flip() LineSegment[T] {
 // Behavior:
 //   - The function computes the Euclidean distance between the start and end points of the line segment
 //     using [point.Point.DistanceToPoint].
-//   - If an epsilon threshold is provided via [options.WithEpsilon], the resulting length is adjusted to
-//     correct small deviations caused by floating-point precision.
-//
-// Notes:
-//   - This function is particularly useful for geometric computations where precise segment length is required.
-//   - For integer coordinates, the epsilon adjustment has no effect and is ignored.
-//
-// Complexity:
-//   - O(1): The calculation involves a single distance computation.
-func (l LineSegment[T]) Length(opts ...options.GeometryOptionsFunc) float64 {
-	return l.start.DistanceToPoint(l.end, opts...)
+func (l LineSegment) Length() float64 {
+	return l.upper.DistanceToPoint(l.lower)
+}
+
+// Lower returns the lower [point.Point] of the LineSegment.
+func (l LineSegment) Lower() point.Point {
+	return l.lower
 }
 
 // MarshalJSON serializes LineSegment as JSON while preserving its original type.
-func (l LineSegment[T]) MarshalJSON() ([]byte, error) {
+func (l LineSegment) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Start point.Point[T] `json:"start"`
-		End   point.Point[T] `json:"end"`
+		Upper point.Point `json:"upper"`
+		Lower point.Point `json:"lower"`
 	}{
-		Start: l.Start(),
-		End:   l.End(),
+		Upper: l.Upper(),
+		Lower: l.Lower(),
 	})
-}
-
-// normalize reorders the endpoints of the line segment to ensure a consistent
-// ordering required for the sweep line algorithm in the FindIntersectionsSlow/Fast functions.
-//
-//   - If the segment is not horizontal, the point with the greater Y-coordinate
-//     becomes the start point, ensuring top-to-bottom ordering.
-//   - If the segment is horizontal, the point with the smaller X-coordinate
-//     becomes the start point, ensuring left-to-right ordering.
-//
-// This normalization ensures that the orientation of the line segments match what is expected by the
-// sweep line algorithm.
-func (l LineSegment[T]) normalize() LineSegment[T] {
-
-	// if start Y is smaller than end Y, then flip (top-to-bottom)
-	if l.Start().Y() < l.End().Y() {
-		return l.Flip()
-	}
-
-	// if Ys are equal, then order by X, with smallest X first (left-to-right
-	if l.Start().Y() == l.End().Y() && l.Start().X() > l.End().X() {
-		return l.Flip()
-	}
-
-	return l
 }
 
 // Points returns the start [point.Point] and end [point.Point] of the LineSegment.
@@ -501,8 +381,8 @@ func (l LineSegment[T]) normalize() LineSegment[T] {
 // Returns:
 //   - start ([Point][T]): The start [point.Point] of the LineSegment.
 //   - end ([Point][T]): The end [point.Point] of the LineSegment.
-func (l LineSegment[T]) Points() (start, end point.Point[T]) {
-	return l.start, l.end
+func (l LineSegment) Points() (upper, lower point.Point) {
+	return l.upper, l.lower
 }
 
 // ProjectPoint projects the [point.Point] p onto a given [LineSegment] l.
@@ -513,42 +393,33 @@ func (l LineSegment[T]) Points() (start, end point.Point[T]) {
 // [LineSegment], the function returns the closest endpoint of the segment.
 //
 // Parameters:
-//   - p ([point.Point][T]): The point to be projected onto line segment l
+//   - p ([point.Point]): The point to be projected onto line segment l
 //
 // Returns:
-//   - A [point.Point][float64] representing the coordinates of the projected point.
+//   - A [point.Point] representing the coordinates of the projected point.
 //     If the [LineSegment] is degenerate (both endpoints are the same),
 //     the function returns the coordinates of the Start() Point of the LineSegment.
-func (l LineSegment[T]) ProjectPoint(p point.Point[T]) point.Point[float64] {
+func (l LineSegment) ProjectPoint(p point.Point) point.Point {
+	// Compute the direction vector of the line segment
+	vecAB := l.upper.Sub(l.lower) // Ensure this is (upper - lower)
 
-	// the direction vector of the line segment
-	vecAB := l.end.Translate(l.start.Negate())
+	// Compute the vector from segment start to the point
+	vecAP := p.Sub(l.lower)
 
-	// the vector from line segment start to point
-	vecAP := p.Translate(l.start.Negate())
+	// Compute the dot products
+	ABdotAB := vecAB.DotProduct(vecAB) // |AB|^2
+	APdotAB := vecAP.DotProduct(vecAB) // AP • AB
 
-	// Calculate the dot products
-	ABdotAB := vecAB.DotProduct(vecAB) // |vecAB|^2
-	APdotAB := vecAP.DotProduct(vecAB) // vecAP • vecAB
-
-	// Calculate the projection length as a fraction of the length of vecAB
-	if ABdotAB == 0 { // Avoid division by zero; A and End are the same point
-		return l.start.AsFloat64()
-	}
-	projLen := float64(APdotAB) / float64(ABdotAB)
-
-	// Clamp the projection length to the segment
-	if projLen < 0 {
-		return l.start.AsFloat64() // Closest to line segment start
-	} else if projLen > 1 {
-		return l.end.AsFloat64() // Closest to line segment end
+	// If segment has zero length, return the lower point
+	if ABdotAB == 0 {
+		return l.lower
 	}
 
-	// return the projection point
-	return point.New(
-		float64(l.start.X())+(projLen*float64(vecAB.X())),
-		float64(l.start.Y())+(projLen*float64(vecAB.Y())),
-	)
+	// Compute projection scalar t and clamp it to [0,1]
+	t := math.Max(0, math.Min(1, APdotAB/ABdotAB))
+
+	// Compute the projected point as lower + t * vecAB
+	return l.lower.Add(vecAB.Scale(point.New(0, 0), t))
 }
 
 // ReflectLineSegment reflects a given [LineSegment] `other` across the current line segment.
@@ -560,7 +431,7 @@ func (l LineSegment[T]) ProjectPoint(p point.Point[T]) point.Point[float64] {
 //   - other (LineSegment[T]): The line segment to be reflected.
 //
 // Returns:
-//   - LineSegment[float64]: A new line segment whose endpoints are the reflections of
+//   - LineSegment: A new line segment whose endpoints are the reflections of
 //     the endpoints of the `other` line segment across the current line segment.
 //
 // Behavior:
@@ -573,8 +444,8 @@ func (l LineSegment[T]) ProjectPoint(p point.Point[T]) point.Point[float64] {
 //   - This function assumes that the current line segment (`l`) is not degenerate (i.e., has non-zero length).
 //   - If the `other` line segment coincides with the current line segment, the result is a line segment that
 //     mirrors the original.
-func (l LineSegment[T]) ReflectLineSegment(other LineSegment[T]) LineSegment[float64] {
-	return NewFromPoints(l.ReflectPoint(other.Start()), l.ReflectPoint(other.End()))
+func (l LineSegment) ReflectLineSegment(other LineSegment) LineSegment {
+	return NewFromPoints(l.ReflectPoint(other.upper), l.ReflectPoint(other.lower))
 }
 
 // ReflectPoint reflects the [point.Point] across the axis defined by LineSegment l.
@@ -584,26 +455,24 @@ func (l LineSegment[T]) ReflectLineSegment(other LineSegment[T]) LineSegment[flo
 //
 // Returns:
 //   - Point[float64] - A new point representing the reflection of the original point.
-func (l LineSegment[T]) ReflectPoint(p point.Point[T]) point.Point[float64] {
-	pFloat := p.AsFloat64()
-	lFloat := l.AsFloat64()
+func (l LineSegment) ReflectPoint(p point.Point) point.Point {
 
 	// Extract points from the line segment
-	x1, y1 := lFloat.start.X(), lFloat.start.Y()
-	x2, y2 := lFloat.end.X(), lFloat.end.Y()
+	x1, y1 := l.upper.X(), l.upper.Y()
+	x2, y2 := l.lower.X(), l.lower.Y()
 
 	// Calculate the line's slope and intercept for projection
 	dx, dy := x2-x1, y2-y1
 	if dx == 0 && dy == 0 {
-		return pFloat // Degenerate line segment; return point unchanged
+		return p // Degenerate line segment; return point unchanged
 	}
 
 	// Calculate the reflection using vector projection
 	a := (dx*dx - dy*dy) / (dx*dx + dy*dy)
 	b := 2 * dx * dy / (dx*dx + dy*dy)
 
-	newX := a*(pFloat.X()-x1) + b*(pFloat.Y()-y1) + x1
-	newY := b*(pFloat.X()-x1) - a*(pFloat.Y()-y1) + y1
+	newX := a*(p.X()-x1) + b*(p.Y()-y1) + x1
+	newY := b*(p.X()-x1) - a*(p.Y()-y1) + y1
 
 	return point.New(newX, newY)
 }
@@ -633,8 +502,8 @@ func (l LineSegment[T]) ReflectPoint(p point.Point[T]) point.Point[float64] {
 // Notes:
 //   - This method is useful for determining if a point lies on a line segment, including endpoints and interior points.
 //   - Epsilon adjustment is particularly useful for floating-point coordinates to avoid precision errors.
-func (l LineSegment[T]) RelationshipToPoint(p point.Point[T], opts ...options.GeometryOptionsFunc) types.Relationship {
-	distancePointToLineSegment := l.DistanceToPoint(p, opts...)
+func (l LineSegment) RelationshipToPoint(p point.Point) types.Relationship {
+	distancePointToLineSegment := l.DistanceToPoint(p)
 	if distancePointToLineSegment == 0 {
 		return types.RelationshipIntersection
 	}
@@ -665,9 +534,9 @@ func (l LineSegment[T]) RelationshipToPoint(p point.Point[T], opts ...options.Ge
 //     calculations that could result in minor inaccuracies.
 //   - The returned line segment always has float64 coordinates, ensuring precision regardless
 //     of the coordinate type of the original line segment.
-func (l LineSegment[T]) Rotate(pivot point.Point[T], radians float64, opts ...options.GeometryOptionsFunc) LineSegment[float64] {
-	newStart := l.start.Rotate(pivot, radians, opts...)
-	newEnd := l.end.Rotate(pivot, radians, opts...)
+func (l LineSegment) Rotate(pivot point.Point, radians float64) LineSegment {
+	newStart := l.upper.Rotate(pivot, radians)
+	newEnd := l.lower.Rotate(pivot, radians)
 	return NewFromPoints(newStart, newEnd)
 }
 
@@ -695,10 +564,10 @@ func (l LineSegment[T]) Rotate(pivot point.Point[T], radians float64, opts ...op
 //   - If the user wishes to shrink the segment (factor < 1), we recommend ensuring
 //     the line segment's type is floating-point to avoid precision loss. Use the [LineSegment.AsFloat64] method
 //     to safely convert the segment to floating-point type before scaling.
-func (l LineSegment[T]) Scale(ref point.Point[T], factor T) LineSegment[T] {
+func (l LineSegment) Scale(ref point.Point, factor float64) LineSegment {
 	return NewFromPoints(
-		l.start.Scale(ref, factor),
-		l.end.Scale(ref, factor),
+		l.upper.Scale(ref, factor),
+		l.lower.Scale(ref, factor),
 	)
 }
 
@@ -714,22 +583,14 @@ func (l LineSegment[T]) Scale(ref point.Point[T], factor T) LineSegment[T] {
 // Notes:
 //   - Vertical lines (dx = 0) are identified as having an undefined slope.
 //   - Use math.IsNaN() to check if the slope is undefined (and thus vertical).
-func (l LineSegment[T]) Slope() float64 {
-	dx := float64(l.end.X() - l.start.X())
-	dy := float64(l.end.Y() - l.start.Y())
+func (l LineSegment) Slope() float64 {
+	dx := float64(l.lower.X() - l.upper.X())
+	dy := float64(l.lower.Y() - l.upper.Y())
 
 	if dx == 0 {
 		return math.NaN() // Vertical line, slope undefined
 	}
 	return dy / dx
-}
-
-// Start returns the starting point of the line segment.
-//
-// This function provides access to the starting point of the LineSegment l, typically representing
-// the beginning of the segment.
-func (l LineSegment[T]) Start() point.Point[T] {
-	return l.start
 }
 
 // String returns a formatted string representation of the line segment for debugging and logging purposes.
@@ -740,56 +601,8 @@ func (l LineSegment[T]) Start() point.Point[T] {
 //
 // Returns:
 //   - string: A string representing the line segment's start and end coordinates.
-func (l LineSegment[T]) String() string {
-	return fmt.Sprintf("(%v,%v)(%v,%v)", l.start.X(), l.start.Y(), l.end.X(), l.end.Y())
-}
-
-// sweeplineLowerPoint returns the lower of the two endpoints of the line segment,
-// which is defined as the point with the smallest y-value. If both endpoints share
-// the same y-value, the point with the larger x-value is considered lower.
-// If both endpoints are identical, the function returns true to indicate a degenerate segment.
-func (l LineSegment[T]) sweeplineLowerPoint() (point.Point[T], bool) {
-	// If start Y is lower, return start
-	if l.Start().Y() < l.End().Y() {
-		return l.Start(), false
-	}
-	// If end Y is lower, return end
-	if l.Start().Y() > l.End().Y() {
-		return l.End(), false
-	}
-	// If Ys are equal, return the point with the larger X
-	if l.Start().X() > l.End().X() {
-		return l.Start(), false
-	}
-	if l.Start().X() < l.End().X() {
-		return l.End(), false
-	}
-	// If both X and Y are equal, segment is degenerate
-	return l.Start(), true
-}
-
-// sweeplineUpperPoint returns the upper of the two endpoints of the line segment,
-// which is defined as the point with the largest y-value. If both endpoints share
-// the same y-value, the point with the smaller x-value is considered upper.
-// If both endpoints are identical, the function returns true to indicate a degenerate segment.
-func (l LineSegment[T]) sweeplineUpperPoint() (point.Point[T], bool) {
-	// If start Y is higher, return start
-	if l.Start().Y() > l.End().Y() {
-		return l.Start(), false
-	}
-	// If end Y is higher, return end
-	if l.Start().Y() < l.End().Y() {
-		return l.End(), false
-	}
-	// If Ys are equal, return the point with the smaller X
-	if l.Start().X() < l.End().X() {
-		return l.Start(), false
-	}
-	if l.Start().X() > l.End().X() {
-		return l.End(), false
-	}
-	// If both X and Y are equal, segment is degenerate
-	return l.Start(), true
+func (l LineSegment) String() string {
+	return fmt.Sprintf("(%v,%v)(%v,%v)", l.upper.X(), l.upper.Y(), l.lower.X(), l.lower.Y())
 }
 
 // Translate moves the LineSegment by a specified vector.
@@ -809,26 +622,31 @@ func (l LineSegment[T]) sweeplineUpperPoint() (point.Point[T], bool) {
 //     the start and end points of the segment.
 //   - This operation is equivalent to a uniform shift, maintaining the segment's
 //     shape and size while moving it to a new position.
-func (l LineSegment[T]) Translate(delta point.Point[T]) LineSegment[T] {
+func (l LineSegment) Translate(delta point.Point) LineSegment {
 	return NewFromPoints(
-		l.start.Translate(delta),
-		l.end.Translate(delta),
+		l.upper.Translate(delta),
+		l.lower.Translate(delta),
 	)
 }
 
 // UnmarshalJSON deserializes JSON into a LineSegment while keeping the exact original type.
-func (l *LineSegment[T]) UnmarshalJSON(data []byte) error {
+func (l *LineSegment) UnmarshalJSON(data []byte) error {
 	var temp struct {
-		Start point.Point[T] `json:"start"`
-		End   point.Point[T] `json:"end"`
+		Upper point.Point `json:"upper"`
+		Lower point.Point `json:"lower"`
 	}
 	if err := json.Unmarshal(data, &temp); err != nil {
 		return err
 	}
 
-	l.start = temp.Start
-	l.end = temp.End
+	l.upper = temp.Upper
+	l.lower = temp.Lower
 	return nil
+}
+
+// Upper returns the upper point of the line segment.
+func (l LineSegment) Upper() point.Point {
+	return l.upper
 }
 
 // XAtY calculates the x-coordinate on the line segment at a given y-coordinate.
@@ -850,8 +668,8 @@ func (l *LineSegment[T]) UnmarshalJSON(data []byte) error {
 //
 // Example:
 //   - For a line segment from (1, 2) to (4, 6), calling XAtY(4) will return 2.5.
-func (l LineSegment[T]) XAtY(y float64) float64 {
-	A, B := l.Start().AsFloat64(), l.End().AsFloat64()
+func (l LineSegment) XAtY(y float64) float64 {
+	A, B := l.upper, l.lower
 
 	// Ensure y is within bounds
 	if (y < A.Y() && y < B.Y()) || (y > A.Y() && y > B.Y()) {
@@ -886,8 +704,8 @@ func (l LineSegment[T]) XAtY(y float64) float64 {
 //
 // Example:
 //   - For a line segment from (1, 2) to (4, 6), calling YAtX(2.5) will return 3.5.
-func (l LineSegment[T]) YAtX(x float64) float64 {
-	A, B := l.Start().AsFloat64(), l.End().AsFloat64()
+func (l LineSegment) YAtX(x float64) float64 {
+	A, B := l.upper, l.lower
 
 	// Ensure x is within bounds
 	if (x < A.X() && x < B.X()) || (x > A.X() && x > B.X()) {
@@ -903,17 +721,17 @@ func (l LineSegment[T]) YAtX(x float64) float64 {
 	return A.Y() + (x-A.X())*(B.Y()-A.Y())/(B.X()-A.X())
 }
 
-// todo: doc comments, unit test
-// todo: candidate for optimisation?
-func mergeSegments(a, b []LineSegment[float64], opts ...options.GeometryOptionsFunc) []LineSegment[float64] {
-	input := append(a, b...)
-	output := make([]LineSegment[float64], 0, len(a)+len(b))
-	for _, seg := range input {
-		if !slices.ContainsFunc(output, func(l LineSegment[float64]) bool {
-			return l.Eq(seg, opts...)
-		}) {
-			output = append(output, seg)
-		}
-	}
-	return output
-}
+//// todo: doc comments, unit test
+//// todo: candidate for optimisation?
+//func mergeSegments(a, b []LineSegment[float64], opts ...options.GeometryOptionsFunc) []LineSegment[float64] {
+//	input := append(a, b...)
+//	output := make([]LineSegment[float64], 0, len(a)+len(b))
+//	for _, seg := range input {
+//		if !slices.ContainsFunc(output, func(l LineSegment[float64]) bool {
+//			return l.Eq(seg, opts...)
+//		}) {
+//			output = append(output, seg)
+//		}
+//	}
+//	return output
+//}

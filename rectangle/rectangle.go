@@ -4,18 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mikenye/geom2d/linesegment"
-	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
 	"image"
 )
 
 // Rectangle represents an axis-aligned rectangle defined by its four corners.
-type Rectangle[T types.SignedNumber] struct {
-	topLeft     point.Point[T]
-	topRight    point.Point[T]
-	bottomLeft  point.Point[T]
-	bottomRight point.Point[T]
+type Rectangle struct {
+	topLeft     point.Point
+	topRight    point.Point
+	bottomLeft  point.Point
+	bottomRight point.Point
 }
 
 // New creates a rectangle given two opposite corners.
@@ -29,7 +28,7 @@ type Rectangle[T types.SignedNumber] struct {
 //
 // Returns:
 //   - [Rectangle][T]: A new rectangle defined by the given opposite corners.
-func New[T types.SignedNumber](x1, y1, x2, y2 T) Rectangle[T] {
+func New(x1, y1, x2, y2 float64) Rectangle {
 	return NewFromPoints(
 		point.New(min(x1, x2), min(y1, y2)),
 		point.New(min(x1, x2), max(y1, y2)),
@@ -49,12 +48,12 @@ func New[T types.SignedNumber](x1, y1, x2, y2 T) Rectangle[T] {
 // Behavior:
 //   - The function maps the minimum point of the [image.Rectangle] to the top-left corner and the
 //     maximum point to the bottom-right corner of the resulting rectangle.
-func NewFromImageRect(r image.Rectangle) Rectangle[int] {
+func NewFromImageRect(r image.Rectangle) Rectangle {
 	return NewFromPoints(
-		point.New(r.Min.X, r.Min.Y),
-		point.New(r.Max.X, r.Max.Y),
-		point.New(r.Min.X, r.Max.Y),
-		point.New(r.Max.X, r.Min.Y),
+		point.New(float64(r.Min.X), float64(r.Min.Y)),
+		point.New(float64(r.Max.X), float64(r.Max.Y)),
+		point.New(float64(r.Min.X), float64(r.Max.Y)),
+		point.New(float64(r.Max.X), float64(r.Min.Y)),
 	)
 }
 
@@ -69,9 +68,9 @@ func NewFromImageRect(r image.Rectangle) Rectangle[int] {
 //
 // Panics:
 //   - If the provided points do not form an axis-aligned rectangle, the function panics.
-func NewFromPoints[T types.SignedNumber](pt1, pt2, pt3, pt4 point.Point[T]) Rectangle[T] {
+func NewFromPoints(pt1, pt2, pt3, pt4 point.Point) Rectangle {
 
-	points := []point.Point[T]{pt1, pt2, pt3, pt4}
+	points := []point.Point{pt1, pt2, pt3, pt4}
 
 	// Find min and max x and y coordinates
 	minX, maxX := points[0].X(), points[0].X()
@@ -85,7 +84,7 @@ func NewFromPoints[T types.SignedNumber](pt1, pt2, pt3, pt4 point.Point[T]) Rect
 	}
 
 	// Validate that the points form an axis-aligned rectangle
-	corners := map[point.Point[T]]bool{
+	corners := map[point.Point]bool{
 		point.New(minX, maxY): false, // top-left
 		point.New(maxX, maxY): false, // top-right
 		point.New(minX, minY): false, // bottom-left
@@ -107,7 +106,7 @@ func NewFromPoints[T types.SignedNumber](pt1, pt2, pt3, pt4 point.Point[T]) Rect
 	}
 
 	// Assign points to the correct fields
-	return Rectangle[T]{
+	return Rectangle{
 		topLeft:     point.New(minX, maxY),
 		topRight:    point.New(maxX, maxY),
 		bottomLeft:  point.New(minX, minY),
@@ -119,50 +118,8 @@ func NewFromPoints[T types.SignedNumber](pt1, pt2, pt3, pt4 point.Point[T]) Rect
 //
 // Returns:
 //   - T: The area of the rectangle, calculated as Width * Height.
-func (r Rectangle[T]) Area() T {
+func (r Rectangle) Area() float64 {
 	return r.Width() * r.Height()
-}
-
-// AsFloat32 converts the Rectangle's corner points to the float32 type, useful for higher-precision operations.
-//
-// Returns:
-//   - Rectangle[float32]: A new Rectangle with float32 coordinates.
-func (r Rectangle[T]) AsFloat32() Rectangle[float32] {
-	x1, y1 := r.topLeft.AsFloat32().Coordinates()
-	x2, y2 := r.bottomRight.AsFloat32().Coordinates()
-	return New(x1, y1, x2, y2)
-}
-
-// AsFloat64 converts the Rectangle's corner points to the float64 type, useful for higher-precision operations.
-//
-// Returns:
-//   - Rectangle[float64]: A new Rectangle with float64 coordinates.
-func (r Rectangle[T]) AsFloat64() Rectangle[float64] {
-	x1, y1 := r.topLeft.AsFloat64().Coordinates()
-	x2, y2 := r.bottomRight.AsFloat64().Coordinates()
-	return New(x1, y1, x2, y2)
-}
-
-// AsInt converts the Rectangle's corner points to the int type by truncating any decimal values.
-// This method is useful for operations requiring integer coordinates.
-//
-// Returns:
-//   - Rectangle[int]: A new Rectangle with integer coordinates, truncated from the original values.
-func (r Rectangle[T]) AsInt() Rectangle[int] {
-	x1, y1 := r.topLeft.AsInt().Coordinates()
-	x2, y2 := r.bottomRight.AsInt().Coordinates()
-	return New(x1, y1, x2, y2)
-}
-
-// AsIntRounded converts the Rectangle's corner points to the int type by rounding to the nearest integer.
-// This method is useful for operations requiring integer coordinates with rounding.
-//
-// Returns:
-//   - Rectangle[int]: A new Rectangle with integer coordinates, rounded from the original values.
-func (r Rectangle[T]) AsIntRounded() Rectangle[int] {
-	x1, y1 := r.topLeft.AsIntRounded().Coordinates()
-	x2, y2 := r.bottomRight.AsIntRounded().Coordinates()
-	return New(x1, y1, x2, y2)
 }
 
 // ContainsPoint checks if a given [point.Point] lies within or on the boundary of the [Rectangle].
@@ -177,7 +134,7 @@ func (r Rectangle[T]) AsIntRounded() Rectangle[int] {
 //   - A point is considered contained if its x-coordinate is between the left and right edges of the [Rectangle],
 //     and its y-coordinate is between the top and bottom edges of the rectangle.
 //   - The rectangle's boundary is inclusive for both x and y coordinates.
-func (r Rectangle[T]) ContainsPoint(p point.Point[T]) bool {
+func (r Rectangle) ContainsPoint(p point.Point) bool {
 	return p.X() >= r.topLeft.X() &&
 		p.X() <= r.bottomRight.X() &&
 		p.Y() <= r.topLeft.Y() &&
@@ -189,7 +146,7 @@ func (r Rectangle[T]) ContainsPoint(p point.Point[T]) bool {
 //
 // Returns:
 //   - bottomLeft, bottomRight, topRight, topLeft ([point.Point][T]): The four corner points of the rectangle.
-func (r Rectangle[T]) Contour() (bottomLeft, bottomRight, topRight, topLeft point.Point[T]) {
+func (r Rectangle) Contour() (bottomLeft, bottomRight, topRight, topLeft point.Point) {
 	return r.bottomLeft,
 		r.bottomRight,
 		r.topRight,
@@ -201,7 +158,7 @@ func (r Rectangle[T]) Contour() (bottomLeft, bottomRight, topRight, topLeft poin
 //
 // Returns:
 //   - bottom, right, top, left ([linesegment.LineSegment][T]): line segments representing the edges of the rectangle.
-func (r Rectangle[T]) Edges() (bottom, right, top, left linesegment.LineSegment[T]) {
+func (r Rectangle) Edges() (bottom, right, top, left linesegment.LineSegment) {
 	return linesegment.NewFromPoints(r.bottomLeft, r.bottomRight),
 		linesegment.NewFromPoints(r.bottomRight, r.topRight),
 		linesegment.NewFromPoints(r.topRight, r.topLeft),
@@ -230,7 +187,7 @@ func (r Rectangle[T]) Edges() (bottom, right, top, left linesegment.LineSegment[
 // If the loop body returns false (due to the for-loop being broken early), iteration stops early.
 //
 // ["range-over"]: https://go.dev/blog/range-functions
-func (r Rectangle[T]) EdgesIter(yield func(segment linesegment.LineSegment[T]) bool) {
+func (r Rectangle) EdgesIter(yield func(segment linesegment.LineSegment) bool) {
 	if !yield(linesegment.NewFromPoints(r.bottomLeft, r.bottomRight)) {
 		return
 	}
@@ -261,18 +218,18 @@ func (r Rectangle[T]) EdgesIter(yield func(segment linesegment.LineSegment[T]) b
 // Behavior:
 //   - The comparison is based on the exact equality of the corner points.
 //   - Both rectangles must have the same coordinates for all four corners to be considered equal.
-func (r Rectangle[T]) Eq(other Rectangle[T], opts ...options.GeometryOptionsFunc) bool {
-	return r.bottomLeft.Eq(other.bottomLeft, opts...) &&
-		r.bottomRight.Eq(other.bottomRight, opts...) &&
-		r.topRight.Eq(other.topRight, opts...) &&
-		r.topLeft.Eq(other.topLeft, opts...)
+func (r Rectangle) Eq(other Rectangle) bool {
+	return r.bottomLeft.Eq(other.bottomLeft) &&
+		r.bottomRight.Eq(other.bottomRight) &&
+		r.topRight.Eq(other.topRight) &&
+		r.topLeft.Eq(other.topLeft)
 }
 
 // Height calculates the height of the rectangle.
 //
 // Returns:
 //   - T: The height of the rectangle, calculated as the absolute difference between the y-coordinates of the top-left and bottom-right corners.
-func (r Rectangle[T]) Height() T {
+func (r Rectangle) Height() float64 {
 	height := r.bottomRight.Y() - r.topLeft.Y()
 	if height < 0 {
 		return -height // Ensure height is always positive
@@ -281,12 +238,12 @@ func (r Rectangle[T]) Height() T {
 }
 
 // MarshalJSON serializes Rectangle as JSON while preserving its original type.
-func (r Rectangle[T]) MarshalJSON() ([]byte, error) {
+func (r Rectangle) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		TopLeft     point.Point[T] `json:"top_left"`
-		TopRight    point.Point[T] `json:"top_right"`
-		BottomLeft  point.Point[T] `json:"bottom_left"`
-		BottomRight point.Point[T] `json:"bottom_right"`
+		TopLeft     point.Point `json:"top_left"`
+		TopRight    point.Point `json:"top_right"`
+		BottomLeft  point.Point `json:"bottom_left"`
+		BottomRight point.Point `json:"bottom_right"`
 	}{
 		TopLeft:     r.topLeft,
 		TopRight:    r.topRight,
@@ -299,7 +256,7 @@ func (r Rectangle[T]) MarshalJSON() ([]byte, error) {
 //
 // Returns:
 //   - T: The perimeter of the rectangle, calculated as 2 * (Width + Height).
-func (r Rectangle[T]) Perimeter() T {
+func (r Rectangle) Perimeter() float64 {
 	return 2 * (r.Width() + r.Height())
 }
 
@@ -323,9 +280,9 @@ func (r Rectangle[T]) Perimeter() T {
 //   - The function checks if the point lies on any of the rectangle's edges. If so, it returns [types.RelationshipIntersection].
 //   - If the point is not on an edge but is inside the rectangle, it returns [types.RelationshipContainedBy].
 //   - If the point is neither on an edge nor inside the rectangle, it returns [types.RelationshipDisjoint].
-func (r Rectangle[T]) RelationshipToPoint(p point.Point[T], opts ...options.GeometryOptionsFunc) types.Relationship {
+func (r Rectangle) RelationshipToPoint(p point.Point) types.Relationship {
 	for edge := range r.EdgesIter {
-		if edge.RelationshipToPoint(p, opts...) == types.RelationshipIntersection {
+		if edge.RelationshipToPoint(p) == types.RelationshipIntersection {
 			return types.RelationshipIntersection
 		}
 	}
@@ -351,7 +308,7 @@ func (r Rectangle[T]) RelationshipToPoint(p point.Point[T], opts ...options.Geom
 //   - The function delegates the scaling of each corner to the [point.Point.Scale] method.
 //   - The rectangle remains axis-aligned after scaling.
 //   - If the scaling factor k is 1, the rectangle remains unchanged.
-func (r Rectangle[T]) Scale(ref point.Point[T], k T) Rectangle[T] {
+func (r Rectangle) Scale(ref point.Point, k float64) Rectangle {
 	return NewFromPoints(
 		r.topLeft.Scale(ref, k),
 		r.topRight.Scale(ref, k),
@@ -385,7 +342,7 @@ func (r Rectangle[T]) Scale(ref point.Point[T], k T) Rectangle[T] {
 // Constraints:
 //   - T must satisfy the [types.SignedNumber] interface, ensuring it supports basic
 //     arithmetic operations like addition, multiplication, and subtraction.
-func (r Rectangle[T]) ScaleHeight(factor T) Rectangle[T] {
+func (r Rectangle) ScaleHeight(factor float64) Rectangle {
 	newTopY := r.bottomLeft.Y() + (r.Height() * factor)
 	return NewFromPoints(
 		point.New(r.topLeft.X(), newTopY),
@@ -420,7 +377,7 @@ func (r Rectangle[T]) ScaleHeight(factor T) Rectangle[T] {
 // Constraints:
 //   - T must satisfy the [types.SignedNumber] interface, ensuring it supports basic
 //     arithmetic operations like addition, multiplication, and subtraction.
-func (r Rectangle[T]) ScaleWidth(factor T) Rectangle[T] {
+func (r Rectangle) ScaleWidth(factor float64) Rectangle {
 	newRightX := r.bottomLeft.X() + (r.Width() * factor)
 	return NewFromPoints(
 		point.New(newRightX, r.bottomRight.Y()),
@@ -438,7 +395,7 @@ func (r Rectangle[T]) ScaleWidth(factor T) Rectangle[T] {
 //
 // Returns:
 //   - string: A formatted string showing the coordinates of the rectangle's corners.
-func (r Rectangle[T]) String() string {
+func (r Rectangle) String() string {
 	return fmt.Sprintf("[(%v,%v),(%v,%v)]", r.bottomLeft.X(), r.bottomLeft.Y(), r.topRight.X(), r.topRight.Y())
 }
 
@@ -447,10 +404,13 @@ func (r Rectangle[T]) String() string {
 //
 // Returns:
 //   - [image.Rectangle]: A new [image.Rectangle] with coordinates matching the [Rectangle].
-func (r Rectangle[int]) ToImageRect() image.Rectangle {
-	topLeft := r.topLeft.AsInt()
-	bottomRight := r.bottomRight.AsInt()
-	return image.Rect(topLeft.X(), topLeft.Y(), bottomRight.X(), bottomRight.Y())
+func (r Rectangle) ToImageRect() image.Rectangle {
+	return image.Rect(
+		int(r.topLeft.X()),
+		int(r.topLeft.Y()),
+		int(r.bottomRight.X()),
+		int(r.bottomRight.Y()),
+	)
 }
 
 // Translate moves the rectangle by a specified vector.
@@ -464,7 +424,7 @@ func (r Rectangle[int]) ToImageRect() image.Rectangle {
 //
 // Returns:
 //   - [Rectangle][T]: A new [Rectangle] translated by the specified vector.
-func (r Rectangle[T]) Translate(p point.Point[T]) Rectangle[T] {
+func (r Rectangle) Translate(p point.Point) Rectangle {
 	return NewFromPoints(
 		r.topLeft.Translate(p),
 		r.topRight.Translate(p),
@@ -474,12 +434,12 @@ func (r Rectangle[T]) Translate(p point.Point[T]) Rectangle[T] {
 }
 
 // UnmarshalJSON deserializes JSON into a Rectangle while keeping the exact original type.
-func (r *Rectangle[T]) UnmarshalJSON(data []byte) error {
+func (r *Rectangle) UnmarshalJSON(data []byte) error {
 	var temp struct {
-		TopLeft     point.Point[T] `json:"top_left"`
-		TopRight    point.Point[T] `json:"top_right"`
-		BottomLeft  point.Point[T] `json:"bottom_left"`
-		BottomRight point.Point[T] `json:"bottom_right"`
+		TopLeft     point.Point `json:"top_left"`
+		TopRight    point.Point `json:"top_right"`
+		BottomLeft  point.Point `json:"bottom_left"`
+		BottomRight point.Point `json:"bottom_right"`
 	}
 	if err := json.Unmarshal(data, &temp); err != nil {
 		return err
@@ -493,7 +453,7 @@ func (r *Rectangle[T]) UnmarshalJSON(data []byte) error {
 }
 
 // validate checks if the rectangle is axis-aligned and correctly ordered.
-func (r Rectangle[T]) validate() error {
+func (r Rectangle) validate() error {
 	if r.topLeft.Y() != r.topRight.Y() {
 		return fmt.Errorf("topLeft (%v) and topRight (%v) must have the same y-coordinate", r.topLeft, r.topRight)
 	}
@@ -525,7 +485,7 @@ func (r Rectangle[T]) validate() error {
 //
 // Returns:
 //   - T: The width of the rectangle, calculated as the absolute difference between the x-coordinates of the top-left and bottom-right corners.
-func (r Rectangle[T]) Width() T {
+func (r Rectangle) Width() float64 {
 	width := r.bottomRight.X() - r.topLeft.X()
 	if width < 0 {
 		return -width // Ensure width is always positive

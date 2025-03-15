@@ -67,3 +67,13 @@
 // ["Algorithm for computer control of a digital plotter." IBM Systems Journal, 1965.]: https://dl.acm.org/doi/10.1147/sj.41.025
 // [OpenAI's Assistant]: https://openai.com/
 package geom2d
+
+var epsilon float64 = 1e-12
+
+func GetEpsilon() float64 {
+	return epsilon
+}
+
+func SetEpsilon(e float64) {
+	epsilon = e
+}

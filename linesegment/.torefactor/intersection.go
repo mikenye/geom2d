@@ -1,8 +1,7 @@
-package linesegment
+package _torefactor
 
 import (
 	"github.com/mikenye/geom2d/numeric"
-	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
 	"math"

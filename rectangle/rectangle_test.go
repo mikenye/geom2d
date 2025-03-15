@@ -3,7 +3,6 @@ package rectangle
 import (
 	"encoding/json"
 	"github.com/mikenye/geom2d/linesegment"
-	"github.com/mikenye/geom2d/options"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +14,7 @@ import (
 func TestNewFromImageRect(t *testing.T) {
 	tests := map[string]struct {
 		imageRect image.Rectangle
-		expected  Rectangle[int]
+		expected  Rectangle
 	}{
 		"simple rectangle": {
 			imageRect: image.Rect(0, 0, 10, 20),
@@ -55,8 +54,8 @@ func TestNewFromImageRect(t *testing.T) {
 
 func TestRectangle_Area(t *testing.T) {
 	tests := map[string]struct {
-		rect     Rectangle[int]
-		expected int
+		rect     Rectangle
+		expected float64
 	}{
 		"standard rectangle": {
 			rect:     New(0, 0, 10, 20),
@@ -84,34 +83,10 @@ func TestRectangle_Area(t *testing.T) {
 	}
 }
 
-func TestRectangle_AsFloat32(t *testing.T) {
-	rect := New[int](1, 2, 10, 20)
-	expected := New[float32](1, 2, 10, 20)
-	assert.Equal(t, expected, rect.AsFloat32())
-}
-
-func TestRectangle_AsFloat64(t *testing.T) {
-	rect := New[int](1, 2, 10, 20)
-	expected := New[float64](1, 2, 10, 20)
-	assert.Equal(t, expected, rect.AsFloat64())
-}
-
-func TestRectangle_AsInt(t *testing.T) {
-	rect := New[float64](1.7, 2.9, 10.5, 20.3)
-	expected := New[int](1, 2, 10, 20)
-	assert.Equal(t, expected, rect.AsInt())
-}
-
-func TestRectangle_AsIntRounded(t *testing.T) {
-	rect := New[float64](1.7, 2.9, 10.5, 20.3)
-	expected := New[int](2, 3, 11, 20)
-	assert.Equal(t, expected, rect.AsIntRounded())
-}
-
 func TestRectangle_ContainsPoint(t *testing.T) {
 	tests := map[string]struct {
-		rect     Rectangle[int]
-		point    point.Point[int]
+		rect     Rectangle
+		point    point.Point
 		expected bool
 	}{
 		"point inside rectangle": {
@@ -200,88 +175,83 @@ func TestRectangle_Edges(t *testing.T) {
 
 func TestRectangle_Eq(t *testing.T) {
 	tests := map[string]struct {
-		rect1       Rectangle[float64]
-		rect2       Rectangle[float64]
-		opts        []options.GeometryOptionsFunc
+		rect1       Rectangle
+		rect2       Rectangle
 		expectEqual bool
 	}{
-		"equal rectangles without epsilon": {
-			rect1: NewFromPoints[float64](
-				point.New[float64](0, 0),
-				point.New[float64](4, 0),
-				point.New[float64](4, 3),
-				point.New[float64](0, 3),
+		"equal rectangles": {
+			rect1: NewFromPoints(
+				point.New(0, 0),
+				point.New(4, 0),
+				point.New(4, 3),
+				point.New(0, 3),
 			),
-			rect2: NewFromPoints[float64](
-				point.New[float64](0, 0),
-				point.New[float64](4, 0),
-				point.New[float64](4, 3),
-				point.New[float64](0, 3),
+			rect2: NewFromPoints(
+				point.New(0, 0),
+				point.New(4, 0),
+				point.New(4, 3),
+				point.New(0, 3),
 			),
-			opts:        nil,
 			expectEqual: true,
 		},
-		"different rectangles without epsilon": {
-			rect1: NewFromPoints[float64](
-				point.New[float64](0, 0),
-				point.New[float64](4, 0),
-				point.New[float64](4, 3),
-				point.New[float64](0, 3),
+		"different rectangles": {
+			rect1: NewFromPoints(
+				point.New(0, 0),
+				point.New(4, 0),
+				point.New(4, 3),
+				point.New(0, 3),
 			),
-			rect2: NewFromPoints[float64](
-				point.New[float64](1, 1),
-				point.New[float64](5, 1),
-				point.New[float64](5, 4),
-				point.New[float64](1, 4),
+			rect2: NewFromPoints(
+				point.New(1, 1),
+				point.New(5, 1),
+				point.New(5, 4),
+				point.New(1, 4),
 			),
-			opts:        nil,
 			expectEqual: false,
 		},
-		"rectangles equal with epsilon": {
+		"rectangles equal within default epsilon": {
 			rect1: NewFromPoints(
-				point.New[float64](0.0001, 0.0001),
-				point.New[float64](4.0001, 0.0001),
-				point.New[float64](4.0001, 3.0001),
-				point.New[float64](0.0001, 3.0001),
+				point.New(0.0000000000001, 0.0000000000001),
+				point.New(4.0000000000001, 0.0000000000001),
+				point.New(4.0000000000001, 3.0000000000001),
+				point.New(0.0000000000001, 3.0000000000001),
 			),
-			rect2: NewFromPoints[float64](
-				point.New[float64](0, 0),
-				point.New[float64](4, 0),
-				point.New[float64](4, 3),
-				point.New[float64](0, 3),
+			rect2: NewFromPoints(
+				point.New(0, 0),
+				point.New(4, 0),
+				point.New(4, 3),
+				point.New(0, 3),
 			),
-			opts:        []options.GeometryOptionsFunc{options.WithEpsilon(0.001)},
 			expectEqual: true,
 		},
-		"rectangles not equal with small epsilon": {
-			rect1: NewFromPoints[float64](
-				point.New[float64](0.01, 0.01),
-				point.New[float64](4.01, 0.01),
-				point.New[float64](4.01, 3.01),
-				point.New[float64](0.01, 3.01),
+		"rectangles not equal just outside default epsilon": {
+			rect1: NewFromPoints(
+				point.New(0.000000000001, 0.000000000001),
+				point.New(4.000000000001, 0.000000000001),
+				point.New(4.000000000001, 3.000000000001),
+				point.New(0.000000000001, 3.000000000001),
 			),
-			rect2: NewFromPoints[float64](
-				point.New[float64](0, 0),
-				point.New[float64](4, 0),
-				point.New[float64](4, 3),
-				point.New[float64](0, 3),
+			rect2: NewFromPoints(
+				point.New(0, 0),
+				point.New(4, 0),
+				point.New(4, 3),
+				point.New(0, 3),
 			),
-			opts:        []options.GeometryOptionsFunc{options.WithEpsilon(0.001)},
 			expectEqual: false,
 		},
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, tc.expectEqual, tc.rect1.Eq(tc.rect2, tc.opts...))
+			assert.Equal(t, tc.expectEqual, tc.rect1.Eq(tc.rect2))
 		})
 	}
 }
 
 func TestRectangle_Height(t *testing.T) {
 	tests := map[string]struct {
-		rect     Rectangle[int]
-		expected int
+		rect     Rectangle
+		expected float64
 	}{
 		"positive height": {
 			rect:     New(0, 0, 10, 20),
@@ -306,24 +276,22 @@ func TestRectangle_Height(t *testing.T) {
 
 func TestRectangle_MarshalUnmarshalJSON(t *testing.T) {
 	tests := map[string]struct {
-		rectangle any // Input rectangle
-		expected  any // Expected output after Marshal -> Unmarshal
+		rectangle Rectangle // Input rectangle
+		expected  Rectangle // Expected output after Marshal -> Unmarshal
 	}{
-		"Rectangle[int]": {
-			rectangle: NewFromPoints(point.New[int](0, 10), point.New[int](10, 10), point.New[int](0, 0), point.New[int](10, 0)),
-			expected:  NewFromPoints(point.New[int](0, 10), point.New[int](10, 10), point.New[int](0, 0), point.New[int](10, 0)),
-		},
-		"Rectangle[int64]": {
-			rectangle: NewFromPoints(point.New[int64](5, 50), point.New[int64](50, 50), point.New[int64](5, 5), point.New[int64](50, 5)),
-			expected:  NewFromPoints(point.New[int64](5, 50), point.New[int64](50, 50), point.New[int64](5, 5), point.New[int64](50, 5)),
-		},
-		"Rectangle[float32]": {
-			rectangle: NewFromPoints(point.New[float32](1.5, 2.5), point.New[float32](10.1, 2.5), point.New[float32](1.5, 1.0), point.New[float32](10.1, 1.0)),
-			expected:  NewFromPoints(point.New[float32](1.5, 2.5), point.New[float32](10.1, 2.5), point.New[float32](1.5, 1.0), point.New[float32](10.1, 1.0)),
-		},
-		"Rectangle[float64]": {
-			rectangle: NewFromPoints(point.New[float64](3.5, 7.2), point.New[float64](8.4, 7.2), point.New[float64](3.5, 2.1), point.New[float64](8.4, 2.1)),
-			expected:  NewFromPoints(point.New[float64](3.5, 7.2), point.New[float64](8.4, 7.2), point.New[float64](3.5, 2.1), point.New[float64](8.4, 2.1)),
+		"Rectangle": {
+			rectangle: NewFromPoints(
+				point.New(3.5, 7.2),
+				point.New(8.4, 7.2),
+				point.New(3.5, 2.1),
+				point.New(8.4, 2.1),
+			),
+			expected: NewFromPoints(
+				point.New(3.5, 7.2),
+				point.New(8.4, 7.2),
+				point.New(3.5, 2.1),
+				point.New(8.4, 2.1),
+			),
 		},
 	}
 
@@ -333,43 +301,18 @@ func TestRectangle_MarshalUnmarshalJSON(t *testing.T) {
 			data, err := json.Marshal(tc.rectangle)
 			require.NoErrorf(t, err, "Failed to marshal %s: %v", tc.rectangle, err)
 
-			// Determine the correct type for unmarshalling
-			switch expected := tc.expected.(type) {
-			case Rectangle[int]:
-				var result Rectangle[int]
-				err := json.Unmarshal(data, &result)
-				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
-				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
-
-			case Rectangle[int64]:
-				var result Rectangle[int64]
-				err := json.Unmarshal(data, &result)
-				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
-				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
-
-			case Rectangle[float32]:
-				var result Rectangle[float32]
-				err := json.Unmarshal(data, &result)
-				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
-				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
-
-			case Rectangle[float64]:
-				var result Rectangle[float64]
-				err := json.Unmarshal(data, &result)
-				require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
-				assert.Equalf(t, expected, result, "Expected %v, got %v", expected, result)
-
-			default:
-				t.Fatalf("Unhandled type in test case: %s", name)
-			}
+			var result Rectangle
+			err = json.Unmarshal(data, &result)
+			require.NoErrorf(t, err, "Failed to unmarshal %s: %v", string(data), err)
+			assert.Equalf(t, tc.expected, result, "Expected %v, got %v", tc.expected, result)
 		})
 	}
 }
 
 func TestRectangle_Perimeter(t *testing.T) {
 	tests := map[string]struct {
-		rect     Rectangle[int]
-		expected int
+		rect     Rectangle
+		expected float64
 	}{
 		"standard rectangle": {
 			rect:     New(0, 0, 10, 20),
@@ -401,7 +344,7 @@ func TestRectangle_RelationshipToPoint(t *testing.T) {
 	rect := New(0, 0, 10, 10)
 
 	tests := map[string]struct {
-		point       point.Point[int]
+		point       point.Point
 		expectedRel types.Relationship
 	}{
 		"Point inside rectangle": {
@@ -420,48 +363,48 @@ func TestRectangle_RelationshipToPoint(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, tt.expectedRel, rect.RelationshipToPoint(tt.point, options.WithEpsilon(1e-8)), "unexpected relationship")
+			assert.Equal(t, tt.expectedRel, rect.RelationshipToPoint(tt.point), "unexpected relationship")
 		})
 	}
 }
 
 func TestRectangle_Scale(t *testing.T) {
 	tests := map[string]struct {
-		rect     Rectangle[float64]
-		ref      point.Point[float64]
+		rect     Rectangle
+		ref      point.Point
 		k        float64
-		expected Rectangle[float64]
+		expected Rectangle
 	}{
 		"scale by 2 from origin": {
 			rect: NewFromPoints(
-				point.New[float64](0, 10),
-				point.New[float64](10, 10),
-				point.New[float64](0, 0),
-				point.New[float64](10, 0),
+				point.New(0, 10),
+				point.New(10, 10),
+				point.New(0, 0),
+				point.New(10, 0),
 			),
-			ref: point.New[float64](0, 0),
+			ref: point.New(0, 0),
 			k:   2,
 			expected: NewFromPoints(
-				point.New[float64](0, 20),
-				point.New[float64](20, 20),
-				point.New[float64](0, 0),
-				point.New[float64](20, 0),
+				point.New(0, 20),
+				point.New(20, 20),
+				point.New(0, 0),
+				point.New(20, 0),
 			),
 		},
 		"scale by 0.5 from center": {
 			rect: NewFromPoints(
-				point.New[float64](-10, 10),
-				point.New[float64](10, 10),
-				point.New[float64](-10, -10),
-				point.New[float64](10, -10),
+				point.New(-10, 10),
+				point.New(10, 10),
+				point.New(-10, -10),
+				point.New(10, -10),
 			),
-			ref: point.New[float64](0, 0),
+			ref: point.New(0, 0),
 			k:   0.5,
 			expected: NewFromPoints(
-				point.New[float64](-5, -5),
-				point.New[float64](5, -5),
-				point.New[float64](5, 5),
-				point.New[float64](-5, 5),
+				point.New(-5, -5),
+				point.New(5, -5),
+				point.New(5, 5),
+				point.New(-5, 5),
 			),
 		},
 	}
@@ -475,28 +418,28 @@ func TestRectangle_Scale(t *testing.T) {
 
 func TestRectangle_ScaleWidthHeight(t *testing.T) {
 	tests := map[string]struct {
-		rect           Rectangle[float64]
+		rect           Rectangle
 		scaleWidth     float64
 		scaleHeight    float64
 		expectedWidth  float64
 		expectedHeight float64
 	}{
 		"scale both dimensions": {
-			rect:           New[float64](0, 0, 10, 20),
+			rect:           New(0, 0, 10, 20),
 			scaleWidth:     1.5,
 			scaleHeight:    0.5,
 			expectedWidth:  15.0,
 			expectedHeight: 10.0,
 		},
 		"scale width only": {
-			rect:           New[float64](0, 0, 10, 20),
+			rect:           New(0, 0, 10, 20),
 			scaleWidth:     2.0,
 			scaleHeight:    1.0,
 			expectedWidth:  20.0,
 			expectedHeight: 20.0,
 		},
 		"scale height only": {
-			rect:           New[float64](0, 0, 10, 20),
+			rect:           New(0, 0, 10, 20),
 			scaleWidth:     1.0,
 			scaleHeight:    2.0,
 			expectedWidth:  10.0,
@@ -517,33 +460,33 @@ func TestRectangle_ScaleWidthHeight(t *testing.T) {
 
 func TestRectangle_String(t *testing.T) {
 	tests := map[string]struct {
-		rect     Rectangle[float64]
+		rect     Rectangle
 		expected string
 	}{
 		"simple rectangle": {
 			rect: NewFromPoints(
-				point.New[float64](0, 0),
-				point.New[float64](4, 0),
-				point.New[float64](4, 3),
-				point.New[float64](0, 3),
+				point.New(0, 0),
+				point.New(4, 0),
+				point.New(4, 3),
+				point.New(0, 3),
 			),
 			expected: "[(0,0),(4,3)]",
 		},
 		"negative coordinates": {
 			rect: NewFromPoints(
-				point.New[float64](-3, -2),
-				point.New[float64](2, -2),
-				point.New[float64](2, 1),
-				point.New[float64](-3, 1),
+				point.New(-3, -2),
+				point.New(2, -2),
+				point.New(2, 1),
+				point.New(-3, 1),
 			),
 			expected: "[(-3,-2),(2,1)]",
 		},
 		"decimal values": {
 			rect: NewFromPoints(
-				point.New[float64](1.123, 2.234),
-				point.New[float64](4.567, 2.234),
-				point.New[float64](4.567, 5.678),
-				point.New[float64](1.123, 5.678),
+				point.New(1.123, 2.234),
+				point.New(4.567, 2.234),
+				point.New(4.567, 5.678),
+				point.New(1.123, 5.678),
 			),
 			expected: "[(1.123,2.234),(4.567,5.678)]",
 		},
@@ -564,9 +507,9 @@ func TestRectangle_ToImageRect(t *testing.T) {
 
 func TestRectangle_Translate(t *testing.T) {
 	tests := map[string]struct {
-		inputRect    Rectangle[int]
-		translateBy  point.Point[int]
-		expectedRect Rectangle[int]
+		inputRect    Rectangle
+		translateBy  point.Point
+		expectedRect Rectangle
 	}{
 		"translate up and right": {
 			inputRect: NewFromPoints(
@@ -624,8 +567,8 @@ func TestRectangle_Translate(t *testing.T) {
 
 func TestRectangle_Width(t *testing.T) {
 	tests := map[string]struct {
-		rect     Rectangle[int]
-		expected int
+		rect     Rectangle
+		expected float64
 	}{
 		"positive width": {
 			rect:     New(0, 0, 10, 20),
