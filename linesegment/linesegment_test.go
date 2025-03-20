@@ -162,7 +162,7 @@ func TestLineSegment_ContainsPoint(t *testing.T) {
 		},
 		"floating point precision issue - within default epsilon": {
 			segment:  New(0.0, 0.0, 10.0, 10.0),
-			point:    point.New(5.0000000000001, 5.0),
+			point:    point.New(5.0000000001, 5.0),
 			expected: false,
 		},
 		"point is not on the segment": {
@@ -179,6 +179,16 @@ func TestLineSegment_ContainsPoint(t *testing.T) {
 			segment:  New(5.0, 5.0, 5.0, 5.0),
 			point:    point.New(6.0, 5.0),
 			expected: false,
+		},
+		"FuzzFindIntersections_2segments/7500abbb0aa68f4e/A": {
+			segment:  New(-44.285714285714285, 151, 20, 10),
+			point:    point.New(-15.467349551856598, 87.79172001707214),
+			expected: true,
+		},
+		"FuzzFindIntersections_2segments/7500abbb0aa68f4e/B": {
+			segment:  New(-10, 88, -640, 64),
+			point:    point.New(-15.467349551856598, 87.79172001707214),
+			expected: true,
 		},
 	}
 

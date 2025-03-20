@@ -31,13 +31,17 @@ func (o OrientationType) String() string {
 }
 
 // Orientation checks turn direction using the cross product
-func Orientation(p, q, r Point) int {
+func Orientation(p, q, r Point) OrientationType {
 	val := (q.Sub(p)).CrossProduct(r.Sub(p))
-	if math.Abs(val) < geom2d.GetEpsilon() {
-		return 0 // Collinear
+
+	// Compute adaptive epsilon based on segment lengths
+	epsilon := geom2d.GetEpsilon() * (p.DistanceToPoint(q) + p.DistanceToPoint(r))
+
+	if math.Abs(val) < epsilon {
+		return Collinear // Collinear
 	}
 	if val > 0 {
-		return 1 // Counterclockwise
+		return Counterclockwise // Counterclockwise
 	}
-	return -1 // Clockwise
+	return Clockwise // Clockwise
 }

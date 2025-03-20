@@ -39,10 +39,12 @@
 // [Computational Geometry: Algorithms and Applications]: https://www.springer.com/gp/book/9783540779735
 package linesegment
 
+import "C"
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/mikenye/geom2d"
+	"github.com/mikenye/geom2d/numeric"
 	"github.com/mikenye/geom2d/point"
 	"github.com/mikenye/geom2d/types"
 	"math"
@@ -202,9 +204,13 @@ func (l LineSegment) ContainsPoint(p point.Point) bool {
 	ap := p.Sub(l.upper)
 	ab := l.lower.Sub(l.upper)
 
-	// Check if cross product is within epsilon (collinearity test)
+	// Dynamically adjust epsilon based on the segment length
+	segmentLength := ab.DistanceToPoint(point.Origin())
+	adaptiveEpsilon := epsilon * segmentLength
+
+	// Check if cross product is within adaptive epsilon (collinearity test)
 	cross := math.Abs(ap.CrossProduct(ab))
-	if cross > epsilon {
+	if cross > adaptiveEpsilon {
 		return false // P is not on the line
 	}
 
@@ -212,8 +218,8 @@ func (l LineSegment) ContainsPoint(p point.Point) bool {
 	xMin, xMax := math.Min(l.upper.X(), l.lower.X()), math.Max(l.upper.X(), l.lower.X())
 	yMin, yMax := math.Min(l.upper.Y(), l.lower.Y()), math.Max(l.upper.Y(), l.lower.Y())
 
-	return (p.X() >= xMin-epsilon && p.X() <= xMax+epsilon) &&
-		(p.Y() >= yMin-epsilon && p.Y() <= yMax+epsilon)
+	return (p.X() >= xMin-adaptiveEpsilon && p.X() <= xMax+adaptiveEpsilon) &&
+		(p.Y() >= yMin-adaptiveEpsilon && p.Y() <= yMax+adaptiveEpsilon)
 }
 
 // DistanceToLineSegment calculates the minimum distance between two line segments, l and other.
@@ -316,6 +322,53 @@ func (l LineSegment) Eq(other LineSegment) bool {
 	return l.upper.Eq(other.upper) && l.lower.Eq(other.lower)
 }
 
+// todo: doc comments
+func (l LineSegment) IntersectionPoints(other LineSegment) ([]point.Point, bool) {
+
+	// Line AB represented as a1x + b1y = c1
+	a1 := l.lower.Y() - l.upper.Y()
+	b1 := l.upper.X() - l.lower.X()
+	c1 := a1*(l.upper.X()) + b1*(l.upper.Y())
+
+	// Line CD represented as a2x + b2y = c2
+	a2 := other.lower.Y() - other.upper.Y()
+	b2 := other.upper.X() - other.lower.X()
+	c2 := a2*(other.upper.X()) + b2*(other.upper.Y())
+
+	determinant := a1*b2 - a2*b1
+
+	if numeric.FloatEquals(determinant, 0, geom2d.GetEpsilon()) {
+		// Lines are either parallel or collinear
+		if l.ContainsPoint(other.lower) || l.ContainsPoint(other.upper) ||
+			other.ContainsPoint(l.lower) || other.ContainsPoint(l.upper) {
+
+			// Determine the overlapping segment
+			overlapStart := point.New(math.Max(l.lower.X(), other.lower.X()), math.Max(l.lower.Y(), other.lower.Y()))
+			overlapEnd := point.New(math.Min(l.upper.X(), other.upper.X()), math.Min(l.upper.Y(), other.upper.Y()))
+
+			if overlapStart.X() > overlapEnd.X() || overlapStart.Y() > overlapEnd.Y() {
+				return []point.Point{}, false // No overlap
+			}
+
+			return []point.Point{overlapStart, overlapEnd}, true
+		}
+		// Parallel but not collinear
+		return []point.Point{}, false
+	} else {
+		// Compute intersection point
+		x := (b2*c1 - b1*c2) / determinant
+		y := (a1*c2 - a2*c1) / determinant
+		intersection := point.New(x, y)
+
+		// Check if the intersection is within both line segments
+		if l.ContainsPoint(intersection) && other.ContainsPoint(intersection) {
+			return []point.Point{intersection}, true
+		}
+		return []point.Point{}, false
+	}
+}
+
+// todo: doc comments
 func (l LineSegment) Intersects(other LineSegment) bool {
 	a, b := l.upper, l.lower
 	c, d := other.upper, other.lower

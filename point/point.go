@@ -46,6 +46,16 @@ import (
 	"math"
 )
 
+var origin Point
+
+func init() {
+	origin = New(0, 0)
+}
+
+func Origin() Point {
+	return origin
+}
+
 // Point represents a point in two-dimensional space with x and y coordinates of type float64.
 // The Point struct provides methods for common vector operations such as addition, subtraction, and distance
 // calculations, making it versatile for computational geometry and graphics applications.
