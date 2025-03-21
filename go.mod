@@ -3,10 +3,8 @@ module github.com/mikenye/geom2d
 go 1.24.0
 
 require (
-	github.com/emirpasic/gods v1.18.1
-	github.com/google/btree v1.1.3
+	github.com/mikenye/gotrees v1.1.0
 	github.com/stretchr/testify v1.10.0
-	github.com/urfave/cli/v3 v3.0.0-beta1
 )
 
 require (
@@ -114,7 +112,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mgechev/revive v1.6.1 // indirect
-	github.com/mikenye/gotrees v1.0.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moricho/tparallel v0.3.2 // indirect
