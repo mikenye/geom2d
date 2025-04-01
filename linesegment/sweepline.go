@@ -356,7 +356,7 @@ func handleEventPoint(
 	for _, l := range segmentsToRemove {
 		node, found := T.Search(l)
 		if !found {
-			panic(fmt.Errorf("could not find node to delete: %v\n", l))
+			panic(fmt.Errorf("could not find node to delete: %v", l))
 		}
 		log.Printf("deleting: %v\n", node)
 		T.Delete(node)

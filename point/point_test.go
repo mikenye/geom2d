@@ -133,13 +133,13 @@ func TestPoint_DistanceToPoint(t *testing.T) {
 			name:     "float64: distance between (2.0,10.0) and (10.0,2.0)",
 			p:        New(2.0, 10.0),
 			q:        New(10.0, 2.0),
-			expected: math.Sqrt(math.Pow(2-10, 2) + math.Pow(10-2, 2)),
+			expected: math.Sqrt(((2 - 10) * (2 - 10)) + ((10 - 2) * (10 - 2))),
 		},
 		{
 			name:     "float64: distance between (0.0,0.0) and (3.0,4.0)",
 			p:        New(0.0, 0.0),
 			q:        New(3.0, 4.0),
-			expected: math.Sqrt(math.Pow(0-3, 2) + math.Pow(0-4, 2)),
+			expected: math.Sqrt(((0 - 3) * (0 - 3)) + ((0 - 4) * (0 - 4))),
 		},
 	}
 
