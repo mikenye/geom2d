@@ -1,5 +1,6 @@
 # Geom2D
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/mikenye/geom2d)](https://goreportcard.com/report/github.com/mikenye/geom2d)
 [![Go Reference](https://pkg.go.dev/badge/github.com/mikenye/geom2d.svg)](https://pkg.go.dev/github.com/mikenye/geom2d)
 [![codecov](https://codecov.io/gh/mikenye/geom2d/graph/badge.svg?token=Z73XKN7N8D)](https://codecov.io/gh/mikenye/geom2d)
 
