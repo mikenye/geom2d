@@ -5,7 +5,7 @@
 
 Geom2D is a computational geometry library for Go, designed for 2D polygon operations and other fundamental geometric types, and is currently reaching its release candidate phase, nearing production readiness.
 
-**As of April 2025, this package is actively in development.** The base geometric types (`circle`, `linesegment`, `point` and `rectangle`) are well documented and functional. The sweep line method of finding line segment intersections (`FindIntersections`) now supports line segments in general position, including handling edge cases like collinear segments and segment endpoints on other segments. For simpler use cases or verification, the `FindIntersectionsBruteForce` method (O(n²)) is also available.
+**As of April 2025, this package is actively in development.** The base geometric types (`circle`, `linesegment`, `point` and `rectangle`) are well documented and functional. The sweep line method of finding line segment intersections (`FindIntersections`) now supports line segments in general position, but may have issues with handling edge cases like collinear segments and segment endpoints on other segments. The `FindIntersectionsBruteForce` method (O(n²)) is also available.
 
 ## Table of Contents
 - [Geom2D](#geom2d)
