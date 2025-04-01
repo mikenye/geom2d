@@ -3,15 +3,15 @@
 //
 // # Overview
 //
-// The [Point] type represents a two-dimensional point with generic numeric coordinates, constrained to signed number
-// types via [types.SignedNumber]. It provides fundamental geometric operations such as translation, distance measurement,
-// vector arithmetic, and angle calculations. Points are essential building blocks in computational geometry, enabling
-// higher-level constructs such as line segments and polygons.
+// The Point type represents a two-dimensional point with floating-point coordinates. It provides
+// fundamental geometric operations such as translation, distance measurement, vector arithmetic, and angle
+// calculations. Points are essential building blocks in computational geometry, enabling higher-level
+// constructs such as line segments and polygons.
 //
 // # Key Features
 //
 // Creation & Type Conversion
-//   - Points can be created using [New] and [NewFromImagePoint].
+//   - Points can be created using New and NewFromImagePoint.
 //   - Conversion methods (AsFloat32, AsFloat64, AsInt, AsIntRounded) allow working with different numeric types.
 //
 // Vector Operations
@@ -29,8 +29,8 @@
 //
 // # Notes
 //
-//   - Floating-point operations may introduce precision errors. Use [options.WithEpsilon] where supported when working
-//     with approximate comparisons.
+//   - Floating-point operations may introduce precision errors. Most comparison operations use the global
+//     epsilon value for approximate comparisons, which can be adjusted using [geom2d.SetEpsilon].
 //   - This package is optimized for computational geometry applications, balancing precision, performance, and ease of use.
 //
 // The [Point] type serves as the core building block for all geometric structures in geom2d.
@@ -52,6 +52,19 @@ func init() {
 	origin = New(0, 0)
 }
 
+// Origin returns the origin point (0,0) in the 2D coordinate system.
+//
+// This function provides efficient access to a pre-initialized point at the
+// coordinate system origin. This is useful for operations that reference the
+// origin, such as vector calculations and coordinate transformations.
+//
+// Returns:
+//   - Point: A Point instance representing the origin (0,0).
+//
+// Note:
+//   - This is more efficient than repeatedly creating new origin points with New(0,0).
+//   - The returned point is immutable, but a copy is returned, so it can be safely
+//     used in any context without affecting the stored origin.
 func Origin() Point {
 	return origin
 }
@@ -124,7 +137,11 @@ func (p Point) Add(q Point) Point {
 // Note:
 //   - This function internally calls CosineOfAngleBetween and applies math.Acos to
 //     compute the angle.
-//   - todo: discuss precision issues with math.Acos - see test - limited epsilon to 1e-6 or test fails
+//   - Due to floating-point precision limitations with math.Acos, this function
+//     requires a smaller epsilon (~1e-6) than other functions. The issue is that
+//     when the cosine value is close to -1 or 1 (angles near 0° or 180°), even tiny
+//     floating-point errors are magnified by math.Acos due to the nonlinear nature of
+//     the inverse cosine function near these bounds.
 func (p Point) AngleBetween(a, b Point) (radians float64) {
 	return math.Acos(p.CosineOfAngleBetween(a, b))
 }
@@ -155,7 +172,7 @@ func (p Point) Coordinates() (x, y float64) {
 //
 // Behavior:
 //   - If either vector OA (from origin to a) or OB (from origin to b) has zero length, the function returns math.NaN().
-//   - The function applies an optional epsilon for numerical stability when calculating vector magnitudes.
+//   - The function ensures numerical stability through normalization and clamping of the result to [-1,1].
 //
 // Why Use the Cosine of the Angle?
 //
@@ -253,11 +270,9 @@ func (p Point) DistanceSquaredToPoint(q Point) float64 {
 // Behavior:
 //   - The function computes the Euclidean distance using the formula:
 //     distance = sqrt((origin.x - q.x)^2 + (origin.y - q.y)^2)
-//   - If the [WithEpsilon] option is provided, the computed distance is adjusted such that
-//     deviations within the epsilon range are snapped to a clean value.
 //
 // Returns:
-//   - float64: The Euclidean distance between the two points, optionally adjusted based on epsilon.
+//   - float64: The Euclidean distance between the two points.
 func (p Point) DistanceToPoint(q Point) float64 {
 	// Calculate distance
 	return math.Sqrt(p.DistanceSquaredToPoint(q))
@@ -276,18 +291,18 @@ func (p Point) DotProduct(q Point) float64 {
 	return (p.x * q.x) + (p.y * q.y)
 }
 
-// Eq determines whether the calling Point origin is equal to another Point q.
-// Equality can be evaluated either exactly (default) or approximately using an epsilon threshold.
+// Eq determines whether the calling Point origin is equal to another Point q using
+// the global epsilon value to account for floating-point precision.
 //
 // Parameters:
 //   - q (Point): The Point to compare with the calling Point.
 //
 // Behavior:
-//   - By default, the function performs an exact equality check, returning true only if
-//     the x and y coordinates of origin and q are identical.
+//   - The function performs an approximate equality check using the global epsilon value,
+//     comparing the x and y coordinates of origin and q.
 //
 // Returns:
-//   - bool: True if origin and q are equal based on the specified comparison mode; otherwise, false.
+//   - bool: True if origin and q are approximately equal within the epsilon threshold; otherwise, false.
 //
 // Notes:
 //   - Approximate equality is particularly useful when comparing points with floating-point
@@ -356,11 +371,10 @@ func (p Point) RelationshipToPoint(other Point) types.Relationship {
 //     applies the rotation matrix, and then translates the point back to its original position.
 //
 // Returns:
-//   - Point[float64]: A new point representing the rotated position.
+//   - Point: A new point representing the rotated position.
 //
 // Notes:
-//   - If no options are provided, the default behavior applies, and no epsilon adjustment is made.
-//   - The return type is always Point to ensure precision in the rotated result.
+//   - The return type is Point with float64 precision to ensure accurate rotation calculations.
 func (p Point) Rotate(pivot Point, radians float64) Point {
 
 	// Translate the point to the origin (pivot)

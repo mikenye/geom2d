@@ -17,12 +17,12 @@
 //
 //   - Creation of circles from coordinates or points.
 //   - Type conversion to different numeric representations.
-//   - Relationship checks with points, including containment and intersection. // TODO: implement
+//   - Relationship checks with points, including containment and intersection.
 //   - Support for geometric transformations such as translation, rotation, and scaling.
 //   - Efficient rasterization using Bresenham's circle algorithm.
 //
 // This package is part of the geom2d library and integrates with other geometric primitives
-// such as points, line segments, and polygons.
+// such as points, line segments, and rectangles.
 package circle
 
 import (
@@ -48,11 +48,11 @@ type Circle struct {
 // New creates a new [Circle] with the specified center coordinates and radius.
 //
 // Parameters:
-//   - x, y (T): The center coordinates of the [Circle].
-//   - radius (T): The radius of the circle, of generic type T, which must satisfy the [types.SignedNumber] constraint.
+//   - x, y (float64): The center coordinates of the circle.
+//   - radius (float64): The radius of the circle (will be converted to absolute value).
 //
 // Returns:
-//   - Circle[T]: A new Circle with the specified center and radius.
+//   - Circle: A new Circle with the specified center and radius.
 func New(x, y, radius float64) Circle {
 	return Circle{
 		center: point.New(x, y),
@@ -63,11 +63,11 @@ func New(x, y, radius float64) Circle {
 // NewFromPoint creates a new [Circle] with the specified center [point.Point] and radius.
 //
 // Parameters:
-//   - center ([point.Point][T]): The center [point.Point] of the [Circle].
-//   - radius (T): The radius of the circle, of generic type T, which must satisfy the [types.SignedNumber] constraint.
+//   - center (point.Point): The center point of the circle.
+//   - radius (float64): The radius of the circle (will be converted to absolute value).
 //
 // Returns:
-//   - Circle[T]: A new Circle with the specified center and radius.
+//   - Circle: A new Circle with the specified center and radius.
 func NewFromPoint(center point.Point, radius float64) Circle {
 	return Circle{
 		center: center,
@@ -98,7 +98,7 @@ func (c Circle) Area() float64 {
 // on integer arithmetic to avoid floating-point precision errors.
 //
 // Parameters:
-//   - yield (func([point.Point][int]) bool): A function that processes each generated point.
+//   - yield (func(point.Point) bool): A function that processes each generated point.
 //     Returning false will stop further point generation.
 func (c Circle) Bresenham(yield func(point.Point) bool) {
 	var xc, yc, r, x, y, p float64
@@ -140,10 +140,10 @@ func (c Circle) Bresenham(yield func(point.Point) bool) {
 	}
 }
 
-// Center returns the center [Point] of the Circle.
+// Center returns the center point of the Circle.
 //
 // Returns:
-//   - Point[T]: The center [Point] of the Circle.
+//   - point.Point: The center point of the Circle.
 func (c Circle) Center() point.Point {
 	return c.center
 }
@@ -165,10 +165,7 @@ func (c Circle) Circumference() float64 {
 //   - [types.RelationshipContainedBy]: The point is inside the circle.
 //
 // Parameters:
-//   - p ([point.Point][T]): The point to compare with the current Circle
-//   - opts: A variadic slice of [options.GeometryOptionsFunc] functions to customize the equality check.
-//     [options.WithEpsilon](epsilon float64): Specifies a tolerance for comparing distances to handle floating-point
-//     precision errors.
+//   - p (point.Point): The point to compare with the current Circle
 //
 // Returns:
 //   - [types.Relationship]: The relationship of the point to the circle, indicating whether the point is disjoint from,
@@ -182,7 +179,7 @@ func (c Circle) Circumference() float64 {
 //   - Otherwise, the relationship is [types.RelationshipDisjoint].
 //
 // Notes:
-//   - Epsilon adjustments can be used to account for floating-point precision issues when comparing the distance
+//   - The global epsilon value is used to account for floating-point precision issues when comparing the distance
 //     to the circle's radius.
 //
 // [Euclidean distance]: https://en.wikipedia.org/wiki/Euclidean_distance
@@ -198,28 +195,21 @@ func (c Circle) RelationshipToPoint(p point.Point) types.Relationship {
 	}
 }
 
-// Eq determines whether the calling Circle (c) is equal to another Circle (other), either exactly (default)
-// or approximately using an epsilon threshold.
+// Eq determines whether the calling Circle (c) is equal to another Circle (other)
+// using the global epsilon value for approximate comparison.
 //
 // Parameters
 //   - other: The Circle to compare with the calling Circle.
-//   - opts: A variadic slice of [options.GeometryOptionsFunc] functions to customize the equality check.
-//     [options.WithEpsilon](epsilon float64): Specifies a numerical tolerance (epsilon) for comparing the
-//     center coordinates and radii of the circles, to avoid false negatives due to floating-point imprecision.
 //
 // Behavior
-//   - The function checks whether the center points of the two circles are equal (using the [point.Point.Eq] method
-//     of the [point.Point] type) and whether their radii are equal.
-//   - If [options.WithEpsilon] is provided, the comparison allows for small differences in the radius values
-//     and center coordinates within the epsilon threshold.
+//   - The function checks whether the center points of the two circles are equal (using the [point.Point.Eq] method)
+//     and whether their radii are equal.
+//   - The global epsilon value is used for comparing both center coordinates and radii, allowing for small
+//     differences due to floating-point imprecision.
 //
 // Returns
 //   - bool: true if the center coordinates and radius of the two circles are equal (or approximately equal
 //     within epsilon); otherwise, false.
-//
-// Notes:
-//   - Approximate equality is particularly useful when comparing circles with floating-point
-//     coordinates or radii, where small precision errors might otherwise cause inequality.
 func (c Circle) Eq(other Circle) bool {
 	// Check equality for the center points
 	centersEqual := c.center.Eq(other.center)
@@ -245,7 +235,7 @@ func (c Circle) MarshalJSON() ([]byte, error) {
 // Radius returns the radius of the Circle.
 //
 // Returns:
-//   - T: The radius of the Circle.
+//   - float64: The radius of the Circle.
 func (c Circle) Radius() float64 {
 	return c.radius
 }
@@ -255,29 +245,22 @@ func (c Circle) Radius() float64 {
 // to adjust the precision of the resulting coordinates.
 //
 // Parameters:
-//   - pivot ([point.Point][T]): The [point.Point] around which to rotate the circle's center.
+//   - pivot (point.Point): The point around which to rotate the circle's center.
 //   - radians: The rotation angle in radians (counter-clockwise).
-//   - opts: A variadic slice of [options.GeometryOptionsFunc] functions to customize the behavior of the rotation.
-//     [options.WithEpsilon](epsilon float64): Specifies a tolerance for snapping the resulting center coordinates
-//     to cleaner values, improving robustness in floating-point calculations.
 //
 // Returns:
-//   - [Circle][float64]: A new [Circle] with the center rotated around the pivot [point.Point] by the specified angle,
+//   - Circle: A new Circle with the center rotated around the pivot point by the specified angle,
 //     and with the radius unchanged.
 //
 // Behavior:
 //   - The function rotates the circle's center point around the given pivot by the specified angle using
 //     the [point.Point.Rotate] method.
 //   - The rotation is performed in a counter-clockwise direction relative to the pivot point.
-//   - The radius remains unchanged in the resulting [Circle].
-//   - If [options.WithEpsilon] is provided, epsilon adjustments are applied to the rotated coordinates to handle
-//     floating-point precision errors.
+//   - The radius remains unchanged in the resulting Circle.
 //
 // Notes:
-//   - Epsilon adjustment is particularly useful when the rotation involves floating-point calculations
-//     that could result in minor inaccuracies.
-//   - The returned [Circle] always has a center with float64 coordinates, ensuring precision regardless
-//     of the coordinate type of the original [Circle].
+//   - The method uses the Point.Rotate method which handles floating-point calculations
+//     with appropriate precision.
 func (c Circle) Rotate(pivot point.Point, radians float64) Circle {
 	return NewFromPoint(
 		c.center.Rotate(pivot, radians),
@@ -288,12 +271,14 @@ func (c Circle) Rotate(pivot point.Point, radians float64) Circle {
 // Scale scales the radius of the circle by a scalar factor.
 //
 // Parameters:
-//   - factor (T): The factor by which to scale the radius.
+//   - factor (float64): The factor by which to scale the radius.
 //
 // Returns:
-//   - Circle[T]: A new circle with the radius scaled by the specified factor.
+//   - Circle: A new circle with the radius scaled by the specified factor.
 //
-// todo: update doc comment, examples after adding numeric.Abs to radius
+// Note:
+//   - Negative scaling factors are supported. The absolute value is applied to ensure
+//     the circle's radius always remains positive.
 func (c Circle) Scale(factor float64) Circle {
 	return Circle{center: c.center, radius: math.Abs(c.radius * factor)}
 }
@@ -316,10 +301,10 @@ func (c Circle) String() string {
 // remains unchanged.
 //
 // Parameters:
-//   - v ([point.Point][T]): The vector by which to translate the circle's center.
+//   - v (point.Point): The vector by which to translate the circle's center.
 //
 // Returns:
-//   - Circle[T]: A new Circle translated by the specified vector.
+//   - Circle: A new Circle translated by the specified vector.
 func (c Circle) Translate(v point.Point) Circle {
 	return Circle{center: c.center.Translate(v), radius: c.radius}
 }
@@ -355,7 +340,7 @@ func (c *Circle) UnmarshalJSON(data []byte) error {
 //   - x, y: The coordinates of the point to reflect across the octants.
 //
 // Returns:
-//   - A slice of Point[T] containing the reflected points in the following order:
+//   - A slice of point.Point containing the reflected points in the following order:
 //     1. Octant 1: (xc + x, yc + y)
 //     2. Octant 2: (xc - x, yc + y)
 //     3. Octant 8: (xc + x, yc - y)

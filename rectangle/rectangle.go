@@ -23,11 +23,11 @@ type Rectangle struct {
 // regardless of their order, and ensures a valid axis-aligned rectangle.
 //
 // Parameters:
-//   - x1,y1 (T): One corner of the rectangle.
-//   - x2,y2 (T): The opposite corner of the rectangle.
+//   - x1,y1 (float64): One corner of the rectangle.
+//   - x2,y2 (float64): The opposite corner of the rectangle.
 //
 // Returns:
-//   - [Rectangle][T]: A new rectangle defined by the given opposite corners.
+//   - Rectangle: A new rectangle defined by the given opposite corners.
 func New(x1, y1, x2, y2 float64) Rectangle {
 	return NewFromPoints(
 		point.New(min(x1, x2), min(y1, y2)),
@@ -37,13 +37,13 @@ func New(x1, y1, x2, y2 float64) Rectangle {
 	)
 }
 
-// NewFromImageRect creates a new [Rectangle][T] from an [image.Rectangle].
+// NewFromImageRect creates a new Rectangle from an image.Rectangle.
 //
 // Parameters:
-//   - r [image.Rectangle]: The [image.Rectangle] to convert.
+//   - r (image.Rectangle): The image.Rectangle to convert.
 //
 // Returns:
-//   - [Rectangle][int]: A new rectangle with integer coordinates matching the given [image.Rectangle].
+//   - Rectangle: A new rectangle matching the given [image.Rectangle].
 //
 // Behavior:
 //   - The function maps the minimum point of the [image.Rectangle] to the top-left corner and the
@@ -61,10 +61,10 @@ func NewFromImageRect(r image.Rectangle) Rectangle {
 // The points can be provided in any order, but they must form an axis-aligned rectangle.
 //
 // Parameters:
-//   - pt1,pt2,pt3,pt4 ([point.Point][T]): Points forming an axis-aligned rectangle.
+//   - pt1,pt2,pt3,pt4 (point.Point): Points forming an axis-aligned rectangle.
 //
 // Returns:
-//   - [Rectangle][T]: A new [Rectangle] initialized with the four given points.
+//   - Rectangle: A new Rectangle initialized with the four given points.
 //
 // Panics:
 //   - If the provided points do not form an axis-aligned rectangle, the function panics.
@@ -117,12 +117,12 @@ func NewFromPoints(pt1, pt2, pt3, pt4 point.Point) Rectangle {
 // Area calculates the area of the rectangle.
 //
 // Returns:
-//   - T: The area of the rectangle, calculated as Width * Height.
+//   - float64: The area of the rectangle, calculated as Width * Height.
 func (r Rectangle) Area() float64 {
 	return r.Width() * r.Height()
 }
 
-// ContainsPoint checks if a given [point.Point] lies within or on the boundary of the [Rectangle].
+// ContainsPoint checks if a given point lies within or on the boundary of the Rectangle.
 //
 // Parameters:
 //   - p: The [point.Point] to check.
@@ -145,7 +145,7 @@ func (r Rectangle) ContainsPoint(p point.Point) bool {
 // top-left, top-right, bottom-right, and bottom-left.
 //
 // Returns:
-//   - bottomLeft, bottomRight, topRight, topLeft ([point.Point][T]): The four corner points of the rectangle.
+//   - bottomLeft, bottomRight, topRight, topLeft (point.Point): The four corner points of the rectangle.
 func (r Rectangle) Contour() (bottomLeft, bottomRight, topRight, topLeft point.Point) {
 	return r.bottomLeft,
 		r.bottomRight,
@@ -153,11 +153,11 @@ func (r Rectangle) Contour() (bottomLeft, bottomRight, topRight, topLeft point.P
 		r.topLeft
 }
 
-// Edges returns the edges of the rectangle as a slice of [LineSegment][T].
+// Edges returns the edges of the rectangle as line segments.
 // Each edge is represented as a line segment connecting two adjacent corners of the rectangle.
 //
 // Returns:
-//   - bottom, right, top, left ([linesegment.LineSegment][T]): line segments representing the edges of the rectangle.
+//   - bottom, right, top, left (linesegment.LineSegment): line segments representing the edges of the rectangle.
 func (r Rectangle) Edges() (bottom, right, top, left linesegment.LineSegment) {
 	return linesegment.NewFromPoints(r.bottomLeft, r.bottomRight),
 		linesegment.NewFromPoints(r.bottomRight, r.topRight),
@@ -205,11 +205,7 @@ func (r Rectangle) EdgesIter(yield func(segment linesegment.LineSegment) bool) {
 // Eq checks if two [Rectangle] instances are equal.
 //
 // Parameters:
-//   - other (Rectangle[T]): The [Rectangle] to compare against the current [Rectangle].
-//   - opts: A variadic slice of [options.GeometryOptionsFunc] functions to customize the equality check.
-//     [options.WithEpsilon](epsilon float64): Specifies a tolerance for comparing the coordinates
-//     of p and q. If the absolute difference between the coordinates of p and q is less
-//     than epsilon, they are considered equal.
+//   - other (Rectangle): The Rectangle to compare against the current Rectangle.
 //
 // Returns:
 //   - bool: Returns true if the two rectangles have identical corner points
@@ -228,7 +224,7 @@ func (r Rectangle) Eq(other Rectangle) bool {
 // Height calculates the height of the rectangle.
 //
 // Returns:
-//   - T: The height of the rectangle, calculated as the absolute difference between the y-coordinates of the top-left and bottom-right corners.
+//   - float64: The height of the rectangle, calculated as the absolute difference between the y-coordinates of the top-left and bottom-right corners.
 func (r Rectangle) Height() float64 {
 	height := r.bottomRight.Y() - r.topLeft.Y()
 	if height < 0 {
@@ -255,7 +251,7 @@ func (r Rectangle) MarshalJSON() ([]byte, error) {
 // Perimeter calculates the perimeter of the rectangle.
 //
 // Returns:
-//   - T: The perimeter of the rectangle, calculated as 2 * (Width + Height).
+//   - float64: The perimeter of the rectangle, calculated as 2 * (Width + Height).
 func (r Rectangle) Perimeter() float64 {
 	return 2 * (r.Width() + r.Height())
 }
@@ -268,10 +264,7 @@ func (r Rectangle) Perimeter() float64 {
 //   - [types.RelationshipDisjoint]: The point lies entirely outside the rectangle.
 //
 // Parameters:
-//   - p ([point.Point][T]): The [point.Point] to analyze the relationship with.
-//   - opts: A variadic slice of [options.GeometryOptionsFunc] functions to customize the behavior of the calculation.
-//     [options.WithEpsilon](epsilon float64): Specifies a tolerance for comparing the point's location relative
-//     to the rectangle, improving robustness in floating-point calculations.
+//   - p (point.Point): The point to analyze the relationship with.
 //
 // Returns:
 //   - [types.Relationship]: The spatial relationship between the point and the rectangle.
@@ -292,17 +285,17 @@ func (r Rectangle) RelationshipToPoint(p point.Point) types.Relationship {
 	return types.RelationshipDisjoint
 }
 
-// Scale scales the [Rectangle] relative to a specified reference [point.Point] by a given scalar factor.
+// Scale scales the Rectangle relative to a specified reference point by a given scalar factor.
 //
 // Each corner of the rectangle is scaled relative to the reference point using the provided factor.
 // The resulting rectangle maintains its axis-aligned orientation.
 //
 // Parameters:
-//   - ref ([point.Point][T]): The reference point relative to which the rectangle is scaled.
-//   - k (T): The scaling factor. A value > 1 enlarges the rectangle; < 1 shrinks it.
+//   - ref (point.Point): The reference point relative to which the rectangle is scaled.
+//   - k (float64): The scaling factor. A value > 1 enlarges the rectangle; < 1 shrinks it.
 //
 // Returns:
-//   - [Rectangle][T]: A new rectangle with corners scaled relative to the reference point.
+//   - Rectangle: A new rectangle with corners scaled relative to the reference point.
 //
 // Notes:
 //   - The function delegates the scaling of each corner to the [point.Point.Scale] method.
@@ -321,13 +314,13 @@ func (r Rectangle) Scale(ref point.Point, k float64) Rectangle {
 // keeping the bottom edge fixed and adjusting the top edge proportionally.
 //
 // Parameters:
-//   - factor (T): The scaling factor to apply to the height. A value of 1
+//   - factor (float64): The scaling factor to apply to the height. A value of 1
 //     keeps the height unchanged, a value greater than 1 increases the height,
 //     and a value between 0 and 1 decreases the height. Negative values may
-//     result in unexpected behavior depending on the type T.
+//     result in unexpected behavior.
 //
 // Returns:
-//   - Rectangle[T]: A new rectangle with the scaled height, maintaining the
+//   - Rectangle: A new rectangle with the scaled height, maintaining the
 //     same width and bottom edge.
 //
 // Behavior:
@@ -338,10 +331,6 @@ func (r Rectangle) Scale(ref point.Point, k float64) Rectangle {
 // Notes:
 //   - If the scaling factor is negative, the top edge will be positioned below
 //     the bottom edge, potentially creating an inverted rectangle.
-//
-// Constraints:
-//   - T must satisfy the [types.SignedNumber] interface, ensuring it supports basic
-//     arithmetic operations like addition, multiplication, and subtraction.
 func (r Rectangle) ScaleHeight(factor float64) Rectangle {
 	newTopY := r.bottomLeft.Y() + (r.Height() * factor)
 	return NewFromPoints(
@@ -356,13 +345,13 @@ func (r Rectangle) ScaleHeight(factor float64) Rectangle {
 // keeping the left edge fixed and adjusting the right edge proportionally.
 //
 // Parameters:
-//   - factor (T): The scaling factor to apply to the width. A value of 1
+//   - factor (float64): The scaling factor to apply to the width. A value of 1
 //     keeps the width unchanged, a value greater than 1 increases the width,
 //     and a value between 0 and 1 decreases the width. Negative values may
-//     result in unexpected behavior depending on the type T.
+//     result in unexpected behavior.
 //
 // Returns:
-//   - Rectangle[T]: A new rectangle with the scaled width, maintaining the
+//   - Rectangle: A new rectangle with the scaled width, maintaining the
 //     same height and left edge.
 //
 // Behavior:
@@ -373,10 +362,6 @@ func (r Rectangle) ScaleHeight(factor float64) Rectangle {
 // Notes:
 //   - If the scaling factor is negative, the right edge will be positioned to
 //     the left of the left edge, potentially creating an inverted rectangle.
-//
-// Constraints:
-//   - T must satisfy the [types.SignedNumber] interface, ensuring it supports basic
-//     arithmetic operations like addition, multiplication, and subtraction.
 func (r Rectangle) ScaleWidth(factor float64) Rectangle {
 	newRightX := r.bottomLeft.X() + (r.Width() * factor)
 	return NewFromPoints(
@@ -399,11 +384,12 @@ func (r Rectangle) String() string {
 	return fmt.Sprintf("[(%v,%v),(%v,%v)]", r.bottomLeft.X(), r.bottomLeft.Y(), r.topRight.X(), r.topRight.Y())
 }
 
-// ToImageRect converts the [Rectangle][int] to an [image.Rectangle].
-// This method is only available for [Rectangle][int] as [image.Rectangle] requires integer coordinates.
+// ToImageRect converts the Rectangle to an image.Rectangle.
+// This method converts the rectangle coordinates to integers by truncating the decimal portion
+// (via int type casting) as image.Rectangle requires integer coordinates.
 //
 // Returns:
-//   - [image.Rectangle]: A new [image.Rectangle] with coordinates matching the [Rectangle].
+//   - image.Rectangle: A new image.Rectangle with coordinates matching the Rectangle.
 func (r Rectangle) ToImageRect() image.Rectangle {
 	return image.Rect(
 		int(r.topLeft.X()),
@@ -420,10 +406,10 @@ func (r Rectangle) ToImageRect() image.Rectangle {
 // dimensions of the rectangle remain unchanged.
 //
 // Parameters:
-//   - p ([Point][T]): The vector by which to translate the rectangle.
+//   - p (point.Point): The vector by which to translate the rectangle.
 //
 // Returns:
-//   - [Rectangle][T]: A new [Rectangle] translated by the specified vector.
+//   - Rectangle: A new Rectangle translated by the specified vector.
 func (r Rectangle) Translate(p point.Point) Rectangle {
 	return NewFromPoints(
 		r.topLeft.Translate(p),
@@ -484,7 +470,7 @@ func (r Rectangle) validate() error {
 // Width calculates the width of the rectangle.
 //
 // Returns:
-//   - T: The width of the rectangle, calculated as the absolute difference between the x-coordinates of the top-left and bottom-right corners.
+//   - float64: The width of the rectangle, calculated as the absolute difference between the x-coordinates of the top-left and bottom-right corners.
 func (r Rectangle) Width() float64 {
 	width := r.bottomRight.X() - r.topLeft.X()
 	if width < 0 {

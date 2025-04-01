@@ -4,8 +4,8 @@
 // supporting a wide range of operations including transformations, boolean geometry, and spatial relationships.
 // TODO: add polygon core type when implemented.
 //
-// Designed for both performance and clarity, geom2d leverages Go generics to handle various numeric types
-// and provides intuitive APIs for working with 2D geometric data.
+// Designed for both performance and clarity, geom2d provides intuitive APIs for working with 2D geometric data
+// using float64 coordinates with configurable epsilon for precision control.
 //
 // # Coordinate System
 //
@@ -24,11 +24,11 @@
 //
 // TODO: add polygon core type when implemented.
 //
-// # Support for Generics
+// # Precision and Floating-Point Handling
 //
-// geom2d leverages Go’s generics, allowing you to use the library with different numeric types
-// (int, float32, float64, etc.). This flexibility ensures the library can adapt to various applications,
-// from integer-based grids to floating-point precision computations.
+// geom2d uses float64 coordinates throughout, providing a good balance of precision and performance.
+// The library includes robust handling of floating-point precision issues through configurable epsilon
+// values and dedicated numeric utility functions.
 //
 // # Precision Control with Epsilon
 //
@@ -39,9 +39,9 @@
 // # Relationships Between Geometric Types
 //
 // This library provides methods to compute relationships between geometric types using a standardized set of relationships:
-// [RelationshipDisjoint], [RelationshipIntersection], [RelationshipContainedBy], [RelationshipContains], and [RelationshipEqual].
+// [types.RelationshipDisjoint], [types.RelationshipIntersection], [types.RelationshipContainedBy], [types.RelationshipContains], and [types.RelationshipEqual].
 //
-// TODO: requires re-implementing after implementation of polygone core types
+// TODO: requires re-implementing after implementation of polygon core types
 //
 // # Acknowledgments
 //
@@ -70,10 +70,31 @@ package geom2d
 
 var epsilon float64 = 1e-12
 
+// GetEpsilon returns the current epsilon value used for floating-point comparisons across the library.
+//
+// Epsilon is a small positive value used for comparing floating-point numbers while accounting
+// for precision errors. This function retrieves the global epsilon value that applies to all
+// geometric operations in the library that require approximate floating-point comparisons.
+//
+// Returns:
+//   - float64: The current epsilon value, initially set to 1e-12 by default.
 func GetEpsilon() float64 {
 	return epsilon
 }
 
+// SetEpsilon changes the global epsilon value used for floating-point comparisons.
+//
+// This function allows users to customize the tolerance level for floating-point
+// comparisons throughout the library. Setting a larger epsilon makes comparisons more
+// lenient, while a smaller value makes them more strict.
+//
+// Parameters:
+//   - e (float64): The new epsilon value to use. Should be a small positive number.
+//
+// Usage:
+//   - Increase epsilon when working with values that may have accumulated more
+//     floating-point errors, such as after many transformations.
+//   - Decrease epsilon when higher precision is required for specific operations.
 func SetEpsilon(e float64) {
 	epsilon = e
 }

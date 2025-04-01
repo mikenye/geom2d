@@ -34,7 +34,10 @@ func FloatLessThan(a, b, epsilon float64) bool {
 	return a < b && !FloatEquals(a, b, epsilon)
 }
 
-// FloatLessThanOrEqualTo checks if 'a' is less than or equal to 'b'.
+// FloatLessThanOrEqualTo checks if 'a' is less than or equal to 'b', using epsilon for approximate equality.
+//
+// This function returns true if 'a' is strictly less than 'b' or if 'a' and 'b' are approximately
+// equal within the given epsilon tolerance.
 func FloatLessThanOrEqualTo(a, b, epsilon float64) bool {
 	return a < b || FloatEquals(a, b, epsilon)
 }
