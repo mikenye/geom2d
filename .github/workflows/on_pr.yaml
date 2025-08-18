@@ -26,7 +26,7 @@ jobs:
 
       # Checkout repo
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Setup Go with caching
       - name: Set up Go
@@ -58,7 +58,7 @@ jobs:
 
       # Checkout repo
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Setup Go with caching
       - name: Set up Go
@@ -88,7 +88,7 @@ jobs:
 
       # Checkout repo
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Setup Go with caching
       - name: Set up Go
@@ -140,7 +140,7 @@ jobs:
 
       # Checkout repo
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Setup Go with caching
       - name: Set up Go
