@@ -30,7 +30,7 @@ jobs:
 
       # Setup Go with caching
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           cache: 'true'
           cache-dependency-path: ./go.sum
@@ -62,7 +62,7 @@ jobs:
 
       # Setup Go with caching
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           cache: 'true'
           cache-dependency-path: ./go.sum
@@ -92,7 +92,7 @@ jobs:
 
       # Setup Go with caching
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           cache: 'true'
           cache-dependency-path: ./go.sum
@@ -144,7 +144,7 @@ jobs:
 
       # Setup Go with caching
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           cache: 'true'
           cache-dependency-path: ./go.sum
